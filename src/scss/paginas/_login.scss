@@ -1,0 +1,197 @@
+// .contenido-login {
+//   flex: 1;
+// }
+
+// .login-principal {
+//   display: flex;
+// }
+
+//LOGIN
+.logo-login {
+  border: $naranja, solid 1px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  padding: 1rem;
+}
+
+.login {
+  width: 30%;
+  background-color: $grisOscuro;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  label {
+    font-family: $fuente_login;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 1rem;
+    color: $azul;
+  }
+}
+
+.titulo-login {
+  text-transform: uppercase;
+  font-family: $fuente_login;
+  font-size: 2.5rem;
+}
+
+.subtitulo-login {
+  text-transform: uppercase;
+  font-family: $fuente_login;
+  font-size: 2rem;
+  color: $amarillo_claro;
+  margin-top: 2rem;
+}
+
+.footer {
+  font-size: 14px;
+  color: $grisOscuro;
+  font-family: $fuente_principal;
+}
+// Clase raíz para encapsular los estilos
+.page-login {
+  background-color: $gris;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+
+  // Contenedor del login
+  .login-container {
+    background: $blanco;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 20px;
+
+      h2 {
+        color: $azul;
+        font-family: $fuente_titulo;
+        margin-bottom: 5px;
+      }
+
+      p {
+        color: $grisOscuro;
+        font-family: $fuente_login;
+        font-size: 16px;
+      }
+    }
+  }
+  // .password-space {
+  //   position: relative;
+  //   // input {
+
+  //   // }
+  //   button {
+  //     position: absolute;
+  //     top: 0;
+  //     right: 0;
+  //     border: none;
+  //     height: 100%;
+  //     background-color: transparent;
+  //   }
+  // }
+  .btn-login {
+    background-color: $azul;
+    color: $negro;
+    font-family: $fuente_boton_formulario;
+    border: none;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-bottom: 0.5rem;
+    width: 100%;
+    &:hover {
+      background-color: $azul_oscuro;
+    }
+  }
+}
+
+.password-space {
+  position: relative;
+  button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: none;
+    height: 100%;
+    background-color: transparent;
+  }
+}
+
+//PÁGINAS VINCULADAS AL CAMBIO DE CONTRASEÑA
+
+//LOGIN
+
+//LOGO DEL LOGIN
+
+.page-change-password {
+  background-color: $gris;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+
+    .login-container {
+      background: $blanco;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 80%; // Ajuste para ocupar un 80% de la pantalla
+      max-width: 500px; // Límite máximo para pantallas grandes
+
+      .titulo-login {
+        color: $azul;
+        font-family: $fuente_titulo;
+        margin-bottom: 20px;
+      }
+
+      .texto-login,
+      .texto-advertencia {
+        color: $grisOscuro;
+        font-family: $fuente_login;
+        font-size: 16px;
+        margin-bottom: 20px;
+      }
+
+      .form-control {
+        border: 1px solid $grisOscuro;
+        padding: 10px;
+        font-family: $fuente_principal;
+        border-radius: 8px;
+
+        &::placeholder {
+          color: $grisOscuro;
+        }
+      }
+
+      .btn-login {
+        background-color: $azul;
+        color: $negro;
+        font-family: $fuente_boton_formulario;
+        border: none;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-bottom: 1rem;
+        &:hover {
+          background-color: $azul_oscuro;
+        }
+      }
+    }
+  }
+}

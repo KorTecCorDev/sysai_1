@@ -1,0 +1,556 @@
+::after,
+::before {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+//Globales
+span {
+  color: $blanco;
+}
+
+a {
+  text-decoration: none;
+  font-family: $fuente_principal;
+}
+
+ul {
+  margin-bottom: 0;
+}
+
+li {
+  list-style: none;
+}
+
+h1 {
+  font-family: $fuente_titulo;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: $azul;
+}
+h2 {
+  font-family: $fuente_titulo, $delgada;
+}
+
+body {
+  font-family: $fuente_principal;
+  background-color: color.adjust($gris, $lightness: 1%);
+}
+
+input {
+  font-family: $fuente_principal;
+}
+
+.main {
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  transition: all 0.35s ease-in-out;
+  background-color: $gris;
+}
+
+//SideBar
+#sidebar {
+  height: 98vh;
+  width: 80px;
+  min-width: 80px;
+  z-index: 1000;
+  transition: all 0.25s ease-in-out;
+  background-color: $grisOscuro;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  border-radius: 3px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); // Sombra alrededor
+}
+
+#sidebar.expand {
+  width: 250px;
+  max-width: 250px;
+  height: 98vh;
+}
+
+//Botón de sidebar principal
+//Cuando está extendido
+.sidebar-header.open {
+  min-width: auto;
+  flex-direction: column;
+  justify-content: start;
+  text-align: start;
+  border: $azul, solid 2px;
+  border-radius: 5px;
+  margin: 1rem 0.5rem 0 0.5rem;
+  padding-bottom: 0.5rem;
+  // p {
+  //   display: flex;
+  // }
+}
+//Estilos de la cabecera del header en caso esté extendido
+.sidebar-header {
+  min-width: auto;
+  justify-content: center;
+  text-align: start;
+  border-bottom: $gris, solid 2px;
+  margin: 1rem 0.5rem 0 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.sidebar-logo {
+  margin: 3px 0 0 5px;
+  flex-grow: 1;
+}
+.sidebar-nav {
+  padding: 0.5rem 0;
+  flex: 1 1 auto;
+}
+.toggle-btn {
+  border-radius: 5px;
+  background-color: transparent;
+  cursor: pointer;
+  border: 0;
+  padding: 0.2rem;
+  transition: background-color 0.3s ease;
+  &:hover {
+    background-color: $azul_claro;
+  }
+}
+.toggle-btn img {
+  max-width: 40px;
+}
+
+.boton {
+  position: relative;
+}
+.sidebar-logo span {
+  font-family: $fuente_sidebar;
+  color: $negro;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.sidebar-logo p {
+  margin-bottom: 0;
+  font-family: $fuente_sidebar;
+  color: $azul_claro;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+//Añadiendo la flecha que hace la animación de abrir y cerrar.
+#sidebar:not(.expand) .boton::after {
+  border: $gris, solid 2px;
+  border-width: 0 0.16rem 0.16rem 0;
+  content: "";
+  display: inline-block;
+  padding: 4px;
+  position: absolute;
+  right: 0.1rem;
+  top: 1.2rem;
+  transform: rotate(-45deg);
+  transition: all 0.3s ease-out;
+}
+
+#sidebar.expand .boton::after {
+  border: $gris, solid 2px;
+  border-width: 0 0.16rem 0.16rem 0;
+  content: "";
+  display: inline-block;
+  padding: 4px;
+  position: absolute;
+  right: 0.1rem;
+  top: 1.2rem;
+  transform: rotate(135deg);
+  transition: all 0.3s ease-out;
+}
+
+#sidebar:not(.expand) .sidebar-logo,
+#sidebar:not(.expand) .sidebar-link span {
+  display: none;
+}
+
+//Imágen del Logo
+#sidebar:not(.expand) img,
+#sidebar:not(.expand) .toggle-btn {
+  max-width: 65px;
+  padding: 0.1rem;
+  padding-right: 1rem;
+}
+#sidebar.expand img,
+#sidebar.expand .toggle-btn {
+  max-width: 65px;
+  padding: 0.1rem;
+  padding-right: 1.3rem;
+}
+
+#sidebar:not(.expand) .sidebar-header {
+  max-width: 80px;
+  margin: 1rem 0.5rem 0 0.5rem;
+}
+
+#sidebar:not(.expand) .toggle-btn {
+  padding: 0;
+}
+
+#sidebar:not(.expand) .sidebar-item .sidebar-dropdown {
+  position: absolute;
+  top: 0;
+  left: 80px;
+  background-color: $grisOscuro;
+  padding: 0;
+  min-width: 16rem;
+  display: none;
+}
+//Listas dentro de las lista se muestran al hacer HOVER
+#sidebar:not(.expand) .sidebar-item:hover .has-dropdown + .sidebar-dropdown {
+  display: block;
+  max-height: 50em;
+  width: 100%;
+  opacity: 1;
+  span {
+    display: inline;
+  }
+}
+
+//Darle un padding a los subitems
+
+a.sidebar-link {
+  color: $azul_claro;
+  padding: 0.5rem 1.3rem;
+  font-family: $fuente_sidebar;
+  display: block;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  border-left: 3px solid transparent;
+}
+.sidebar-link span {
+  color: $negro;
+}
+
+.sidebar-link i {
+  font-size: 1.6rem;
+  margin-right: 0.25rem;
+}
+
+a.sidebar-link:hover,
+i.sidebar-link {
+  transition: all 0.2s ease-out;
+  background-color: $azul;
+  border-left: 4px solid $blanco;
+  color: $gris;
+  span {
+    color: $gris;
+  }
+}
+//Seleccionamos ala lista padre y capturamos a todos los elementos con la clase "sidebar-link"
+ul.padre .sidebar-link {
+  size: 50%;
+}
+.sidebar-item {
+  position: relative;
+}
+
+//Asignando el background rojo al item del footer CERRAR SESIÓN al momento de recibir un hover
+#sidebar .sidebar-footer:hover .sidebar-link {
+  background-color: $rojo_claro;
+}
+//Flechita que aparece al lado de los items que tienen más items
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"]::after {
+  border: solid;
+  border-width: 0 0.075rem 0.075rem 0;
+  content: "";
+  display: inline-block;
+  padding: 2px;
+  position: absolute;
+  right: 1.5rem;
+  top: 1.4rem;
+  transform: rotate(-135deg);
+  transition: all 0.2s ease-out;
+}
+
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"].collapsed::after {
+  transform: rotate(45deg);
+  transition: all 0.2s ease-out;
+}
+//Items dentro de otro item del sidebar se reconocen mejor con un espaciado
+.padre.show a {
+  padding-left: 2rem;
+}
+
+//Estilos para los Tooltip del Sidebar
+
+//Relación entre Programas y Fuentes de financiamiento
+.financia-dslc {
+  border: solid;
+  border-color: $incorrecto;
+
+  input {
+    background-color: $incorrecto;
+    border-color: $incorrecto;
+    &:hover {
+      background-color: $incorrecto;
+      border-color: $incorrecto;
+    }
+  }
+}
+.financia-slc {
+  border: solid;
+  border-color: $correcto;
+
+  input {
+    background-color: $correcto;
+    border-color: $correcto;
+    &:hover {
+      background-color: $correcto;
+      border-color: $correcto;
+    }
+  }
+}
+
+.nav {
+  text-align: center;
+}
+//Botones
+.btn-volver {
+  background-color: $verde;
+  border-color: $verde;
+  color: $negro;
+  min-width: 120px;
+  font-family: $fuente_boton_formulario;
+  &:hover {
+    background-color: color.adjust($verde, $lightness: -5%);
+    border-color: color.adjust($verde, $lightness: -20%);
+    color: $blanco;
+  }
+}
+
+.btn-agregar {
+  margin: 0 0 1rem 0;
+  color: $negro;
+  background-color: $azul;
+  font-family: $fuente_boton_formulario;
+  border-color: $azul;
+  &:hover {
+    background-color: $azul_claro;
+    border-color: $azul_claro;
+    color: $gris;
+  }
+}
+
+.btn-add {
+  background-color: $verde;
+  border: $verde, solid 1px;
+  &:hover {
+    background-color: $verde_claro;
+    border-color: $verde_claro;
+    color: $gris;
+  }
+}
+.btn-agregar-sbmt {
+  color: $negro;
+  min-width: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: $azul;
+  font-family: $fuente_boton_formulario;
+  border-radius: 5px;
+
+  i {
+    margin-left: 0.5rem;
+  }
+
+  input {
+    color: $negro;
+    &:hover {
+      background-color: color.adjust($azul, $lightness: -10%);
+    }
+  }
+  &:hover {
+    background-color: color.adjust($azul, $lightness: -10%);
+    color: $blanco;
+  }
+}
+
+.btn-actualizar {
+  background-color: $amarillo;
+  font-family: $fuente_boton_formulario;
+  border-color: $amarillo;
+  min-width: 8rem;
+  &:hover {
+    background-color: $amarillo_claro;
+    border-color: $amarillo_claro;
+    color: $gris;
+  }
+}
+.btn-actualizar:not(.peque) {
+  background-color: $amarillo;
+  font-family: $fuente_boton_formulario;
+  border-color: $amarillo;
+  min-width: 8rem;
+  margin: 0 3px;
+  &:hover {
+    background-color: $amarillo_claro;
+    border-color: $amarillo_claro;
+    color: $gris;
+  }
+}
+.btn-actualizar.peque {
+  min-width: auto;
+  input {
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+.btn-eliminar.peque {
+  height: 100%;
+  position: relative;
+  padding: .8rem;
+  input {
+    position: absolute;
+    // width: 100%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+.btn-actualizar-sbmt {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: $amarillo;
+  font-family: $fuente_boton_formulario;
+  border-color: solid, $amarillo;
+  border-radius: 5px;
+  i {
+    margin-left: 0.5rem;
+  }
+  &:hover {
+    background-color: $amarillo_claro;
+    border-color: solid, $amarillo_claro;
+    color: $blanco;
+  }
+  input {
+    &:hover {
+      background-color: $amarillo_claro;
+    }
+  }
+}
+
+.btn-eliminar {
+  display: flex;
+  max-height: 2.4rem;
+  align-items: center;
+  background-color: $rojo;
+  font-family: $fuente_boton_formulario;
+  border-radius: 5px;
+  input {
+    text-align: left;
+    width: auto;
+    padding-left: 0.3rem;
+  }
+  i {
+    margin-left: 0.5rem;
+  }
+  &.peque {
+    width: 100%;
+    i {
+      margin: 0;
+    }
+  }
+}
+
+.btn-eliminar:hover {
+  background-color: $rojo_claro;
+  color: $gris;
+  i {
+    color: $gris;
+  }
+  input {
+    color: $gris;
+  }
+}
+.btn-acciones {
+  display: flex;
+  justify-content: space-evenly;
+
+  div.actualizar-espacio {
+    padding: 0.1rem;
+    width: auto;
+  }
+  div.eliminar-espacio {
+    padding: 0.1rem;
+    width: auto;
+  }
+}
+//Espacio donde se ubican los botones
+.espacio-btn-agregar {
+  display: flex;
+  justify-content: end;
+}
+
+.espacio-btn-crear {
+  display: flex;
+  justify-content: start;
+  div {
+    margin-inline-start: 10px;
+  }
+}
+
+.sidebar-footer {
+  background-color: $grisOscuro;
+  a {
+    color: $rojo;
+  }
+  span {
+    color: $rojo_oscuro;
+  }
+}
+
+.tarjeta {
+  min-height: 180px;
+}
+
+//Tooltipo del sidebar
+.tooltip {
+  background-color: transparent !important; // Elimina el color predeterminado
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); // Sombra alrededor
+  border-radius: 0.5rem; // Esquinas redondeadas
+}
+
+.tooltip-inner {
+  background-color: $grisOscuro !important; // Color de fondo del tooltip
+  border-radius: 0.5rem; // Esquinas redondeadas
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); // Sombra alrededor
+}
+
+//Espacio de los admins
+.header-admin {
+  position: relative;
+}
+// Modales con fondo oscuro y desenfoque
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+//Espacio para Relacionamiento de Fuentes de financiamiento
+
+#programs {
+  width: auto;
+}
+
+
+//Combo de programas_coordinadores oculto por defecto
+#programas_coordinador.oculto {
+  display: none;
+}
+#programas_coordinador_label.oculto {
+  display: none;
+}
+#programas_coordinador_help.oculto {
+  display: none;
+}

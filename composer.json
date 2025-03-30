@@ -1,0 +1,23 @@
+{
+    "name": "karlos/sysai",
+    "description": "Sistema de reportes contables ONG Arco Iris",
+    "type": "project",
+    "authors": [
+        {
+            "name": "KarlosColoniaArellano"
+        }
+    ],
+    "require": {
+        "intervention/image": "2.7",
+        "phpmailer/phpmailer": "^6.9",
+        "twbs/bootstrap-icons": "^1.11",
+        "phpoffice/phpspreadsheet": "^4.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Model\\": "./models",
+            "MVC\\": "./",
+            "Controllers\\": "./controllers"
+        }
+    }
+}

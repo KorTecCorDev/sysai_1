@@ -1,0 +1,55 @@
+//Definimos todas las variables para usarla con los estilos
+
+//Importamos las fuentes a utilizar
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Orbitron:wght@400..900&family=Parkinsans:wght@300..800&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Rubik:ital,wght@0,300..900;1,300..900&family=Sour+Gummy:ital,wght@0,100..900;1,100..900&family=Staatliches&display=swap');
+
+
+// Fuentes
+$fuente_principal: 'Lato', sans-serif;
+$fuente_titulo: 'Rubik', Courier;
+$fuente_boton_formulario: 'Sour Gummy', sans-serif ;
+$fuente_login:  'Parkinsans' , sans-serif;
+$fuente_sidebar: 'Exo 2' , sans-serif;
+
+
+// Tamaño de Media Queries
+$telefono: 480px;
+$tablet: 768px;
+$desktop: 1024px;
+
+// Colores
+$blanco: #FFFFFF;
+$negro: #000000;
+$azul: #42A5F5;
+$azul_oscuro: color.adjust($azul, $lightness: -20%);
+$azul_claro: color.adjust($azul, $lightness: 10%);
+$violeta: #AB47BC;
+$amarillo: #e6ba2d;
+$amarillo_claro: color.adjust($amarillo, $lightness: 10%);
+$naranja: #FFA726;
+$verde: #66BB6A;
+$verde_claro: color.adjust($verde, $lightness: 10%);
+$gris: #e7e7e7 ;
+$grisOscuro: color.adjust($gris, $lightness: -50%);
+$rojo: #ff5a4b;
+$rojo_claro: color.adjust($rojo, $lightness: 10%);
+$rojo_oscuro: color.adjust($rojo, $lightness: -40%);
+$correcto: #79d24d ;
+$incorrecto: #ff4242;
+
+$separacion: 5rem;
+
+// Fuentes
+$delgada: 300;
+$regular : 400;
+$bold: 700;
+$black: 900;
+
+//Login
+
+$primary-color: #4CAF50;
+$secondary-color: #f4f4f4;
+$text-color: #333;
+$placeholder-color: #888;
+$border-radius: 8px;
+$box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);

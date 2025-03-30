@@ -1,0 +1,109 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Establecer la base para reescrituras (raíz del proyecto)
+    RewriteBase /
+    
+    # ----------------------------------------------------------------------
+    # Configuración de seguridad reforzada
+    # ----------------------------------------------------------------------
+    
+    # Proteger todos los archivos sensibles
+    <FilesMatch "(\.(env|json|config|log|sql|bak|lock)|composer\.(json|lock)|package(-lock)?\.json|gulpfile\.js)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    
+    # Bloquear acceso a directorios críticos
+    	RewriteCond %{REQUEST_URI} !^/build/(css|js|img)/.*$ [NC]
+	RewriteRule ^(controllers|includes|models|node_modules|src|vendor)/(.*) - [R=404,L]
+
+    
+    # No listar directorios
+    Options -Indexes
+    
+    # ----------------------------------------------------------------------
+    # Configuración del enrutador principal
+    # ----------------------------------------------------------------------
+    
+    # Redirigir todas las solicitudes a index.php, excepto archivos/directorios existentes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L,QSA]
+    
+    # Bloquear acceso directo a archivos PHP en views (permitir solo mediante router)
+    RewriteRule ^views/.*\.php$ - [R=404,L]
+    
+    # ----------------------------------------------------------------------
+    # Optimizaciones de rendimiento
+    # ----------------------------------------------------------------------
+    
+    # Compresión Gzip
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript
+    </IfModule>
+    
+    # Cacheo de archivos estáticos
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresByType image/jpg "access plus 1 year"
+        ExpiresByType image/jpeg "access plus 1 year"
+        ExpiresByType image/gif "access plus 1 year"
+        ExpiresByType image/png "access plus 1 year"
+        ExpiresByType text/css "access plus 1 month"
+        ExpiresByType application/javascript "access plus 1 month"
+        ExpiresByType application/x-javascript "access plus 1 month"
+        ExpiresByType image/x-icon "access plus 1 year"
+        ExpiresByType application/pdf "access plus 1 month"
+    </IfModule>
+    
+    # ----------------------------------------------------------------------
+    # Configuración específica para Hostinger
+    # ----------------------------------------------------------------------
+    
+    # Asegurar que PATH_INFO esté disponible para el router
+    AcceptPathInfo On
+    
+    # Manejo de errores personalizado
+    ErrorDocument 404 /index.php?url=404
+    ErrorDocument 403 /index.php?url=403
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Configuración de PHP (ajustes recomendados)
+# ----------------------------------------------------------------------
+<IfModule mod_php.c>
+    # Ajustes básicos
+    php_value upload_max_filesize 20M
+    php_value post_max_size 22M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+    php_value max_input_time 60
+    
+    # Configuración de sesiones
+    php_value session.gc_maxlifetime 1440
+    php_value session.cookie_lifetime 0
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Configuración de cabeceras de seguridad
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Protección contra XSS
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # Prevenir sniffing de MIME
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Política de seguridad de contenido (CSP) - Ajustar según necesidades
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
+    
+    # Prevenir iframing
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # Referrer Policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
