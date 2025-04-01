@@ -82,7 +82,7 @@ foreach ($resbienesAgrupados as $respoas) {
 
     // Insertar una imagen en la celda A{$cntrows}
     $drawing = new Drawing();
-    $drawing->setPath('../build/img/logo_last.png'); // Ruta de la imagen
+    $drawing->setPath($_SERVER['DOCUMENT_ROOT'] . "/build/img/logo_last.png"); // Ruta de la imagen
     $drawing->setCoordinates("A{$cntrows}"); // Posición inicial (fila dinámica)
 
     // Ajustar la altura de la fila donde se inserta la imagen
