@@ -4,7 +4,7 @@
         <div class="col-12 w-auto">
             <label class="form-label" for="tipo_comprobante">Tipo de comprobante:</label>
             <select class="form-select" id="tipo_comprobante_combo" name="tipo_comprobante_id">
-                <option value="" disabled selected>-- Seleccione --</option>
+                <option value="0" disabled selected>-- Seleccione --</option>
                 <?php foreach ($tipocomprobantes as $tipocomprobante): ?>
                     <option <?php echo $rendicion->tipo_comprobante_id === $tipocomprobante->id ? 'selected' : ''; ?> value="<?php echo $tipocomprobante->id; ?>">
                         <?php echo $tipocomprobante->descripcion; ?>
@@ -19,7 +19,7 @@
         <div class="col-12 w-auto">
             <label class="form-label" for="tipo_comprobante">Fuente de financiamiento:</label>
             <select class="form-select" id="fuente_financiamiento_combo" name="ff_id">
-                <option value="" disabled selected>-- Seleccione --</option>
+                <option value="0" disabled selected>-- Seleccione --</option>
                 <?php foreach ($fuentesfinanciamiento as $fuentefinanciamiento): ?>
                     <option <?php echo $rendicion->ff_id === $fuentefinanciamiento->fuente_id ? 'selected' : ''; ?> value="<?php echo $fuentefinanciamiento->fuente_id; ?>">
                         <?php echo $fuentefinanciamiento->fuente_nombre . ' - ' . $fuentefinanciamiento->fuente_presupuesto; ?>

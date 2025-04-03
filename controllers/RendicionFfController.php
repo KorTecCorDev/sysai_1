@@ -71,7 +71,6 @@ class RendicionFfController
  
         $router->render('rendicionff/crear', [
             'resultados' => $resultados,
-            
             'rendi' => $rendi,
             'fuentesf' => $fuentesf,
             'errores' => $errores,

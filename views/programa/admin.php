@@ -50,7 +50,7 @@
                                     <a href="/programa/actualizar?id=<?php echo $programa->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
                                 </div>
                                 <div>
-                                    <form method="POST" class="w-100" action="/producto/eliminar">
+                                    <form method="POST" class="w-100" action="/programa/eliminar">
                                         <input type="hidden" name="id" value="<?php echo $programa->id; ?>">
                                         <input type="hidden" name="tipo" value="programa">
                                         <div class="btn-eliminar">

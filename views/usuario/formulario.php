@@ -43,10 +43,10 @@
     <div class="mb-3">
         <label for="cargo" class="form-label">Cargo</label>
         <select name="usuario[cargo_id]" id="cargo" aria-describedby="cargoHelp">
-            <option value="" selected>--Seleccione--</option>
+            <option value="" selected disabled>--Seleccione--</option>
             <?php
             foreach ($cargos as $cargo) { ?>
-                <option <?php echo $usuario->cargo_id === $cargo->id ? 'selected' : ''; ?> value="<?php echo S($cargo->id); ?>"><?php echo s($cargo->descripcion);  ?> </option>
+                <option <?php echo $usuario->cargo_id === $cargo->id ? 'selected' : ''; ?> <?php echo $cargo->id == 3 && $cmbstatus ? 'disabled' : ''; ?> value="<?php echo S($cargo->id); ?>"><?php echo s($cargo->descripcion);  ?> </option>
             <?php } ?>
         </select>
         <div id="cargoHelp" class="form-text">Seleccione el cargo del usuario</div>

@@ -49,9 +49,6 @@ class OtrosIngresosEgresos extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes de ingresar un código válido';
         }
-        if (!$this->descripcion) {
-            self::$errores[] = 'Debes de ingresar una descripción válida';
-        }
         return self::$errores;
     }
 

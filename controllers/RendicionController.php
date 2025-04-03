@@ -66,6 +66,7 @@ class RendicionController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //Agregamos el actividad_id del URL al POST.
             $_POST['actividad_id'] = $_GET['actividad_id'];
+            //Creamos un nuevo objeto rendicion con el POST
             $rendicion = new Rendicion($_POST);
             $errores = $rendicion->validar();
             if (empty($errores)) {
@@ -96,7 +97,7 @@ class RendicionController
             //Asignamos el id de la actividad según el key id del objeto actividad
             $actividad_id = $actividad->id;
             $tipocomprobantes = TipoComprobante::all();
-            $fuentesfinanciamiento = FuenteFinanciamiento::all();
+            $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id',$actividad_id);
             if ($_SERVER["REQUEST_METHOD"] === 'POST') {
                 $argsrendicion = $_POST;
                 $rendicion->sincronizar($argsrendicion);

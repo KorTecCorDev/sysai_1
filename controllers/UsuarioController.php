@@ -32,11 +32,21 @@ class UsuarioController
         $cargos = Cargo::all();
         //Array con los programas que no tienen un coordinador vinculado
         $programas_vista = ProgramasinCoordinadorVista::all();
-
-        foreach ($programas_vista as $programa_vista) {
-            //Encontramos los objetos de programas según los programa_id en cada resultado
-            $programas[] = Programa::find($programa_vista->programa_id);
+        // Si todos los programas tienen coordinador?
+        if (empty($programas_vista)) {
+            //Variable que se envía para deshabilitar el option de coordinador en tipo de usuario
+            $cmbstatus = true;
+            //Creando array vací de programas
+            $programas = [];
+        } else {
+            foreach ($programas_vista as $programa_vista) {
+                //Encontramos los objetos de programas según los programa_id en cada resultado
+                $programas[] = Programa::find($programa_vista->programa_id);
+            }
+            $cmbstatus = false;
         }
+
+
 
         //Array con mensajes de error
         $errores = Persona::getErrores();
@@ -83,6 +93,7 @@ class UsuarioController
             'programas' => $programas,
             'usuario' => $usuario,
             'cargos' => $cargos,
+            'cmbstatus' => $cmbstatus,
             'errores' => $errores
         ]);
     }
@@ -123,10 +134,18 @@ class UsuarioController
 
         //Array con los programas que no tienen un coordinador vinculado
         $programas_vista = ProgramasinCoordinadorVista::all();
-
-        foreach ($programas_vista as $programa_vista) {
-            //Encontramos los objetos de programas según los programa_id en cada resultado
-            $programas[] = Programa::find($programa_vista->programa_id);
+        // Si todos los programas tienen coordinador?
+        if (empty($programas_vista)) {
+            //Variable que se envía para deshabilitar el option de coordinador en tipo de usuario
+            $cmbstatus = true;
+            //Creando array vací de programas
+            $programas = [];
+        } else {
+            foreach ($programas_vista as $programa_vista) {
+                //Encontramos los objetos de programas según los programa_id en cada resultado
+                $programas[] = Programa::find($programa_vista->programa_id);
+            }
+            $cmbstatus = false;
         }
 
         //Errores
@@ -166,6 +185,7 @@ class UsuarioController
             'programas' => $programas,
             'usuario' => $usuario,
             'errores' => $errores,
+            'cmbstatus' => $cmbstatus,
             'cargos' => $cargos
 
         ]);
