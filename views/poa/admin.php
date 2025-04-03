@@ -44,14 +44,15 @@
                                 <td> <?php echo 'S./ ' . $poa->presupuesto; ?> </td>
                                 <td> <?php echo $poa->estado; ?> </td>
                                 <td class="td-acciones">
+                                    <!-- Div de Acciones     -->
                                     <div class="btn-acciones">
                                         <div>
                                             <a href="/poa/actualizar?id=<?php echo $poa->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
                                         </div>
                                         <div>
                                             <form method="POST" class="w-100" action="/poa/eliminar">
-                                                <input type="hidden" name="id" value="<?php echo $poa->id; ?>">
-                                                <input type="hidden" name="tipo" value="fuente_financiamiento">
+                                                <input type="hidden" name="id" value="<?php echo $oe->id; ?>">
+                                                <input type="hidden" name="tipo" value="poa">
                                                 <div class="btn-eliminar">
                                                     <i class="bi bi-trash"></i>
                                                     <input type="submit" class="btn" value="Eliminar">
@@ -59,6 +60,7 @@
                                             </form>
                                         </div>
                                     </div>
+                                    <!-- Div de Acciones     -->
                                 </td>
                             </tr>
                         <?php } ?>

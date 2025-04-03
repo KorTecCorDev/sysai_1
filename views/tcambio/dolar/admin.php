@@ -38,6 +38,7 @@
                         <td> <?php echo $tipocambio->tipo_cambio; ?> </td>
                         <td> <?php echo $tipocambio->fecha; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/tcambio/dolar/actualizar?id=<?php echo $tipocambio->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i>Actualizar</a>
@@ -53,6 +54,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

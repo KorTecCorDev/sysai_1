@@ -1,25 +1,22 @@
 <main>
-    <h1>Crear Otro Ingreso/Egreso</h1>
-
-    <?php if (isset($errores)) { ?>
-        <?php foreach ($errores as $error) { ?>
-            <div class="modal fade" data-bs-key="modal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Error!</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p><?php echo $error; ?></p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
+    <h1>Registrar Ingreso o Egreso</h1>
+    <?php foreach ($errores as $error) { ?>
+        <div class="modal fade" data-bs-key="modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Error!</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><?php echo $error; ?></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     </div>
                 </div>
             </div>
-        <?php } ?>
+        </div>
     <?php } ?>
     <form method="POST">
         <?php include __DIR__ . '/formulario.php'; ?>

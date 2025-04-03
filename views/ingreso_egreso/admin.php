@@ -58,6 +58,7 @@
                         ?>
                         <td> <?php echo $oe->comprobante_monto; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/ingreso_egreso/actualizar?id=<?php echo $oe->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
@@ -73,6 +74,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

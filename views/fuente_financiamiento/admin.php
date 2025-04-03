@@ -43,6 +43,7 @@
                         <td> <?php echo $fuente_financiamiento->descripcion; ?> </td>
                         <td> <?php echo 'S./ ' . number_format($fuente_financiamiento->presupuesto, 2, '.', ','); ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/fuente_financiamiento/actualizar?id=<?php echo $fuente_financiamiento->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
@@ -58,6 +59,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

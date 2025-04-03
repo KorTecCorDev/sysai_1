@@ -43,6 +43,7 @@
                         <td> <?php echo $usuario->telefono; ?> </td>
                         <td> <?php echo $usuario->cargo; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/usuario/actualizar?id=<?php echo $usuario->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
@@ -58,6 +59,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

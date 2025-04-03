@@ -24,7 +24,7 @@
                 <?php include __DIR__ . '/formulario.php'; ?>
                 <div class="espacio-btn-crear">
                     <div>
-                        <a href="/producto/admin?resultado_id=<?php echo $resultadoid;  ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+                        <a href="/producto/admin?resultado_id=<?php echo $resultadoid; ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
                     </div>
                     <div class="btn-agregar-sbmt">
                         <i class="bi bi-plus-circle"></i>

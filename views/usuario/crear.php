@@ -1,5 +1,5 @@
-<main class="container">
-    <h1>Crear Usuario</h1>
+<main>
+    <h1>Registrar Nuevo Usuario</h1>
     <?php foreach ($errores as $error) { ?>
         <div class="modal fade" data-bs-key="modal" tabindex="-1">
             <div class="modal-dialog">
@@ -18,11 +18,16 @@
             </div>
         </div>
     <?php } ?>
-    
-    <form class="formulario" method="POST">
+    <form method="POST">
         <?php include __DIR__ . '/formulario.php'; ?>
-        <input type="submit" value="Crear Usuario" class="btn btn-primary">
-        <a href="/usuario/admin" class="btn btn-primary">Volver</a>
+        <div class="espacio-btn-crear">
+            <div>
+                <a href="/usuario/admin" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+            </div>
+            <div class="btn-agregar-sbmt">
+                <i class="bi bi-plus-circle"></i>
+                <input type="submit" value="Agregar" class="btn">
+            </div>
+        </div>
     </form>
-    
 </main>

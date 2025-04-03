@@ -46,15 +46,14 @@
                         <td> <?php echo $actividad->nombre; ?> </td>
                         <td> <?php echo $actividad->descripcion; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/rubro/admin?actividad_id=<?php echo $actividad->id; ?>" class="btn btn-warning btn-add"><i class="bi bi-clipboard2-plus" title="Agregar rubro"></i></a>
                                 </div>
-                                <!-- Creamos un espacio para el botón que conectará rendición -->
                                 <div>
                                     <a href="/rendicion/admin?actividad_id=<?php echo $actividad->id; ?>" class="btn btn-warning btn-add"><i class="bi bi-folder-plus" title="Agregar rendiciones"></i></a>
                                 </div>
-                                <!-- Fin de espacio para el botón que conectará rendición -->
                                 <div>
                                     <a href="/actividad/actualizar?id=<?php echo $actividad->id; ?>&producto_id=<?php echo $productoid ?>" class="btn btn-warning btn-actualizar" title="Actualizar"><i class="bi bi-pen"></i> Actualizar</a>
                                 </div>
@@ -70,7 +69,10 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
+
+
                     </tr>
                 <?php endforeach; ?>
             </tbody>

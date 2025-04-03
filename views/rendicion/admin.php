@@ -63,15 +63,15 @@
                         <td> <?php echo $rendicion->fuente_financiamiento; ?> </td>
                         <td> S./ <?php echo $rendicion->monto; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
-                                <div class="actualizar-espacio">
+                                <div>
                                     <a href="/rendicion/actualizar?id=<?php echo $rendicion->id; ?>&actividad_id=<?php echo $rendicion->actividad_id; ?>" class="btn btn-warning btn-actualizar peque"><i class="bi bi-pen"></i></a>
                                 </div>
-                                <div class="eliminar-espacio">
+                                <div>
                                     <form method="POST" class="w-100" action="/rendicion/eliminar">
                                         <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
                                         <input type="hidden" name="actividad_id" value="<?php echo s($rendicion->actividad_id); ?>">
-                                        <input type="hidden" name="tipo" value="rendicion">
                                         <div class="btn-eliminar peque">
                                             <i class="bi bi-trash"></i>
                                             <input type="submit" class="btn peque" value="">
@@ -79,6 +79,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

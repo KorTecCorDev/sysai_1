@@ -16,7 +16,7 @@
     ?>
     <div class="row">
         <div class="col">
-            <h3 title="<?php echo ($actividad_nombre); ?>" >Actividad <?php echo $respt[0]->actividad_codigo ?> </h3>
+            <h3 title="<?php echo ($actividad_nombre); ?>">Actividad <?php echo $respt[0]->actividad_codigo ?> </h3>
         </div>
         <div class="col">
             <h3>Monto rendido S./ <?php echo $resptrendiff[0]->total_monto_rendiciones ?></h3>
@@ -40,7 +40,7 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- MostrarLosRegistrosDePropiedades -->
+                <!-- MostrarLosRegistrosDeRendiciones -->
 
                 <?php foreach ($particiones as $particion) : ?>
                     <tr>
@@ -48,6 +48,7 @@
                         <td> <?php echo $particion->ff_id; ?> </td>
                         <td> <?php echo "S./ {$particion->monto}"; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div class="actualizar-espacio">
                                     <a href="/rendicionff/actualizar?id=<?php echo $particion->id; ?>&actividad_id=<?php echo $particion->actividad_id; ?>" class="btn btn-warning btn-actualizar peque"><i class="bi bi-pen"></i></a>
@@ -64,6 +65,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>
