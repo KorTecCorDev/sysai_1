@@ -55,6 +55,7 @@ class RubroController
             if (empty($errores)) {
                 $rubro->guardarsinRedireccion();
                 header("Location: /rubro/admin?actividad_id=" . $idactividad . "&resultado=1");
+                exit();
             } else {
                 $errores = Rubro::getErrores();
             }
@@ -86,6 +87,7 @@ class RubroController
                 if (empty($errores)) {
                     $rubro->guardarsinRedireccion();
                     header("Location: /rubro/admin?actividad_id=" . $actividad->id . "&resultado=2");
+                    exit();
                 } else {
                     $errores = Rubro::getErrores();
                 }
@@ -107,11 +109,13 @@ class RubroController
             $resultado = null;
             if (!is_array($id)) {
                 header("Location: /rubro/error!!");
+                exit();
             } else {
                 $rubro = Rubro::find($id[1]);
                 $rubro->eliminarsinRedireccion();
                 $resultado = 3;
                 header("Location: /rubro/admin?actividad_id=" . $id[0] . "&resultado=" . $resultado);
+                exit();
             }
             $router->render('rubro/eliminar', []);
         }

@@ -85,6 +85,7 @@ class UsuarioController
                     $poa->usuario_id = $usuario->devolverIdLastInsercion();
                     $resultado = $poa->guardarsinRedireccion();
                     header("Location: /usuario/admin?resultado=1");
+                    exit();
                 }
             }
         }
@@ -218,6 +219,7 @@ class UsuarioController
 
                         //La redirección de la URL en este caso va fuera de la función, para evitar que se redirija mal
                         header("Location: /usuario/admin?resultado=3");
+                        exit();
                     }
                 }
             }

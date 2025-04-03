@@ -56,6 +56,7 @@ class DetalleFinanciamientoController
                             $detallefinanciamiento = DetalleFinanciamiento::find($iddfinanciamiento);
                             $detallefinanciamiento->eliminarsinRedireccion();
                             header("Location: /dfinanciamiento/crear?resultado=4");
+                            exit();
                         }
                     }
                 }
@@ -69,6 +70,7 @@ class DetalleFinanciamientoController
                         $resultado = $detallefinanciamiento->guardarsinRedireccion();
                         //Redireccionamos con el resultado 1 que nos indica que se ha creado con éxito
                         header("Location: /dfinanciamiento/crear?resultado=1");
+                        exit();
                     }
                 }
             }

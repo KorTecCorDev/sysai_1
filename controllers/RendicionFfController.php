@@ -65,6 +65,7 @@ class RendicionFfController
                     $respt = $rendi->guardarsinRedireccion();
                     if ($respt) {
                         header('Location: /rendicionff/admin?actividad_id=' . $actividad_id . '&resultado=1');
+                        exit();
                     }
                 }
             }

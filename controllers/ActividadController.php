@@ -49,6 +49,7 @@ class ActividadController
             if (empty($errores)) {
                 $actividad->guardarsinRedireccion();
                 header("Location: /actividad/admin?producto_id=" . $idproducto . "&resultado=1");
+                exit();
             } else {
                 $errores = Actividad::getErrores();
             }
@@ -77,6 +78,7 @@ class ActividadController
             if (empty($errores)) {
                 $actividad->guardarsinRedireccion();
                 header("Location: /actividad/admin?producto_id=" . $producto->id . "&resultado=2");
+                exit();
             }
         }
         $router->render('actividad/actualizar', [
@@ -94,16 +96,17 @@ class ActividadController
             $resultado = null;
             if (!is_array($id)) {
                 header("Location: /actividad/error!!");
+                exit();
             } else {
                 $actividad = Actividad::find($id[1]);
                 $actividad->eliminarsinRedireccion();
                 $resultado = 3;
                 header("Location: /actividad/admin?producto_id=" . $id[0] . "&resultado=" . $resultado);
+                exit();
             }
             $router->render('actividad/eliminar', [
                 'resultado' => $resultado
             ]);
         }
     }
-
 }

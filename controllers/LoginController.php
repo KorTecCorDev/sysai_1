@@ -222,9 +222,11 @@ class LoginController
                             if (!$mail->send()) {
                                 $errores = 'Hubo un Error... intente de nuevo';
                                 header('Location: /chgpsswd');
+                                exit();
                             } else {
                                 $errores = 'Email enviado Correctamente';
                                 header('Location: /token_verify');
+                                exit();
                             }
                         } catch (Exception $e) {
                             debuguear("Error " . $mail->ErrorInfo);
@@ -254,6 +256,7 @@ class LoginController
                     //Permitir ingresar nueva contraseña y reemplazar a la anterior con su hasheo
                     //Pasamos el id de usuario para actualizar contraseña
                     header("Location: /updtepsswd?id=" . $usuario->id);
+                    exit();
                 } else {
                     //Mandar mensajes de Error
                     $errores = Login::getErrores();
@@ -280,6 +283,7 @@ class LoginController
                     $resultado = $oldusu->updatePsswrdUser($newpssw);
                     if ($resultado) {
                         header("Location: /login");
+                        exit();
                     }
                 }
                 $newusu->validarUpdatePassword();

@@ -50,6 +50,7 @@ class ProductoController
             if (empty($errores)) {
                 $producto->guardarsinRedireccion();
                 header("Location: /producto/admin?resultado_id=" . $resultadoid);
+                exit();
             } else {
                 $errores = Producto::getErrores();
             }
@@ -79,6 +80,7 @@ class ProductoController
             if (empty($errores)) {
                 $producto->guardarsinRedireccion();
                 header("Location: /producto/admin?resultado_id=" . $resultado->id . "&resultado=2");
+                exit();
             }
         }
         $router->render('producto/actualizar', [
@@ -95,6 +97,7 @@ class ProductoController
             $resultado = null;
             if (!is_array($id)) {
                 header("Location: /producto/error!!");
+                exit();
             } else {
 
                 $producto = Producto::find($id[1]);
@@ -102,6 +105,7 @@ class ProductoController
                 $producto->eliminarsinRedireccion();
                 $resultado = 3;
                 header("Location: /producto/admin?resultado_id=" . $id[0] . "&resultado=" . $resultado);
+                exit();
             }
             $router->render('producto/eliminar', [
                 'resultado' => $resultado

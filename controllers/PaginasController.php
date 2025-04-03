@@ -13,6 +13,7 @@ class PaginasController
     {
         if (empty($_SESSION)) {
             header('Location: /login');
+            exit();
         } else {
             $router->render('/main', []);
         }

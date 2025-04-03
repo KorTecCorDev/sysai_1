@@ -111,6 +111,7 @@ class ProgramaController
                     if ($programa) {
                         $programa->eliminar();
                         header("Location: /programa/admin?resultado=3");
+                        exit();
                     }
                 }
             }

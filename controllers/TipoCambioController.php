@@ -48,6 +48,7 @@ class TipoCambioController
             if (empty($errores)) {
                 $resultado = $tipoCambioDolar->guardar();
                 header('Location: /tcambio/dolar/admin?resultado=1');
+                exit();
             }
         }
 
@@ -72,6 +73,7 @@ class TipoCambioController
             if (empty($errores)) {
                 $resultado = $tipoCambioEuro->guardarsinRedireccion();
                 header('Location: /tcambio/euro/admin?resultado=1');
+                exit();
             }
         }
 
@@ -95,6 +97,7 @@ class TipoCambioController
             if (empty($errores)) {
                 $resultado = $tipoCambioDolar->guardarsinRedireccion();
                 header('Location: /tcambio/dolar/admin?resultado=2');
+                exit();
             }
         }
 
@@ -121,6 +124,7 @@ class TipoCambioController
             if (empty($errores)) {
                 $resultado = $tipoCambioEuro->guardarsinRedireccion();
                 header('Location: /tcambio/euro/admin?resultado=2');
+                exit();
             }
         }
 
@@ -140,6 +144,7 @@ class TipoCambioController
                 if ($tipoCambio) {
                     $tipoCambio->eliminar();
                     header("Location: /tcambio/dolar/admin?resultado=3");
+                    exit();
                 }
             }
         }
@@ -155,6 +160,7 @@ class TipoCambioController
                 if ($tipoCambio) {
                     $tipoCambio->eliminar();
                     header("Location: /tcambio/euro/admin?resultado=3");
+                    exit();
                 }
             }
         }

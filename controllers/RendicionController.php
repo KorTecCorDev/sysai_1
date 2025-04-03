@@ -72,6 +72,7 @@ class RendicionController
             if (empty($errores)) {
                 $rendicion->guardarsinRedireccion();
                 header("Location: /rendicion/admin?actividad_id={$rendicion->actividad_id}&resultado=1");
+                exit();
             }
         }
         $router->render('rendicion/crear', [
@@ -105,6 +106,7 @@ class RendicionController
                 if (empty($errores)) {
                     $rendicion->guardarsinRedireccion();
                     header("Location: /rendicion/admin?actividad_id=" . $actividad_id . "&resultado=2");
+                    exit();
                 } else {
                     $errores = Rendicion::getErrores();
                 }
@@ -126,6 +128,7 @@ class RendicionController
             $rendicion = Rendicion::find($id);
             $rendicion->eliminar();
             header("Location: /rendicion/admin?actividad_id={$rendicion->actividad_id}&resultado=3");
+            exit();
         }
     }
 }

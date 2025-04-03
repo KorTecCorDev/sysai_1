@@ -74,6 +74,7 @@ class IngresoEgresoController
                 //Redireccionamos a la vista de administración
                 if ($resultado) {
                     header('Location: /ingreso_egreso/admin');
+                    exit();
                 }
             }
         }
@@ -144,6 +145,7 @@ class IngresoEgresoController
                 $oieid = OtrosIngresosEgresos::findlast();
                 //Redireccionamos a la siguiente vista
                 header('Location: /ingreso_egreso/ff?id=' . $oieid->id);
+                exit();
             }
         }
         //Renderizando la vista
@@ -208,6 +210,7 @@ class IngresoEgresoController
                 $oieid = $oie->id;
                 //Redireccionamos a la siguiente vista
                 header('Location: /ingreso_egreso/ff?id=' . $oieid);
+                exit();
             }
         }
         //Renderizando la vista
@@ -252,6 +255,7 @@ class IngresoEgresoController
                 //Redireccionamos a la vista de administración
                 if ($resultado) {
                     header('Location: /ingreso_egreso/admin?resultado=2');
+                    exit();
                 }
             }
         }
@@ -280,6 +284,7 @@ class IngresoEgresoController
                     if ($oie) {
                         $oie->eliminar();
                         header("Location: /ingreso_egreso/admin");
+                        exit();
                     }
                 }
             }
