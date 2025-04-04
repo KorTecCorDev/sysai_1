@@ -9,7 +9,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Reader\Xml\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Reader\Xml\Style\NumberFormat;
 
-
+//Captamos datos del usuario
+//datos de usuario
+// $usuario = $_SESSION['datos'];
 //Tenemos que insertar los encabezados de las fuentes de financiamiento que tengan enlazadas
 //Ya tenemos las vistas de cantidad de fuentes presentes en rendiciones
 //Modificar la vista de rendiciones, debería de integrar que fuente_id está relacionada
@@ -402,12 +404,19 @@ foreach ($resbienesAgrupados as $respoas) {
 }
 //Combinamos las celdas repetidas
 ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
-// Guardando el archivo Excel
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+$directory = __DIR__ . "/storage/reports/";
+if (!is_dir($directory)) {
+    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
+}
+
+$file = $directory . "reporte_poa_rendicion_{$usrcod}.xlsx";
 $writer = new Xlsx($spreadsheet);
-$writer->save('resultados_poa_rendicion.xlsx');
+$writer->save($file);
 
 // Mostrar mensaje de reporte exitoso
 echo "<h1>Reporte creado exitosamente</h1>";
-echo "<a href='../resultados_poa_rendicion.xlsx' target='_blank' class='btn btn-success'>
-        <i class='bi bi-file-earmark-excel'></i> Ver POA RENDICION
+echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
+        <i class='bi bi-file-earmark-excel'></i> Ver POA
       </a>";
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
