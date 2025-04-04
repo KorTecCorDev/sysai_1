@@ -26,6 +26,10 @@ class ReportePoaRubrosController
 {
     public static function index(Router $router)
     {
+        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usrcod = $usuario->descripcion;
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
@@ -42,12 +46,17 @@ class ReportePoaRubrosController
             'tceuro'     => $tceuro,
             'programas'  => $programas,
             'resbienes'  => $resbienes,
+            'usrcod'  => $usrcod,
             'sumas'      => $sumas
         ]);
     }
 
     public static function indexrendicion(Router $router)
     {
+        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usrcod = $usuario->descripcion;
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
@@ -69,6 +78,7 @@ class ReportePoaRubrosController
             'ffnro'      => $ffnro,
             'sumas'      => $sumas,
             'fuentes'    => $fuentes,
+            'usrcod'  => $usrcod,
             'rendiciones' => $rendiciones
         ]);
     }
@@ -121,13 +131,11 @@ class ReportePoaRubrosController
         $resreportefuentes = ReporteFuentesVista::all();
         $resreporteingresos = ReporteIngresosVista::all();
 
-        $router->render('saldos_contables/saldos', [
-            
-        ]);
+        $router->render('saldos_contables/saldos', []);
     }
     public static function crearpoa(Router $router)
     {
-            $usuariosdispo=UsuarioDisponiblePrograma::all();
+        $usuariosdispo = UsuarioDisponiblePrograma::all();
         $router->render('reporte/guardarpoa', [
             'usuariodispo' => $usuariosdispo
         ]);
@@ -136,13 +144,8 @@ class ReportePoaRubrosController
     {
         //Seleccionamos el tipo de reporte a descargar
         $reporte = $_GET['rprt'];
-        //Seleccionamos el código del usuario
-        $usuarioid = $_SESSION['id'];
-        $usuario = Usuario::find($usuarioid);
-        $usuarionmbre = $usuario->descripcion;
         //Renderizamos el tipo de reporte (descripcion) y el código de usuario
         $router->render('descargar_reporte', [
-            'usuario' => $usuarionmbre,
             'rprt' => $reporte
         ]);
     }

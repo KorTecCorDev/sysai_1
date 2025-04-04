@@ -191,12 +191,19 @@ foreach ($resbienesAgrupados as $respoas) {
     $colorIndex++; // Incrementar el índice del color
 }
 ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
-// Guardando el archivo Excel
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+$directory = __DIR__ . "/storage/reports/";
+if (!is_dir($directory)) {
+    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
+}
+
+$file = $directory . "reporte_poa_rubros.xlsx";
 $writer = new Xlsx($spreadsheet);
-$writer->save('resultados de prueba 02.xlsx');
+$writer->save($file);
 
 // Mostrar mensaje de reporte exitoso
 echo "<h1>Reporte creado exitosamente</h1>";
-echo "<a href='../resultados de prueba 01.xlsx' target='_blank' class='btn btn-success'>
-        <i class='bi bi-file-earmark-excel'></i> Ver POA
+echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
+        <i class='bi bi-file-earmark-excel'></i> Ver POA Global
       </a>";
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/

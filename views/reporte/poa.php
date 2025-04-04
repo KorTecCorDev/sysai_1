@@ -9,7 +9,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 //Captamos datos del usuario
 //datos de usuario
-$usuario = $_SESSION['datos'];
+// $usuario = $_SESSION['datos'];
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
@@ -206,13 +206,13 @@ ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
 
 
 
-/* ALERTA!!! MODIFICANDO.... */
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
 $directory = __DIR__ . "/storage/reports/";
 if (!is_dir($directory)) {
     mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
 }
 
-$file = $directory . "reporte_poa_rubros_{$usuario}.xlsx";
+$file = $directory . "reporte_poa_rubros_{$usrcod}.xlsx";
 $writer = new Xlsx($spreadsheet);
 $writer->save($file);
 
@@ -221,7 +221,7 @@ echo "<h1>Reporte creado exitosamente</h1>";
 echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
         <i class='bi bi-file-earmark-excel'></i> Ver POA
       </a>";
-/* ALERTA!!! MODIFICANDO.... */
+/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
 
 
 // Modal para preguntar si desea guardar el POA en la base de datos
