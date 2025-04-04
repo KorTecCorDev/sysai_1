@@ -108,22 +108,33 @@ class ReportePoaRubrosController
 
     public static function indexreporterendiciones(Router $router)
     {
+        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usrcod = $usuario->descripcion;
+
         $resreporterendiciones = ReporteRendicionesVista::all();
         $resreporteegresos = ReporteEgresosVista::all();
 
         $router->render('reporte/rendiciones', [
             'resreporterendiciones' => $resreporterendiciones,
-            'resreporteegresos' => $resreporteegresos
+            'resreporteegresos' => $resreporteegresos,
+            'usrcod' => $usrcod
         ]);
     }
     public static function indexreporteingresos(Router $router)
     {
+        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usrcod = $usuario->descripcion;
         $resreportefuentes = ReporteFuentesVista::all();
         $resreporteingresos = ReporteIngresosVista::all();
 
         $router->render('reporte/ingresos', [
             'resreportefuentes' => $resreportefuentes,
-            'resreporteingresos' => $resreporteingresos
+            'resreporteingresos' => $resreporteingresos,
+            'usrcod' => $usrcod
         ]);
     }
     public static function indexsaldos(Router $router)
