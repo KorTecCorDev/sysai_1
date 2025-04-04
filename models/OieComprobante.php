@@ -38,7 +38,7 @@ class OieComprobante extends ActiveRecord
     public function validar()
     {
         if (!$this->oie_tipo_comprobante_id) {
-            self::$errores[] = "Debe seleccionar un tipo de comprobante";
+            self::$errores[] = "Debe seleccionar un tipo de comprobante válido";
         }
 
         if (!$this->serie) {
@@ -47,6 +47,10 @@ class OieComprobante extends ActiveRecord
 
         if (!$this->numero) {
             self::$errores[] = "Debe ingresar el número del comprobante";
+        }
+
+        if (!$this->descripcion) {
+            self::$errores[] = "Debe de ingresar la descripción del comprobante";
         }
 
         if (!$this->ruc) {

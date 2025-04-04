@@ -39,22 +39,23 @@
                         <td> <?php echo $categoria_rubro->nombre; ?> </td>
                         <td> <?php echo $categoria_rubro->descripcion; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/categoria_rubro/actualizar?id=<?php echo $categoria_rubro->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
                                 </div>
                                 <div>
-                                    <form method="POST" class="w-100" action="/fuente_financiamiento/eliminar">
+                                    <form method="POST" class="w-100" action="/categoria_rubro/eliminar">
                                         <input type="hidden" name="id" value="<?php echo $categoria_rubro->id; ?>">
-                                        <input type="hidden" name="tipo" value="fuente_financiamiento">
+                                        <input type="hidden" name="tipo" value="categoria_rubro">
                                         <div class="btn-eliminar">
                                             <i class="bi bi-trash"></i>
                                             <input type="submit" class="btn" value="Eliminar">
                                         </div>
                                     </form>
                                 </div>
-
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

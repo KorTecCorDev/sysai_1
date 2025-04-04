@@ -6,7 +6,7 @@ class Rendicion extends ActiveRecord
 {
     // Declarando variables
     protected static $tabla = 'rendicion';
-    protected static $columnasDB = ['id', 'actividad_id', 'tipo_comprobante_id','ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original','fecha' ];
+    protected static $columnasDB = ['id', 'actividad_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'fecha'];
 
     public $id;
     public $actividad_id;
@@ -26,9 +26,9 @@ class Rendicion extends ActiveRecord
     public function __construct($args = [])
     {
         $this->id = $args['id'] ?? null;
-        $this->actividad_id = $args['actividad_id'] ?? null;
-        $this->tipo_comprobante_id = $args['tipo_comprobante_id'] ?? null;
-        $this->ff_id = $args['ff_id'] ?? null;
+        $this->actividad_id = $args['actividad_id'] ?? 0;
+        $this->tipo_comprobante_id = $args['tipo_comprobante_id'] ?? 0;
+        $this->ff_id = $args['ff_id'] ?? 0;
         $this->codigo = $args['codigo'] ?? '';
         $this->serie = $args['serie'] ?? '';
         $this->numero = $args['numero'] ?? '';
@@ -73,5 +73,6 @@ class Rendicion extends ActiveRecord
         if (!$this->fecha_original) {
             self::$errores[] = 'Debes de ingresar una fecha de emisión de comprobante válida';
         }
+        return self::$errores;
     }
 }

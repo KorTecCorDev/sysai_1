@@ -74,6 +74,7 @@ class IngresoEgresoController
                 //Redireccionamos a la vista de administración
                 if ($resultado) {
                     header('Location: /ingreso_egreso/admin');
+                    exit();
                 }
             }
         }
@@ -136,12 +137,16 @@ class IngresoEgresoController
             $oingresosegresos->oie_comprobante_id = $oiecomprobanteid;
             //FIN SECCIÓN OIE
 
-            //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
-            $resultado = $oingresosegresos->guardarsinRedireccion();
-            //Encontramos el id del último OIE ingresado (recientemente)
-            $oieid = OtrosIngresosEgresos::findlast();
-            //Redireccionamos a la siguiente vista
-            header('Location: /ingreso_egreso/ff?id=' . $oieid->id);
+            $errores = $oie->validar();
+            if (empty($errores)) {
+                //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
+                $resultado = $oingresosegresos->guardarsinRedireccion();
+                //Encontramos el id del último OIE ingresado (recientemente)
+                $oieid = OtrosIngresosEgresos::findlast();
+                //Redireccionamos a la siguiente vista
+                header('Location: /ingreso_egreso/ff?id=' . $oieid->id);
+                exit();
+            }
         }
         //Renderizando la vista
         $router->render('ingreso_egreso/crear', [
@@ -205,6 +210,7 @@ class IngresoEgresoController
                 $oieid = $oie->id;
                 //Redireccionamos a la siguiente vista
                 header('Location: /ingreso_egreso/ff?id=' . $oieid);
+                exit();
             }
         }
         //Renderizando la vista
@@ -249,6 +255,7 @@ class IngresoEgresoController
                 //Redireccionamos a la vista de administración
                 if ($resultado) {
                     header('Location: /ingreso_egreso/admin?resultado=2');
+                    exit();
                 }
             }
         }
@@ -277,6 +284,7 @@ class IngresoEgresoController
                     if ($oie) {
                         $oie->eliminar();
                         header("Location: /ingreso_egreso/admin");
+                        exit();
                     }
                 }
             }

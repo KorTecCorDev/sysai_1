@@ -22,7 +22,7 @@
         <?php include __DIR__ . '/formulario.php'; ?>
         <div class="espacio-btn-crear">
             <div>
-                <a href="/fuente_financiamiento/admin" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+                <a href="/categoria_rubro/admin" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
             </div>
             <div class="btn-agregar-sbmt">
                 <i class="bi bi-plus-circle"></i>

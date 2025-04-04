@@ -53,6 +53,7 @@
                         <td> <?php echo $resul->nombre; ?> </td>
                         <td> <?php echo $resul->descripcion; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <!-- Botón de agregar Producto     -->
                                 <div>
@@ -73,6 +74,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

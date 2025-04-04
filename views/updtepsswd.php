@@ -1,3 +1,4 @@
+<!-- Este es un comentario de prueba en la primera branch de git -->
 <body class="page-change-password d-flex flex-column min-vh-100">
     <?php foreach ($errores as $error) { ?>
         <div class="modal fade" data-bs-key="modal" tabindex="-1">

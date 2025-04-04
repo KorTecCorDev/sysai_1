@@ -88,6 +88,7 @@ class ActiveRecord
             //Redireccionamiento del usuario en una inserción correcta en la base de datos
             $url = "Location: /" . static::$tabla . "/admin?resultado=1";
             header($url);
+            exit();
         }
         return $resultado;
     }
@@ -139,6 +140,7 @@ class ActiveRecord
         if ($resultado) {
             //Redireccionamiento del usuario en una inserción correcta en la base de datos
             header("Location: /" . static::$tabla . "/admin?resultado=2");
+            exit();
         }
     }
     public function actualizarsinRedireccion()

@@ -1,5 +1,5 @@
 <main>
-    <h1>Ingresar POA</h1>
+    <h1>Registrar nuevo POA</h1>
     <?php foreach ($errores as $error) { ?>
         <div class="modal fade" data-bs-key="modal" tabindex="-1">
             <div class="modal-dialog">

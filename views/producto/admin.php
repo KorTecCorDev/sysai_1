@@ -46,6 +46,7 @@
                         <td> <?php echo $producto->nombre; ?> </td>
                         <td> <?php echo $producto->descripcion; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
                                     <a href="/actividad/admin?producto_id=<?php echo $producto->id; ?>" class="btn btn-warning btn-add"><i class="bi bi-clipboard2-plus"></i></a>
@@ -65,6 +66,7 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

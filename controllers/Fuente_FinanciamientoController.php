@@ -79,6 +79,7 @@ class Fuente_FinanciamientoController
                     $fuente_financiamiento = FuenteFinanciamiento::find($id);
                     $fuente_financiamiento->eliminar();
                     header("Location: /fuente_financiamiento/admin?resultado=3");
+                    exit();
                 }  
             }
         }

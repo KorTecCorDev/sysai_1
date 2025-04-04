@@ -44,9 +44,10 @@
                         <td> <?php echo $programa->nombre; ?> </td>
                         <td> <?php echo $programa->descripcion; ?> </td>
                         <td class="td-acciones">
+                            <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div>
-                                    <a href="/programa/actualizar?id=<?php echo $programa->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i>Actualizar</a>
+                                    <a href="/programa/actualizar?id=<?php echo $programa->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
                                 </div>
                                 <div>
                                     <form method="POST" class="w-100" action="/programa/eliminar">
@@ -55,10 +56,11 @@
                                         <div class="btn-eliminar">
                                             <i class="bi bi-trash"></i>
                                             <input type="submit" class="btn" value="Eliminar">
-                                        </div>  
+                                        </div>
                                     </form>
                                 </div>
                             </div>
+                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

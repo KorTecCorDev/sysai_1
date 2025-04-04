@@ -22,6 +22,7 @@ use Controllers\ReportePoaRubrosController;
 use Controllers\RendicionController;
 use Controllers\RendicionFfController;
 use Controllers\TipoCambioController;
+use Model\ReportePoaRubros;
 
 $router = new Router();
 //Ruta principal al ingresar -> directo al login
@@ -118,7 +119,8 @@ $router->post('/rubro/eliminar', [RubroController::class, 'eliminar']);
 
 
 //Rutas para los REPORTES
-
+//Descargas de reportes
+$router->get('/descargar', [ReportePoaRubrosController::class, 'indexdescarga']);
 
 
 //Rutas para las Rendiciones

@@ -80,6 +80,7 @@ class ResultadoController
             if (empty($errores)) {
                 $resultado = $res->guardar();
                 header("Location: /resultado/admin?programa_id=" . $programaid . "&resultado=2");
+                exit();
             }
         }
 
@@ -104,6 +105,7 @@ class ResultadoController
                     if ($res) {
                         $res->eliminar();
                         header("Location: /resultado/admin?resultado=3");
+                        exit();
                     }
                 }
             }

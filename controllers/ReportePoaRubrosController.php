@@ -20,6 +20,7 @@ use Model\ReporteRendicionesVista;
 use Model\UsuarioDisponiblePrograma;
 use Model\ReporteFuentesProgramaVista;
 use Model\RendicionFuentesCantidadVista;
+use Model\Usuario;
 
 class ReportePoaRubrosController
 {
@@ -129,6 +130,20 @@ class ReportePoaRubrosController
             $usuariosdispo=UsuarioDisponiblePrograma::all();
         $router->render('reporte/guardarpoa', [
             'usuariodispo' => $usuariosdispo
+        ]);
+    }
+    public static function indexdescarga(Router $router)
+    {
+        //Seleccionamos el tipo de reporte a descargar
+        $reporte = $_GET['rprt'];
+        //Seleccionamos el código del usuario
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usuarionmbre = $usuario->descripcion;
+        //Renderizamos el tipo de reporte (descripcion) y el código de usuario
+        $router->render('descargar_reporte', [
+            'usuario' => $usuarionmbre,
+            'rprt' => $reporte
         ]);
     }
 }
