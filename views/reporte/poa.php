@@ -7,6 +7,10 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
+//Captamos datos del usuario
+//datos de usuario
+$usuario = $_SESSION['datos'];
+
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 $columnas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
@@ -199,18 +203,28 @@ foreach ($resbienesAgrupados as $respoas) {
   $colorIndex++; // Incrementar el índice del color
 }
 ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
-// Guardando el archivo Excel
+
+
+
+/* ALERTA!!! MODIFICANDO.... */
+$directory = __DIR__ . "/storage/reports/";
+if (!is_dir($directory)) {
+    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
+}
+
+$file = $directory . "reporte_poa_rubros_{$usuario}.xlsx";
 $writer = new Xlsx($spreadsheet);
-$writer->save('reporte_poa_rubros.xlsx');
+$writer->save($file);
 
 // Mostrar mensaje de reporte exitoso
 echo "<h1>Reporte creado exitosamente</h1>";
-echo "<a href='../reporte_poa_rubros.xlsx' target='_blank' class='btn btn-success' id='descargarReporte'>
+echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
         <i class='bi bi-file-earmark-excel'></i> Ver POA
       </a>";
+/* ALERTA!!! MODIFICANDO.... */
+
 
 // Modal para preguntar si desea guardar el POA en la base de datos
-
 echo '
 <div class="modal fade oculto" id="guardarModal" tabindex="-1" aria-labelledby="guardarModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">

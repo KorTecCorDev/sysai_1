@@ -71,8 +71,6 @@
                             </div>
                             <!-- Div de Acciones     -->
                         </td>
-
-
                     </tr>
                 <?php endforeach; ?>
             </tbody>
