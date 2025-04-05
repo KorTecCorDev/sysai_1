@@ -70,6 +70,8 @@ class ActiveRecord
         //Sanitizamos los datos
         //LLamamos a un método dentro de otro método
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $stringcolumnas = join(', ', array_keys($atributos));
         $stringdatos = join("', '", array_values($atributos));
 
@@ -98,6 +100,8 @@ class ActiveRecord
         //Sanitizamos los datos
         //LLamamos a un método dentro de otro método
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
 
         $stringcolumnas = join(', ', array_keys($atributos));
         $stringdatos = join("', '", array_values($atributos));
@@ -125,6 +129,8 @@ class ActiveRecord
     {
         //Sanitizamos los datos
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $valores = [];
         foreach ($atributos as $key => $value) {
             $valores[] = "$key='$value'";
@@ -147,6 +153,8 @@ class ActiveRecord
     {
         //Sanitizamos los datos
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $valores = [];
         foreach ($atributos as $key => $value) {
             $valores[] = "$key='$value'";
@@ -718,5 +726,17 @@ class ActiveRecord
             }
             $i++;
         }
+    }
+
+    //Función que transforma cualquier dato en mayúscula antes de ser insertado en la base de datos
+    //Protected para que solo sea accesible dentro de esta clase
+    protected function convertirAMayusculas(array $atributos): array
+    {
+        foreach ($atributos as $key => $value) {
+            if (is_string($value)) {
+                $atributos[$key] = mb_strtoupper($value, 'UTF-8');
+            }
+        }
+        return $atributos;
     }
 }

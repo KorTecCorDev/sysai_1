@@ -5,6 +5,8 @@
   padding: 0;
 }
 
+
+
 //Globales
 span {
   color: $blanco;
@@ -309,6 +311,7 @@ ul.padre .sidebar-link {
 }
 //Botones
 .btn-volver {
+  height: auto;
   background-color: $verde;
   border-color: $verde;
   color: $negro;

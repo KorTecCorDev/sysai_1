@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
   mostrarModales();
   actualizarIdprograma();
   closeModal();
+  eliminarAlertas();
 });
 
 //Listeners
@@ -67,10 +68,9 @@ function eventListeners(e) {
     });
   }
 
-
   //MODAL DE GUARDAR POA
   //Elección de guardar o no poa luego de crear el reporte en excel
-  var modalpoa=document.getElementById("guardarModal");
+  var modalpoa = document.getElementById("guardarModal");
   var guardarBtn = document.getElementById("guardarBtn");
   var cancelarBtn = document.getElementById("cancelarBtn");
   var descargarReporte = document.getElementById("descargarReporte");
@@ -105,7 +105,7 @@ function eventListeners(e) {
       form.submit();
     });
   }
-//Fin de la modificación
+  //Fin de la modificación
   if (cancelarBtn) {
     // Manejar el clic en el botón "No"
     cancelarBtn.addEventListener("click", function () {
@@ -117,14 +117,12 @@ function eventListeners(e) {
   }
 
   //FIN DE MODAL DE GUARDAR POA
-  
 
   //Existe el combo SELECT cargo con el cargo_id=3 (COORDINADORES)
   const cargo = document.querySelector("#cargo");
   // Si existe el combo con id cargo, entonces se debe de mostrar el combo con id programas_coordinador que está por defecto como oculto
   if (cargo) {
     cargo.addEventListener("change", mostrarProgramasCoordinador);
-    
   }
 }
 
@@ -221,12 +219,36 @@ function closeModal() {
 
 function mostrarProgramasCoordinador(e) {
   const programasCoordinador = document.querySelector("#programas_coordinador");
-  const programasCoordinadorlabel = document.querySelector("#programas_coordinador_label");
-  const programasCoordinadorhelp = document.querySelector("#programas_coordinador_help");
+  const programasCoordinadorlabel = document.querySelector(
+    "#programas_coordinador_label"
+  );
+  const programasCoordinadorhelp = document.querySelector(
+    "#programas_coordinador_help"
+  );
 
   if (e.target.value == 3) {
     programasCoordinador.classList.remove("oculto");
   } else {
     programasCoordinador.classList.add("oculto");
   }
+}
+
+//Función para desaparecer las alertas del CRUD en los admin
+function eliminarAlertas() {
+  // Seleccionar todas las alertas
+  const alerts = document.querySelectorAll(".alert");
+
+  // Configurar el timeout para cada alerta encontrada
+  alerts.forEach((alert) => {
+    setTimeout(() => {
+      // Agregar efecto de desvanecimiento
+      alert.style.transition = "opacity 0.5s ease-out";
+      alert.style.opacity = "0";
+
+      // Eliminar el elemento después de la transición
+      setTimeout(() => {
+        alert.remove();
+      }, 500); // Medio segundo para el fade
+    }, 3000); // 3 segundos antes de empezar a desaparecer
+  });
 }

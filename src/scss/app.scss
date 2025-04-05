@@ -1,8 +1,8 @@
 //Declaramos las librerías
 @use "sass:color";
 //Importamos las variables
-@import 'base/variables';
+@import "base/variables";
 //Importando los estilos del sidebar
-@import 'layout/sidebar';
+@import "layout/sidebar";
 //Importando los estilos de las páginas
-@import 'paginas/login';
+@import "paginas/login";
