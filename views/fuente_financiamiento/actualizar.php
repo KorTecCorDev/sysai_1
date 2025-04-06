@@ -21,7 +21,7 @@
     <?php } ?>
 
     <div class="border rounded-3 shadow-sm p-4 mx-auto my-4" style="max-width: 700px; background-color: #fff;">
-    <h4 class="mb-4 text-primary text-uppercase">Registrar Fuente de Financiamiento</h4>
+    <h4 class="mb-4 text-primary text-uppercase">Actualizar Fuente de Financiamiento</h4>
         <form method="POST">
             <?php include __DIR__ . '/formulario.php'; ?>
             <div class="d-flex justify-content-between mt-4">
