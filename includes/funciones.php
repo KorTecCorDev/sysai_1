@@ -39,7 +39,7 @@ function s($html): string
 //Validar tipo de Contenido
 function validarTipoContenido($tipo)
 {
-    $tipos = ['categoria_rubro', 'programa', 'fuente_financiamiento', 'usuario', 'persona', 'detalle_financiamiento', 'resultado', 'producto', 'actividad', 'rubro', 'ingreso_egreso'];
+    $tipos = ['categoria_rubro', 'programa', 'fuente_financiamiento', 'usuario', 'persona', 'detalle_financiamiento', 'resultado', 'producto', 'actividad', 'rubro', 'ingreso_egreso', 'tipocambiodolar', 'tipocambiodolar'];
     return in_array($tipo, $tipos);
 }
 

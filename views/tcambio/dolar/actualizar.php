@@ -20,16 +20,18 @@
         </div>
     <?php } ?>
 
-    <form class="formulario" method="POST">
-        <?php include __DIR__ . '/formulario.php'; ?>
-        <div class="row">
-            <div class="col-2">
-                <a href="/tcambio/dolar/admin" class="btn btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+    <div class="border rounded-3 shadow-sm p-4 mx-auto my-4" style="max-width: 700px; background-color: #fff;">
+    <h4 class="mb-4 text-primary text-uppercase">Actualizar Tipo Cambio Dólar</h4>
+        <form method="POST">
+            <?php include __DIR__ . '/formulario.php'; ?>
+            <div class="d-flex justify-content-between mt-4">
+                <a href="/tcambio/dolar/admin" class="btn btn-outline-danger rounded-pill px-4 py-2">
+                    <i class="bi bi-arrow-left-short me-2"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i> Registrar
+                </button>
             </div>
-            <div class="col-2 btn-actualizar-sbmt">
-                <i class="bi bi-pen"></i>
-                <input type="submit" class="btn" value="Actualizar">
-            </div>
-        </div>
-    </form>
+        </form>
+    </div>
 </main>
