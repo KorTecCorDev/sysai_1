@@ -79,7 +79,6 @@ function eventListeners(e) {
   // if (modal && guardarBtn && cancelarBtn && descargarReporte) {
   // Manejar el clic en el enlace de descarga
   if (descargarReporte) {
-    console.log("Llegamos hasta aquí inicio");
     descargarReporte.addEventListener("click", function (event) {
       event.preventDefault();
       window.open(this.href, "_blank");
@@ -90,7 +89,6 @@ function eventListeners(e) {
       console.log(bootstrapModal);
     });
     console.log(modalpoa);
-    console.log("Llegamos hasta aquí final");
   }
 
   //Deberíamos de guardar los valores necesarios para la tabla POA
@@ -218,18 +216,21 @@ function closeModal() {
 }
 
 function mostrarProgramasCoordinador(e) {
+  const programasCoordinadorlabel = document.querySelector("#programas_coordinador_label");
   const programasCoordinador = document.querySelector("#programas_coordinador");
-  const programasCoordinadorlabel = document.querySelector(
-    "#programas_coordinador_label"
-  );
   const programasCoordinadorhelp = document.querySelector(
     "#programas_coordinador_help"
   );
 
   if (e.target.value == 3) {
     programasCoordinador.classList.remove("oculto");
+    programasCoordinadorlabel.classList.remove("oculto");
+    programasCoordinadorhelp.classList.remove("oculto");
   } else {
     programasCoordinador.classList.add("oculto");
+    programasCoordinadorlabel.classList.add("oculto");
+    programasCoordinadorhelp.classList.add("oculto");
+    programasCoordinador.value = 0;
   }
 }
 

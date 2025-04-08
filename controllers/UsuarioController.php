@@ -46,8 +46,6 @@ class UsuarioController
             $cmbstatus = false;
         }
 
-
-
         //Array con mensajes de error
         $errores = Persona::getErrores();
         $errores = Usuario::getErrores();
@@ -57,20 +55,20 @@ class UsuarioController
             $persona = new Persona($_POST['persona']);
             $usuario = new Usuario($_POST['usuario']);
             //Si existe un programa ingresado en el SELECT, es un coordinador!
-            $poa = new Poa($_POST['poa']);
-
+            if (isset($_POST['poa'])) {
+                $poa = new Poa($_POST['poa']);
+            }
             //Colocamos el hasheo para los password
             $usuario->password = password_hash($usuario->password, PASSWORD_DEFAULT);
 
             //Validamos
             $errores = $persona->validar();
             $errores = $usuario->validar();
-            if ($_POST['poa']) {
+            if (isset($_POST['poa'])) {
                 $errores = $poa->validar();
             }
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
-
                 //Guardando en la base de datos
                 //Guardando en la tala persona
                 $resultado = $persona->guardarsinRedireccion();
@@ -80,13 +78,13 @@ class UsuarioController
                 $resultado = $usuario->guardarsinRedireccion();
 
                 //Si existe una selección en coordinador
-                if ($poa) {
+                if (!empty($poa)) {
                     //Guardando en la tabla poa
                     $poa->usuario_id = $usuario->devolverIdLastInsercion();
                     $resultado = $poa->guardarsinRedireccion();
-                    header("Location: /usuario/admin?resultado=1");
-                    exit();
                 }
+                header("Location: /usuario/admin?resultado=1");
+                exit();
             }
         }
         $router->render('usuario/crear', [
@@ -101,94 +99,91 @@ class UsuarioController
 
     public static function actualizar(Router $router)
     {
-        //Debugueando y probando
-        //debuguear($_GET);
-        //Fin de sección
         $id = validarORedireccionar('/usuario/admin');
         $usuario = Usuario::find($id);
-        //Seleccionamos el poa por usuario vinculado (si existe)
-        $poa = Poa::findxatributo('usuario_id', $id) ?? null;
-        //debuguear($usuario);
-        // Este usuario es un coodinador?
-        $coordinador = $usuario->comprobarCoordinador($id);
-
-        //Si es coordinador...
-        if ($coordinador != 0) {
-            //Encontramos el programa_id vinculado al coordinador
-            $poaprograma = new Poa();
-            $programa_id = $poaprograma->findProgramaxUsuario($id);
-            //Seleccionamos el objeto dentro del array
-            $objprograma = array_shift($programa_id);
-
-            //Asignamos a una sola variable el id del programa del coordinador
-            $p_id = $objprograma->programa_id;
-
-            //Encontramos el objeto Programa con el id
-            $objtprograma = Programa::find($p_id);
-
-            //Añadimos el objeto al array del select de programas disponibles
-            $programas[] = $objtprograma;
-        }
         $idpersona = $usuario->persona_id;
         $persona = Persona::find($idpersona);
+        $objpoa = new Poa();
         $cargos = Cargo::all();
+        //Array con los poas que están vinculados al usuario
+        $poa = [];
+        //Valor por defecto para el select de programas sin coordinador
+        $cmbstatus = false;
+        $programas = ProgramasinCoordinadorVista::all();
+        //El usuario es un coordinador?
+        $valor = $usuario->comprobarCoordinador();
+        if ($valor === 1) {
+            //Encontramos el array con los poas vinculados al usuario
+            $poa = Poa::findxatributo('usuario_id', $id);
+            //Recorremos el array y le asignamos los datos del programa
+            foreach ($poa as $p) {
+                //Encontramos el programa según el programa_id del objeto poa que estamos recorriendo
+                $programapoa = Programa::find($p->programa_id);
+                //Sacamos el objeto del array
+                $objpoa->sincronizar(array_shift($poa));
 
-        //Array con los programas que no tienen un coordinador vinculado
-        $programas_vista = ProgramasinCoordinadorVista::all();
-        // Si todos los programas tienen coordinador?
-        if (empty($programas_vista)) {
-            //Variable que se envía para deshabilitar el option de coordinador en tipo de usuario
-            $cmbstatus = true;
-            //Creando array vací de programas
-            $programas = [];
-        } else {
-            foreach ($programas_vista as $programa_vista) {
-                //Encontramos los objetos de programas según los programa_id en cada resultado
-                $programas[] = Programa::find($programa_vista->programa_id);
+                $poaprograma = new ProgramasinCoordinadorVista(["programa_id" => $programapoa->id, "programa_codigo" => $programapoa->codigo,  "programa_nombre" => $programapoa->nombre]);
+
+                $programas[] = $poaprograma;
             }
-            $cmbstatus = false;
+            //Al ser un coordinador, se habilitará automáticamente el select de programas sin coordinador
+            $cmbstatus = true;
         }
-
-        //Errores
+        //Recogemos errores
         $errores = Persona::getErrores();
         $errores = Usuario::getErrores();
-
-
-        if ($_SERVER["REQUEST_METHOD"] === 'POST') {
-            //Asignando los atributos
-            $argsusuario = $_POST['usuario'];
+        $errores = Poa::getErrores();
+        //Si es post
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $argspersona = $_POST['persona'];
-            $usuario->sincronizar($argsusuario);
-            $usuario->password = password_hash($argsusuario->password, PASSWORD_DEFAULT);
+            $argsusuario = $_POST['usuario'];
+            $argspoa = ($_POST['poa']['programa_id'] != 0) ? $_POST['poa'] : null;
+            //Sincronizamos los objetos
             $persona->sincronizar($argspersona);
-            //Asignamos los atributos para el objeto poa
-            if ($_POST['poa']) {
-                $argspoa = $_POST['poa'];
-                $objprograma->sincronizar($argspoa);
+            $usuario->sincronizar($argsusuario);
+            //Si existe un poa, sincronizamos el objeto
+            if (isset($argspoa)) {
+                //Guardamos los cambios en los objetos persona y usuario
+                $persona->guardarsinRedireccion();
+                $usuario->guardarsinRedireccion();
+                //Extraemos el objeto del array y lo sincronizamos con el objeto creado
+                $objpoa->sincronizar($argspoa);
+                //Añadimos el usuario_id al objeto poa
+                $objpoa->usuario_id = $usuario->id;
+                //Guardamos el poa
+                $objpoa->guardarsinRedireccion();
+                //Redirigimos hacie /usuario/admin con mensaje de actualización exitosa
+                header("Location: /usuario/admin?resultado=2");
+                exit();
             }
-            //Validación
-            $errores = $persona->validar();
-            $errores = $usuario->validar();
-            //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
-            if (empty($errores)) {
-                //Guardando en la base de datos
-                //Si existiera un poa vnculado al usuario, se eliminará
-                if (isset($poa)) {
-                    $resultado = $objprograma->guardarsinRedireccion();
-                }
-                //Guardamos los registros en las tablas persona y usuario
-                $resultado = $persona->guardarsinRedireccion();
-                $resultado = $usuario->guardar();
+            //Si es un coordinador y no existe un $_POST['poa'] significa que se ha eliminado el poa
+            else if ($valor === 1) {
+                //Guardamos los cambios en los objetos persona y usuario
+                $persona->guardarsinRedireccion();
+                $usuario->guardarsinRedireccion();
+                //Eliminamos el poa
+                $objpoa->eliminarsinRedireccion();
+                //Redirigimos hacie /usuario/admin con mensaje de actualización exitosa
+                header("Location: /usuario/admin?resultado=2");
+                exit();
+            } else {
+                //Guardamos los cambios en los objetos persona y usuario
+                $persona->guardarsinRedireccion();
+                $usuario->guardarsinRedireccion();
+                //Redirigimos hacie /usuario/admin con mensaje de actualización exitosa
+                header("Location: /usuario/admin?resultado=2");
+                exit();
             }
         }
         $router->render('usuario/actualizar', [
             'persona' => $persona,
             'programas' => $programas,
             'usuario' => $usuario,
-            'errores' => $errores,
+            'cargos' => $cargos,
             'cmbstatus' => $cmbstatus,
-            'cargos' => $cargos
-
+            'errores' => $errores,
+            'poa' => $poa,
+            'objpoa' => $objpoa
         ]);
     }
     public static function eliminar(Router $router)
@@ -208,7 +203,7 @@ class UsuarioController
                     $persona = Persona::find($idpersona);
                     if ($idpersona) {
                         //Si existe un poa vinculado al usuario, se eliminará
-                        if (isset($poa)) {
+                        if (!empty($poa)) {
                             //Seleccionamos el objeto dentro del array
                             $objpoa = array_shift($poa);
                             //Eliminamos el poa

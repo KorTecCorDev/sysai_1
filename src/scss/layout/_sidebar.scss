@@ -5,8 +5,6 @@
   padding: 0;
 }
 
-
-
 //Globales
 span {
   color: $blanco;
@@ -43,6 +41,20 @@ body {
 input {
   font-family: $fuente_principal;
 }
+
+//Quitando los spinners de los inputs de cantidades
+input[type="number"] {
+  appearance: textfield; // Propiedad estándar
+  -moz-appearance: textfield; // Firefox
+  -webkit-appearance: none; // Chrome, Safari, Edge
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+//Quitando los spinners de los inputs de cantidades
 
 .main {
   min-height: 100vh;
@@ -409,7 +421,7 @@ ul.padre .sidebar-link {
 .btn-eliminar.peque {
   height: 100%;
   position: relative;
-  padding: .8rem;
+  padding: 0.8rem;
   input {
     position: absolute;
     // width: 100%;
@@ -545,7 +557,6 @@ ul.padre .sidebar-link {
 #programs {
   width: auto;
 }
-
 
 //Combo de programas_coordinadores oculto por defecto
 #programas_coordinador.oculto {
