@@ -48,23 +48,23 @@ function mostrarNotificacion($codigo)
 {
     $mensaje = '';
     switch ($codigo) {
-            //CREAR CORRECTO
+        //CREAR CORRECTO
         case 1:
             $mensaje = 'Creado correctamente';
             break;
-            //ACTUALIZAR CORRECTO
+        //ACTUALIZAR CORRECTO
         case 2:
             $mensaje = 'Actualizado correctamente';
             break;
-            //ELIMINAR CORRECTO
+        //ELIMINAR CORRECTO
         case 3:
             $mensaje = 'Eliminado correctamente';
             break;
-            //RELACIÓN PROGRAMA - FUENTE_FINANCIAMIENTO CORRECTO
+        //RELACIÓN PROGRAMA - FUENTE_FINANCIAMIENTO CORRECTO
         case 4:
             $mensaje = 'Relación actualizada correctamente';
             break;
-            //ERROR USUARIO ENCONTRADO - LOGIN
+        //ERROR USUARIO ENCONTRADO - LOGIN
         case 5:
             $mensaje = 'No existe un usuario, verifique el correo electrónico';
             break;
@@ -105,6 +105,7 @@ function validarORedireccionarDosParametros(string $url, string $param1, string 
         return $prmt2;
     } else {
         header("Location: $url");
+        exit();
     }
 }
 function validarORedireccionarDosParametrosPost(string $url, string $param1, string $param2)
@@ -125,6 +126,7 @@ function validarORedireccionarDosParametrosPost(string $url, string $param1, str
         return $prmt2;
     } else {
         header("Location: $url");
+        exit();
     }
 }
 
@@ -137,6 +139,7 @@ function validarORedireccionarPost(string $url)
 
     if (!$id) {
         header("Location: $url");
+        exit;
     }
     return $id;
 }
@@ -151,6 +154,7 @@ function validarORedireccionarconTabla(string $url, string $tb)
     $id = filter_var($id, FILTER_VALIDATE_INT);
     if (!$id) {
         header("Location: " . $url);
+        exit;
     }
     return $id;
 }
