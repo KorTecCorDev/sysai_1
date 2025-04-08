@@ -99,18 +99,27 @@ class UsuarioController
 
     public static function actualizar(Router $router)
     {
+        //Captamos el id del usuario contenido en el GET
         $id = validarORedireccionar('/usuario/admin');
+        //Capatamos el objeto según el id de usuario
         $usuario = Usuario::find($id);
+        //Captamos el id del registro en la tabla persona del usuario
         $idpersona = $usuario->persona_id;
+        //Captamos el objeto de la clase Persona según el id de persona
         $persona = Persona::find($idpersona);
+        //Creamos un objeto con un constructor default para cargar los datos de poa posteriormente si hubiera
         $objpoa = new Poa();
+        //Creamos el array que contendrá a todos los cargos disponibles para los usuarios
         $cargos = Cargo::all();
         //Array con los poas que están vinculados al usuario
         $poa = [];
-        //Valor por defecto para el select de programas sin coordinador
+        //Mandamos el valor false para que por defecto se oculte el select de programas sin coordinador
         $cmbstatus = false;
+        //Array con los programas que no tienen un coordinador vinculado
         $programas = ProgramasinCoordinadorVista::all();
         //El usuario es un coordinador?
+        //Captamos el valor que confirma si es coordinador o no
+        //Si devuelve 1, es coordinador, si devuelve 0 no lo es
         $valor = $usuario->comprobarCoordinador();
         if ($valor === 1) {
             //Encontramos el array con los poas vinculados al usuario
@@ -119,11 +128,11 @@ class UsuarioController
             foreach ($poa as $p) {
                 //Encontramos el programa según el programa_id del objeto poa que estamos recorriendo
                 $programapoa = Programa::find($p->programa_id);
-                //Sacamos el objeto del array
+                //Sacamos el objeto del array y lo sincronizamos con el objeto default creado anteriormente
                 $objpoa->sincronizar(array_shift($poa));
-
+                //Convertimos el objeto de programa en un objeto de ProgramasinCoordinadorVista.
                 $poaprograma = new ProgramasinCoordinadorVista(["programa_id" => $programapoa->id, "programa_codigo" => $programapoa->codigo,  "programa_nombre" => $programapoa->nombre]);
-
+                //LLenamos el array con el objeto recientemente creado
                 $programas[] = $poaprograma;
             }
             //Al ser un coordinador, se habilitará automáticamente el select de programas sin coordinador
@@ -135,8 +144,10 @@ class UsuarioController
         $errores = Poa::getErrores();
         //Si es post
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            //Asigamos los valores enviados por el post en las variables de argumentos momentáneos
             $argspersona = $_POST['persona'];
             $argsusuario = $_POST['usuario'];
+            //El caso de enviar una key poa, verificamos si el dato enviado es diferente a cero, si lo es, lo asignamos a la variable, si no, lo dejamos como null
             $argspoa = ($_POST['poa']['programa_id'] != 0) ? $_POST['poa'] : null;
             //Sincronizamos los objetos
             $persona->sincronizar($argspersona);
