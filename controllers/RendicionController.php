@@ -25,7 +25,7 @@ class RendicionController
         //debuguear((int) RendicionAdminVista::find($actividad_id));
 
         $totalrendis = RendicionAdminVista::findxatributo('actividad_id', $actividad_id);
-        
+
         //Si no hay rendiciones
         if ($totalrendis) {
             $totalproducto = array_shift($totalrendis);
@@ -61,7 +61,7 @@ class RendicionController
         $rendicion = new Rendicion;
         $errores = Rendicion::getErrores();
         $actividad_id = (int) $_GET['actividad_id'];
-        $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id',$actividad_id);
+        $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id', $actividad_id);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //Agregamos el actividad_id del URL al POST.
@@ -98,7 +98,7 @@ class RendicionController
             //Asignamos el id de la actividad según el key id del objeto actividad
             $actividad_id = $actividad->id;
             $tipocomprobantes = TipoComprobante::all();
-            $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id',$actividad_id);
+            $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id', $actividad_id);
             if ($_SERVER["REQUEST_METHOD"] === 'POST') {
                 $argsrendicion = $_POST;
                 $rendicion->sincronizar($argsrendicion);
@@ -124,9 +124,10 @@ class RendicionController
     public static function eliminar()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id'];
+            $id = validarORedireccionarPost("resultado/admin");
             $rendicion = Rendicion::find($id);
             $rendicion->eliminar();
+            //Se redirige a continuación ya que el método no tiene una redirección incluída
             header("Location: /rendicion/admin?actividad_id={$rendicion->actividad_id}&resultado=3");
             exit();
         }

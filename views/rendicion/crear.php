@@ -1,5 +1,5 @@
 <main>
-    <h1>Registrar Nueva Rendición</h1>
+    <h1>Agregar Rubro a la Actividad</h1>
     <?php foreach ($errores as $error) { ?>
         <div class="modal fade" data-bs-key="modal" tabindex="-1">
             <div class="modal-dialog">
@@ -18,20 +18,21 @@
             </div>
         </div>
     <?php } ?>
-    <div class="row">
-        <div class="col">
-            <form method="POST">
-                <?php include __DIR__ . '/formulario.php'; ?>
-                <div class="espacio-btn-crear">
-                    <div>
-                        <a href="/rendicion/admin?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
-                    </div>
-                    <div class="btn-agregar-sbmt">
-                        <i class="bi bi-plus-circle"></i>
-                        <input type="submit" value="Agregar" class="btn">
-                    </div>
-                </div>
-            </form>
-        </div>
+
+
+    <div class="border rounded-3 shadow-sm p-4 mx-auto my-4" style="max-width: 700px; background-color: #fff;">
+        <h4 class="mb-4 text-primary text-uppercase">Registrar Rendición</h4>
+        <form method="POST">
+            <?php include __DIR__ . '/formulario.php'; ?>
+            <div class="d-flex justify-content-between mt-4">
+                <a href="/rendicion/admin?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+                    <i class="bi bi-arrow-left-short me-2"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i> Registrar
+                </button>
+            </div>
+        </form>
+    </div>
     </div>
 </main>
