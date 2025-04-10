@@ -18,22 +18,23 @@ class ProductoController
             $productos = Producto::findxatributo("resultado_id", $respt[0]);
             $resultado = $respt[1] ?? null;
             $resultadoid = $respt[0];
-            $aux = Resultado::find($resultadoid);
-            $programaid = $aux->programa_id;
+            $objresultado = Resultado::find($resultadoid);
+            $programaid = $objresultado->programa_id;
         } else {
             $productos = Producto::findxatributo("resultado_id", $respt);
             $resultado = null;
             $resultadoid = $respt ?? null;
             if ($respt) {
-                $aux = Resultado::find($resultadoid);
-                $programaid = $aux->programa_id;
+                $objresultado = Resultado::find($resultadoid);
+                $programaid = $objresultado->programa_id;
             }
         }
         $router->render('producto/admin', [
             'productos' => $productos,
             'resultado' => $resultado,
             'programaid' => $programaid,
-            'resultadoid' => $resultadoid
+            'resultadoid' => $resultadoid,
+            'objresultado' => $objresultado
         ]);
     }
     public static function crear(Router $router)
@@ -91,22 +92,13 @@ class ProductoController
 
     public static function eliminar(Router $router)
     {
-
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
-            $id = validarORedireccionarDosParametrosPost("resultado/admin", "resultado_id", "id");
-            $resultado = null;
-            if (!is_array($id)) {
-                header("Location: /producto/error!!");
-                exit();
-            } else {
-
-                $producto = Producto::find($id[1]);
-
-                $producto->eliminarsinRedireccion();
-                $resultado = 3;
-                header("Location: /producto/admin?resultado_id=" . $id[0] . "&resultado=" . $resultado);
-                exit();
-            }
+            $id = validarORedireccionarPost("resultado/admin");
+            $producto = Producto::find($id);
+            $producto->eliminarsinRedireccion();
+            $resultado = 3;
+            header("Location: /producto/admin?resultado_id=" . $id['resultado_id'] . "&resultado=" . $resultado);
+            exit();
             $router->render('producto/eliminar', [
                 'resultado' => $resultado
             ]);

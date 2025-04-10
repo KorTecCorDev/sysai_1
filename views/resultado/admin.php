@@ -56,9 +56,15 @@
                             <td class="text-center">
                                 <!-- Div de Acciones     -->
                                 <div class="d-flex justify-content-center gap-2">
+                                    <a href="/producto/admin?resultado_id=<?php echo $resul->id; ?>"
+                                        class="btn btn-sm btn-success rounded-pill px-3"
+                                        title="Agregar producto">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </a>
+
                                     <a href="/resultado/actualizar?id=<?php echo $resul->id; ?>&programa_id=<?php echo $idprograma; ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
-                                        title="Editar registro">
+                                        title="Editar resultado">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
@@ -67,7 +73,7 @@
                                         <input type="hidden" name="tipo" value="resultado">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                            title="Eliminar registro"
+                                            title="Eliminar resultado"
                                             onclick="return confirm('¿Estás seguro de eliminar este registro?');">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>

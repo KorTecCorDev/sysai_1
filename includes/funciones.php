@@ -84,6 +84,7 @@ function validarORedireccionar(string $url)
 
     if (!$id) {
         header("Location: $url");
+        exit;
     }
     return $id;
 }

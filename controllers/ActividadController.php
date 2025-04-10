@@ -25,11 +25,12 @@ class ActividadController
             $resultado = null;
             $productoid = $respt ?? null;
         }
-        $aux = Producto::find($productoid);
-        $resultadoid = $aux->resultado_id;
+        $objproducto = Producto::find($productoid);
+        $resultadoid = $objproducto->resultado_id;
         $router->render('actividad/admin', [
             'actividades' => $actividades,
             'resultado' => $resultado,
+            'objproducto' => $objproducto,
             'productoid' => $productoid,
             'resultadoid' => $resultadoid
         ]);
