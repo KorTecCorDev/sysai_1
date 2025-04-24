@@ -122,6 +122,14 @@ function eventListeners(e) {
   if (cargo) {
     cargo.addEventListener("change", mostrarProgramasCoordinador);
   }
+
+  //Guardar POA en el MODAL
+  const btnguardar = document.getElementById("guardarBtn");
+  if (btnguardar) {
+    btnguardar.addEventListener("click", function () {
+      document.getElementById("guardarForm").submit();
+    });
+  }
 }
 
 function cambiarIdProgramasenCards(e) {
@@ -216,7 +224,9 @@ function closeModal() {
 }
 
 function mostrarProgramasCoordinador(e) {
-  const programasCoordinadorlabel = document.querySelector("#programas_coordinador_label");
+  const programasCoordinadorlabel = document.querySelector(
+    "#programas_coordinador_label"
+  );
   const programasCoordinador = document.querySelector("#programas_coordinador");
   const programasCoordinadorhelp = document.querySelector(
     "#programas_coordinador_help"

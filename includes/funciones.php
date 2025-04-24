@@ -68,6 +68,10 @@ function mostrarNotificacion($codigo)
         case 5:
             $mensaje = 'No existe un usuario, verifique el correo electrónico';
             break;
+        //ERROR USUARIO ENCONTRADO - LOGIN
+        case 6:
+            $mensaje = 'Se guardó el POA del programa correctamente';
+            break;
         default:
             $mensaje = false;
             break;

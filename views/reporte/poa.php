@@ -169,13 +169,20 @@ foreach ($resbienesAgrupados as $respoas) {
     $lmtsup = "{$columnassumar[$i]}{$newcntrow}";
     //Disminuimos en uno el nuevo contador
     $newcntrowmns1 = $newcntrow - 1;
-    //Establecemos el valor del límite superior menos unos
+    //Establecemos el valor del límite superior menos uno
     $lmtsupmns1 = "{$columnassumar[$i]}$newcntrowmns1";
 
     //SECCION DE RENDICIONES
     $sheet->getStyle("$lmtinf:$lmtsupmns1")->getNumberFormat()->setFormatCode('#,##0.00');
 
     $sheet->setCellValue("$lmtsup", "=SUM($lmtinf:$lmtsupmns1)");
+
+    //Captamos la suma total (monto)
+    if ($i === 0) {
+      $montosoles = $sheet->getCell("$lmtsup")->getCalculatedValue(); // Capturamos el valor de la celda de suma total
+      //Convertimos el valor a float
+      $montototal = floatval($montosoles); // Convertir a float
+    }
 
 
     $soles = in_array($columnassumar[$i], $columnassoles);
@@ -209,7 +216,7 @@ ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
 $directory = __DIR__ . "/storage/reports/";
 if (!is_dir($directory)) {
-    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
+  mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
 }
 
 $file = $directory . "reporte_poa_rubros_{$usrcod}.xlsx";
@@ -246,8 +253,34 @@ echo '
 ';
 
 
+echo '
+<div class="modal fade oculto" id="guardarModal" tabindex="-1" aria-labelledby="guardarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="guardarModalLabel">Guardar POA</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Desea guardar el POA en la base de datos?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+        <button type="button" class="btn btn-primary" id="guardarBtn">Sí</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario oculto para envío por POST -->
+<form id="guardarForm" method="POST" action="/reporte/guardarpoa?id=' . $poaid . '" style="display: none;">
+  <input type="hidden" name="monto" value="' . $montototal . '">
+</form>';
+
+
 // Si se descarga el reporte, se debe abrir un modal con la pregunta si desea guardar el poa en la base de datos
 // Si se acepta, se debe guardar el poa en la base de datos
 // Si se cancela, se debe regresar la página a la vista anterior
 
 //Modal
+?>

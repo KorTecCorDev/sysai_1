@@ -157,7 +157,7 @@ $router->post('/tcambio/euro/eliminar', [TipoCambioController::class, 'eliminarE
 $router->get('/reporte/poa', [ReportePoaRubrosController::class, 'index']);
 $router->get('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'crearpoa']);
 $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'indexrendicion']);
-$router->get('/reporte/poarubro', [ReportePoaRubrosController::class, 'indexrubro']);
+$router->get('/reporte/poarubros', [ReportePoaRubrosController::class, 'indexrubro']);
 $router->get('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
 $router->get('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexreporteingresos']);
 
@@ -178,6 +178,9 @@ $router->get('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController:
 $router->post('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
 //Eliminando
 $router->post('/ingreso_egreso/eliminar', [Controllers\IngresoEgresoController::class, 'eliminar']);
+
+//Ruta del guardado del POA
+$router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
 
 
 
