@@ -116,6 +116,7 @@ class IngresoEgresoController
 
         //En caso se hay enviado el formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
             //Comenzamos con oie_comprobante
             //SECCIÓN OIE COMPROBANTE
             //Instanciando el nuevo comprobante
@@ -128,6 +129,8 @@ class IngresoEgresoController
             }
             // FIN SECCIÓN OIE COMPROBANTE
 
+
+
             //SECCIÓN OIE
             $oingresosegresos = new OtrosIngresosEgresos($_POST['oie']);
             //Seleccionamos el id del comprobante previamente registrado
@@ -137,7 +140,7 @@ class IngresoEgresoController
             $oingresosegresos->oie_comprobante_id = $oiecomprobanteid;
             //FIN SECCIÓN OIE
 
-            $errores = $oie->validar();
+            $errores = $oingresosegresos->validar();
             if (empty($errores)) {
                 //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
                 $resultado = $oingresosegresos->guardarsinRedireccion();

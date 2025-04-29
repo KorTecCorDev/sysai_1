@@ -1,6 +1,7 @@
 
 <?php
 
+use Model\ReporteEgresosRendiciones;
 use Model\ReportePoaRubros;
 use Model\ReporteRendicionesVista;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -22,8 +23,10 @@ $claves_a_excluir_egresos = [
 
 $claves_a_excluir_rendiciones = [
     'rendicion_id',
-    'rendicion_tipo_comprobante_id',
-    'fuente_financiamiento_id'
+    'tipo_comprobante_id',
+    'actividad_id',
+    'actividad_codigo',
+    'rendicion_ff_id'
 ];
 
 // Inicializar el nuevo array combinado
@@ -50,6 +53,18 @@ foreach ($resreporterendiciones as $obj) {
     foreach ($claves_a_excluir_rendiciones as $clave) {
         unset($nuevo_obj[$clave]);
     }
+    // Se recorre el valor de la clave "ff_id" con los objetos dentro del array $fuentes
+    foreach ($fuentes as $fuente) {
+        if ($fuente->id == $obj->rendicion_ff_id) {
+            $nuevo_obj['fuente_financiamiento_codigo'] = $fuente->codigo; // Asignar el valor de la fuente de financiamiento
+            break; // Salir del bucle una vez que se encuentra la coincidencia
+        }
+    }
+
+    // Luego, reordenas el array para que 'fuente_financiamiento_codigo' esté en la posición 4:
+    $nuevo_obj = array_slice($nuevo_obj, 0, 4, true) +
+        ['fuente_financiamiento_codigo' => $nuevo_obj['fuente_financiamiento_codigo']] +
+        array_slice($nuevo_obj, 4, null, true);
 
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
@@ -67,11 +82,10 @@ $encabezados = [
     'CODIGO',
     'DESCRIPCION',
     'TIPO/COMPROBANTE',
-    'MONTO',
     'FUENTE_FINANCIAMIENTO',
     'FECHA_COMPROBANTE',
     'RUC',
-    'PERSONA',
+    'RAZON_SOCIAL',
     'SERIE',
     'NUMERO',
     'DETALLE',
@@ -111,7 +125,7 @@ foreach (range($startColumn, $endColumn) as $col) {
 }
 
 
-$reporterendi = ReporteRendicionesVista::insertarDatosDesdeArray($sheet, 3, $nuevo_array);
+$reporterendi = ReporteEgresosRendiciones::insertarDatosDesdeArray($sheet, 3, $nuevo_array);
 //$newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $ultcont, $respoas, $tcdolar, $tceuro);
 
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/

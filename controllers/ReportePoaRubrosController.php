@@ -22,6 +22,7 @@ use Model\ReporteFuentesProgramaVista;
 use Model\RendicionFuentesCantidadVista;
 use Model\Usuario;
 use Model\Poa;
+use Model\ReporteEgresosRendiciones;
 
 class ReportePoaRubrosController
 {
@@ -120,13 +121,14 @@ class ReportePoaRubrosController
         $usuarioid = $_SESSION['id'];
         $usuario = Usuario::find($usuarioid);
         $usrcod = $usuario->descripcion;
-
-        $resreporterendiciones = ReporteRendicionesVista::all();
+        $fuentes = FuenteFinanciamiento::all();
+        $resreporterendiciones = ReporteEgresosRendiciones::all();
         $resreporteegresos = ReporteEgresosVista::all();
 
         $router->render('reporte/rendiciones', [
             'resreporterendiciones' => $resreporterendiciones,
             'resreporteegresos' => $resreporteegresos,
+            'fuentes' => $fuentes,
             'usrcod' => $usrcod
         ]);
     }

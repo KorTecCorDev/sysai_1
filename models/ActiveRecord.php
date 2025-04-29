@@ -636,68 +636,86 @@ class ActiveRecord
         // Retornar el número de la última fila ingresada
         return $row;
     }
-
-
-
-
     public static function insertarDatosDesdeArray($sheet, int $filaini = 3, array $data): int
     {
-        // Definir las columnas según los encabezados creados
         $columnas = [
             'FECHA',
             'CODIGO',
             'DESCRIPCION',
-            'TIPO/COMPROBANTE',
-            'MONTO',
             'FUENTE_FINANCIAMIENTO',
+            'TIPO/COMPROBANTE',
             'FECHA_COMPROBANTE',
             'RUC',
-            'PERSONA',
+            'RAZON_SOCIAL',
             'SERIE',
             'NUMERO',
             'DETALLE',
-            'MONTO/COMPROBANTE'
+            'MONTO',
         ];
 
-        // Calcular la primera y última columna (Ejemplo: A -> M para 13 columnas)
         $startColumn = 'A';
         $endColumn = chr(ord($startColumn) + count($columnas) - 1);
-
-        // Fila de inicio
         $row = $filaini;
 
-        // Iterar sobre cada objeto en el array $data
         foreach ($data as $obj) {
             $colIndex = $startColumn;
-            $values = array_values((array) $obj); // Convertir objeto a array y obtener solo los valores
 
-            // Recorrer los valores y asignarlos a las celdas
-            foreach ($values as $value) {
-                $sheet->setCellValue("$colIndex$row", $value);
-                $colIndex++;
-                if ($colIndex > $endColumn) break; // Evitar desbordamiento si hay más valores de los esperados
+            // Detectar si es un objeto 'fuente' o 'otros_ingresos_egresos'
+            if (isset($obj->fuente_monto)) {
+                // Es registro de fuente
+                $valores_ordenados = [
+                    $obj->fuente_fecha ?? '',
+                    $obj->fuente_codigo ?? '',
+                    $obj->fuente_descripcion ?? '',
+                    '', // fuente_financiamiento_codigo vacío
+                    '', // tipo_comprobante vacío
+                    '', // fecha_comprobante vacío
+                    '', // ruc vacío
+                    '', // razon_social vacío
+                    '', // serie vacío
+                    '', // numero vacío
+                    '', // detalle vacío
+                    $obj->fuente_monto ?? '', // monto
+                ];
+            } else {
+                // Es registro normal otros_ingresos_egresos
+                $valores_ordenados = [
+                    $obj->otros_ingresos_egresos_fecha ?? '',
+                    $obj->otros_ingresos_egresos_codigo ?? '',
+                    $obj->otros_ingresos_egresos_descripcion ?? '',
+                    $obj->fuente_financiamiento_codigo ?? '',
+                    $obj->oie_tipo_comprobante_codigo ?? '',
+                    $obj->oie_comprobante_fecha_original ?? '',
+                    $obj->oie_comprobante_ruc ?? '',
+                    $obj->oie_comprobante_razon_social ?? '',
+                    $obj->oie_comprobante_serie ?? '',
+                    $obj->oie_comprobante_numero ?? '',
+                    $obj->oie_comprobante_descripcion ?? '',
+                    $obj->oie_comprobante_monto ?? '',
+                ];
             }
 
-            // Ajustar el alto de la fila para mejor visibilidad
-            $sheet->getRowDimension($row)->setRowHeight(20);
+            // Insertar los valores ordenados en las celdas
+            foreach ($valores_ordenados as $value) {
+                $sheet->setCellValue("$colIndex$row", $value);
+                $colIndex++;
+            }
 
-            // Avanzar a la siguiente fila
+            $sheet->getRowDimension($row)->setRowHeight(20);
             $row++;
         }
 
-        // Ajustar automáticamente el ancho de las columnas
+
+
+
         foreach (range($startColumn, $endColumn) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Aplicar ajuste de texto a todas las celdas con datos
         $sheet->getStyle("$startColumn$filaini:$endColumn$row")->getAlignment()->setWrapText(true);
 
-        // Retornar el número de la última fila ingresada
         return $row;
     }
-
-
 
     private static function insertarRendicionesFuente($sheet, $cols, $row, $fuentes, $rendiciones, $tcdolar, $tceuro)
     {
