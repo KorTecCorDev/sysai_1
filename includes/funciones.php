@@ -70,7 +70,7 @@ function mostrarNotificacion($codigo)
             break;
         //ERROR USUARIO ENCONTRADO - LOGIN
         case 6:
-            $mensaje = 'Se guardó el POA del programa correctamente';
+            $mensaje = 'Se modificó el estado el POA del programa correctamente';
             break;
         default:
             $mensaje = false;
