@@ -262,4 +262,38 @@ class ReportePoaRubrosController
             'poa' => $poa
         ]);
     }
+    public static function updateguardarpoa(Router $router)
+    {
+        //Comenzamos por validar el id recibido mediante GET y verificamos que sea un id que exista
+        if (isset($_GET['id'])) {
+            $id = validarORedireccionar('resultado/admin');
+        }
+        //Si es un POST
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            //Creamos los argumentos momentáneos del poa antes de registrarlo
+            $argspoa['id'] = $_GET['id'];
+            //Captamos el cambio de estado del poa
+            $argspoa['estado'] = $_POST['estado'];
+            //Captamos el objeto poa a modificar
+            $poa = Poa::find($argspoa['id']);
+            //Sincronizamos los argspoa con el objeto poa creado previamente
+            $poa->sincronizar($argspoa);
+            //Validamos errores
+            $poa->validar();
+            $errores = Poa::getErrores();
+            //Si no hay errores, procedemos a guardar el registro
+            if (empty($errores)) {
+                //Guardamos el registro en la base de datos
+                $poa->guardarsinRedireccion();
+                //Redireccionamos a la vista de resultados
+                header('Location: /resultado/admin?resultado=6');
+                exit;
+            }
+        }
+        //Si hay errores, los mostramos en la vista de guardar poa
+        $router->render('reporte/modificarpoa', [
+            'errores' => $errores,
+            'poa' => $poa
+        ]);
+    }
 }

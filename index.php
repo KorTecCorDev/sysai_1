@@ -184,6 +184,8 @@ $router->post('/ingreso_egreso/eliminar', [Controllers\IngresoEgresoController::
 
 //Ruta del guardado del POA
 $router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
+//Ruta de modificación de estados en el admin del POA
+$router->post('/reporte/modificarpoa', [ReportePoaRubrosController::class, 'updateguardarpoa']);
 
 
 
