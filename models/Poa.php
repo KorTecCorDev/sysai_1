@@ -39,9 +39,9 @@ class Poa extends ActiveRecord
         // if (!$this->usuario_id) {
         //     self::$errores[] = 'Debes ingresar un usuario válido';
         // }
-        if (!$this->anio) {
-            self::$errores[] = 'Debes ingresar un año válido';
-        }
+        // if (!$this->anio) {
+        //     self::$errores[] = 'Debes ingresar un año válido';
+        // }
         return self::$errores;
     }
 

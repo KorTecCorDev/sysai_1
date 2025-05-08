@@ -1,6 +1,7 @@
 
 <?php
 
+use Model\ReporteEgresosRendiciones;
 use Model\ReportePoaRubros;
 use Model\ReporteRendicionesVista;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -8,6 +9,13 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
+//Insertar el formulario
+if (!empty($formulario)) {
+    echo $formulario;
+} else {
+    $formulario = null;
+}
+// Crear una nueva hoja de cálculo
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
@@ -23,9 +31,11 @@ $claves_a_excluir_egresos = [
 $claves_a_excluir_rendiciones = [
     'rendicion_id',
     'rendicion_tipo_comprobante_id',
+    'rendicion_monto',
+    'actividad_id',
+    'actividad_codigo',
     'fuente_financiamiento_id'
 ];
-
 // Inicializar el nuevo array combinado
 $nuevo_array = [];
 
@@ -41,37 +51,31 @@ foreach ($resreporteegresos as $obj) {
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
 }
-
 // Agregar los objetos del segundo array ($resreporterendiciones) excluyendo las claves específicas
 foreach ($resreporterendiciones as $obj) {
     $nuevo_obj = (array) $obj; // Convertir el objeto a array
-
     // Eliminar las claves específicas de las rendiciones
     foreach ($claves_a_excluir_rendiciones as $clave) {
         unset($nuevo_obj[$clave]);
     }
+    // Luego, reordenas el array para que 'fuente_financiamiento_codigo' esté en la posición 4:
+    $nuevo_obj = array_slice($nuevo_obj, 0, 4, true) +
+        ['fuente_financiamiento_codigo' => $nuevo_obj['fuente_financiamiento_codigo']] +
+        array_slice($nuevo_obj, 4, null, true);
 
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
 }
-
-// Ahora $nuevo_array contiene la combinación de ambos arrays con las modificaciones requeridas
-
-
-
-
-
 // Definir el array de encabezados
 $encabezados = [
     'FECHA',
     'CODIGO',
     'DESCRIPCION',
     'TIPO/COMPROBANTE',
-    'MONTO',
     'FUENTE_FINANCIAMIENTO',
     'FECHA_COMPROBANTE',
     'RUC',
-    'PERSONA',
+    'RAZON_SOCIAL',
     'SERIE',
     'NUMERO',
     'DETALLE',
@@ -110,8 +114,7 @@ foreach (range($startColumn, $endColumn) as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 
-
-$reporterendi = ReporteRendicionesVista::insertarDatosDesdeArray($sheet, 3, $nuevo_array);
+$reporterendi = ReporteEgresosRendiciones::insertarDatosDesdeArrayEgresosRendiciones($sheet, 3, $nuevo_array);
 //$newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $ultcont, $respoas, $tcdolar, $tceuro);
 
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/

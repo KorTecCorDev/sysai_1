@@ -1,4 +1,3 @@
-
 <?php
 
 use Model\ReportePoaRubros;
@@ -7,6 +6,13 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+
+// Mostrar el formulario siempre, que exista la cadena $formulario
+if (!empty($formulario)) {
+    echo $formulario;
+} else {
+    $formulario = null;
+}
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
@@ -18,7 +24,6 @@ $claves_a_excluir_ingresos = [
     'otros_ingresos_egresos_oie_tipo_id',
     'oie_tipo_comprobante_id',
     'fuente_financiamiento_id',
-    'oie_tipo_comprobante_codigo'
 ];
 $claves_a_excluir_fuentes = [];
 
@@ -53,7 +58,6 @@ foreach ($resreportefuentes as $obj) {
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
 }
-
 // Ahora $nuevo_array contiene la combinación de ambos arrays con las modificaciones requeridas
 
 
@@ -65,15 +69,15 @@ $encabezados = [
     'FECHA',
     'CODIGO',
     'DESCRIPCION',
-    'MONTO',
     'FUENTE_FINANCIAMIENTO',
+    'TIPO_COMPROBANTE',
     'FECHA_COMPROBANTE',
     'RUC',
-    'PERSONA',
+    'RAZON_SOCIAL',
     'SERIE',
     'NUMERO',
     'DETALLE',
-    'MONTO/COMPROBANTE'
+    'MONTO'
 ];
 
 // Establecer la fila inicial para el título y los encabezados
@@ -107,10 +111,7 @@ foreach ($encabezados as $encabezado) {
 foreach (range($startColumn, $endColumn) as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
-
-
 $reporterendi = ReporteIngresosVista::insertarDatosDesdeArray($sheet, 3, $nuevo_array);
-//$newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $ultcont, $respoas, $tcdolar, $tceuro);
 
 // Guardando el archivo Excel
 $writer = new Xlsx($spreadsheet);

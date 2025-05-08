@@ -70,6 +70,8 @@ class ActiveRecord
         //Sanitizamos los datos
         //LLamamos a un método dentro de otro método
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $stringcolumnas = join(', ', array_keys($atributos));
         $stringdatos = join("', '", array_values($atributos));
 
@@ -98,6 +100,8 @@ class ActiveRecord
         //Sanitizamos los datos
         //LLamamos a un método dentro de otro método
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
 
         $stringcolumnas = join(', ', array_keys($atributos));
         $stringdatos = join("', '", array_values($atributos));
@@ -125,6 +129,8 @@ class ActiveRecord
     {
         //Sanitizamos los datos
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $valores = [];
         foreach ($atributos as $key => $value) {
             $valores[] = "$key='$value'";
@@ -147,6 +153,8 @@ class ActiveRecord
     {
         //Sanitizamos los datos
         $atributos = $this->sanitizarAtributos();
+        // Convertimos todos los strings a mayúsculas
+        $atributos = $this->convertirAMayusculas($atributos);
         $valores = [];
         foreach ($atributos as $key => $value) {
             $valores[] = "$key='$value'";
@@ -270,6 +278,14 @@ class ActiveRecord
     public static function all()
     {
         $query = "SELECT * FROM " . static::$tabla . ";";
+        $resultado = self::consultarSql($query);
+        return $resultado;
+    }
+
+    //Todos los registros dentro de un rango de parámetros (BETWEEN)
+    public static function findporRango(string $campo, string $valoruno, string $valordos)
+    {
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $campo . " BETWEEN '" . $valoruno . "' AND '" . $valordos . "';";
         $resultado = self::consultarSql($query);
         return $resultado;
     }
@@ -628,68 +644,166 @@ class ActiveRecord
         // Retornar el número de la última fila ingresada
         return $row;
     }
-
-
-
-
     public static function insertarDatosDesdeArray($sheet, int $filaini = 3, array $data): int
     {
-        // Definir las columnas según los encabezados creados
+        $columnas = [
+            'FECHA',
+            'CODIGO',
+            'DESCRIPCION',
+            'FUENTE_FINANCIAMIENTO',
+            'TIPO/COMPROBANTE',
+            'FECHA_COMPROBANTE',
+            'RUC',
+            'RAZON_SOCIAL',
+            'SERIE',
+            'NUMERO',
+            'DETALLE',
+            'MONTO',
+        ];
+
+        $startColumn = 'A';
+        $endColumn = chr(ord($startColumn) + count($columnas) - 1);
+        $row = $filaini;
+
+        foreach ($data as $obj) {
+            $colIndex = $startColumn;
+
+            // Detectar si es un objeto 'fuente' o 'otros_ingresos_egresos'
+            if (isset($obj->fuente_monto)) {
+                // Es registro de fuente
+                $valores_ordenados = [
+                    $obj->fuente_fecha ?? '',
+                    $obj->fuente_codigo ?? '',
+                    $obj->fuente_descripcion ?? '',
+                    '', // fuente_financiamiento_codigo vacío
+                    '', // tipo_comprobante vacío
+                    '', // fecha_comprobante vacío
+                    '', // ruc vacío
+                    '', // razon_social vacío
+                    '', // serie vacío
+                    '', // numero vacío
+                    '', // detalle vacío
+                    $obj->fuente_monto ?? '', // monto
+                ];
+            } else {
+                // Es registro normal otros_ingresos_egresos
+                $valores_ordenados = [
+                    $obj->otros_ingresos_egresos_fecha ?? '',
+                    $obj->otros_ingresos_egresos_codigo ?? '',
+                    $obj->otros_ingresos_egresos_descripcion ?? '',
+                    $obj->fuente_financiamiento_codigo ?? '',
+                    $obj->oie_tipo_comprobante_codigo ?? '',
+                    $obj->oie_comprobante_fecha_original ?? '',
+                    $obj->oie_comprobante_ruc ?? '',
+                    $obj->oie_comprobante_razon_social ?? '',
+                    $obj->oie_comprobante_serie ?? '',
+                    $obj->oie_comprobante_numero ?? '',
+                    $obj->oie_comprobante_descripcion ?? '',
+                    $obj->oie_comprobante_monto ?? '',
+                ];
+            }
+
+            // Insertar los valores ordenados en las celdas
+            foreach ($valores_ordenados as $value) {
+                $sheet->setCellValue("$colIndex$row", $value);
+                $colIndex++;
+            }
+
+            $sheet->getRowDimension($row)->setRowHeight(20);
+            $row++;
+        }
+
+
+
+
+        foreach (range($startColumn, $endColumn) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $sheet->getStyle("$startColumn$filaini:$endColumn$row")->getAlignment()->setWrapText(true);
+
+        return $row;
+    }
+
+    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, int $filaini = 3, array $data): int
+    {
         $columnas = [
             'FECHA',
             'CODIGO',
             'DESCRIPCION',
             'TIPO/COMPROBANTE',
-            'MONTO',
             'FUENTE_FINANCIAMIENTO',
             'FECHA_COMPROBANTE',
             'RUC',
-            'PERSONA',
+            'RAZON_SOCIAL',
             'SERIE',
             'NUMERO',
             'DETALLE',
-            'MONTO/COMPROBANTE'
+            'MONTO',
         ];
 
-        // Calcular la primera y última columna (Ejemplo: A -> M para 13 columnas)
         $startColumn = 'A';
         $endColumn = chr(ord($startColumn) + count($columnas) - 1);
-
-        // Fila de inicio
         $row = $filaini;
 
-        // Iterar sobre cada objeto en el array $data
         foreach ($data as $obj) {
             $colIndex = $startColumn;
-            $values = array_values((array) $obj); // Convertir objeto a array y obtener solo los valores
 
-            // Recorrer los valores y asignarlos a las celdas
-            foreach ($values as $value) {
+            // Detectar si es un objeto 'fuente' o 'otros_ingresos_egresos'
+            if (isset($obj->rendicion_codigo)) {
+                // Es registro de rendicion
+                $valores_ordenados = [
+                    $obj->rendicion_fecha ?? '',
+                    $obj->rendicion_codigo ?? '',
+                    $obj->rendicion_descripcion ?? '',
+                    $obj->tipo_comprobante_codigo ?? '', // Tipo de comprobante
+                    $obj->fuente_financiamiento_codigo ?? '', // Fuente de financiamiento
+                    $obj->rendicion_fecha_original ?? '', // Fecha del comprobante
+                    $obj->rendicion_ruc ?? '', // Ruc del comprobante
+                    $obj->rendicion_razon_social ?? '', // Razón social
+                    $obj->rendicion_serie ?? '', // Serie del comprobante
+                    $obj->rendicion_numero ?? '', // Monto del comprobante
+                    $obj->rendicion_descripcion ?? '', // Número del comprobante
+                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                ];
+            } else if (isset($obj->otros_ingresos_egresos_codigo)) {
+                // Es registro de OIE
+                $valores_ordenados = [
+                    $obj->otros_ingresos_egresos_fecha ?? '',
+                    $obj->otros_ingresos_egresos_codigo_codigo ?? '',
+                    $obj->otros_ingresos_egresos_descripcion ?? '',
+                    $obj->oie_tipo_comprobante_codigo ?? '', // Tipo de comprobante
+                    $obj->fuente_financiamiento_codigo ?? '', // Fuente de financiamiento
+                    $obj->rendicion_fecha_original ?? '', // Fecha del comprobante
+                    $obj->rendicion_ruc ?? '', // Ruc del comprobante
+                    $obj->rendicion_razon_social ?? '', // Razón social
+                    $obj->rendicion_serie ?? '', // Serie del comprobante
+                    $obj->rendicion_numero ?? '', // Monto del comprobante
+                    $obj->rendicion_descripcion ?? '', // Número del comprobante
+                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                ];
+            }
+            // Insertar los valores ordenados en las celdas
+            foreach ($valores_ordenados as $value) {
                 $sheet->setCellValue("$colIndex$row", $value);
                 $colIndex++;
-                if ($colIndex > $endColumn) break; // Evitar desbordamiento si hay más valores de los esperados
             }
 
-            // Ajustar el alto de la fila para mejor visibilidad
             $sheet->getRowDimension($row)->setRowHeight(20);
-
-            // Avanzar a la siguiente fila
             $row++;
         }
 
-        // Ajustar automáticamente el ancho de las columnas
+
+
+
         foreach (range($startColumn, $endColumn) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Aplicar ajuste de texto a todas las celdas con datos
         $sheet->getStyle("$startColumn$filaini:$endColumn$row")->getAlignment()->setWrapText(true);
 
-        // Retornar el número de la última fila ingresada
         return $row;
     }
-
-
 
     private static function insertarRendicionesFuente($sheet, $cols, $row, $fuentes, $rendiciones, $tcdolar, $tceuro)
     {
@@ -718,5 +832,17 @@ class ActiveRecord
             }
             $i++;
         }
+    }
+
+    //Función que transforma cualquier dato en mayúscula antes de ser insertado en la base de datos
+    //Protected para que solo sea accesible dentro de esta clase
+    protected function convertirAMayusculas(array $atributos): array
+    {
+        foreach ($atributos as $key => $value) {
+            if (is_string($value)) {
+                $atributos[$key] = mb_strtoupper($value, 'UTF-8');
+            }
+        }
+        return $atributos;
     }
 }

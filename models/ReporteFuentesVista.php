@@ -10,10 +10,10 @@ class ReporteFuentesVista extends ActiveRecord
 {
     //Declarando variables
     protected static $tabla = 'reporte_fuentes';
-    protected static $columnasDB = ['fecha','codigo','descripcion','monto'];
+    protected static $columnasDB = ['fuente_fecha', 'fuente_codigo', 'fuente_descripcion', 'fuente_monto'];
 
-    public $fecha;
-    public $codigo;
-    public $descripcion;
-    public $monto;
+    public $fuente_fecha;
+    public $fuente_codigo;
+    public $fuente_descripcion;
+    public $fuente_monto;
 }

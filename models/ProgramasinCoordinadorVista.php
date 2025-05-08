@@ -11,4 +11,12 @@ class ProgramasinCoordinadorVista extends ActiveRecord
     public $programa_id;
     public $programa_codigo;
     public $programa_nombre;
+
+    //Constructor
+    public function __construct($args = [])
+    {
+        $this->programa_id = $args['programa_id'] ?? null;
+        $this->programa_codigo = $args['programa_codigo'] ?? '';
+        $this->programa_nombre = $args['programa_nombre'] ?? '';
+    }
 }

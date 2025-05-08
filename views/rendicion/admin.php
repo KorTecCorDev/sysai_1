@@ -1,28 +1,28 @@
 <main>
-    <h1>Rendiciones Actividad <?php echo $actividad->codigo; ?></h1>
-    <?php
-    if ($resultado) {
-
-        $mensaje = mostrarNotificacion(intval($resultado));
-        if ($mensaje) { ?>
-            <p class="alert alert-info"><?php echo s($mensaje); ?></p>
-    <?php
+    <div class="header-admin">
+        <h1>Administrador de Rendiciones de la Actividad
+            <?php echo $actividad->codigo; ?></h1>
+        <?php
+        if ($resultado) {
+            $mensaje = mostrarNotificacion(intval($resultado));
+            if ($mensaje) { ?>
+                <p class="alert alert-info"><?php echo s($mensaje); ?></p>
+        <?php
+            }
         }
-    }
-    ?>
+        ?>
+    </div>
 
-    <?php
-
-    ?>
     <div class="row">
         <div class="col">
             <h2>Comprobantes</h2>
         </div>
-        <div class="col-2 espacio-btn-agregar">
-            <a href="/rendicion/crear?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-primary btn-agregar"><i class="bi bi-plus-circle"></i> Agregar</a>
-        </div>
-        <div class="col-2 espacio-btn-volver">
-            <a href="/actividad/admin?producto_id=<?php echo $producto_id; ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+        <div class="d-flex justify-content-end gap-2">
+            <a href="/rendicion/crear?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-primary rounded-pill shadow-sm">
+                <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <a href="/actividad/admin?producto_id=<?php echo $producto_id; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+                <i class="bi bi-arrow-left-short me-2"></i> Volver
+            </a>
         </div>
     </div>
     <!-- Tabla que muestra los registros dentro de la tabla usuario -->
@@ -30,7 +30,7 @@
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th scope="col">Código</th>
+                    <th scope="col" class="text-center rounded-start">Código</th>
                     <th scope="col">Fecha</th>
                     <th scope="col">T/Comprobante</th>
                     <th scope="col">RUC</th>
@@ -40,7 +40,7 @@
                     <th scope="col">Detalle</th>
                     <th scope="col">F.Financiamiento</th>
                     <th scope="col">Monto</th>
-                    <th scope="col" class="th-acciones">Acciones</th>
+                    <th scope="col" class="text-center rounded-end">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,23 +61,26 @@
                         <td> <?php echo $rendicion->numero; ?> </td>
                         <td> <?php echo $rendicion->detalle; ?> </td>
                         <td> <?php echo $rendicion->fuente_financiamiento; ?> </td>
-                        <td> S./ <?php echo $rendicion->monto; ?> </td>
+                        <td><?php echo 'S./ ' . number_format($rendicion->monto, 2, '.', ','); ?></td>
                         <td class="td-acciones">
                             <!-- Div de Acciones     -->
-                            <div class="btn-acciones">
-                                <div>
-                                    <a href="/rendicion/actualizar?id=<?php echo $rendicion->id; ?>&actividad_id=<?php echo $rendicion->actividad_id; ?>" class="btn btn-warning btn-actualizar peque"><i class="bi bi-pen"></i></a>
-                                </div>
-                                <div>
-                                    <form method="POST" class="w-100" action="/rendicion/eliminar">
-                                        <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
-                                        <input type="hidden" name="actividad_id" value="<?php echo s($rendicion->actividad_id); ?>">
-                                        <div class="btn-eliminar peque">
-                                            <i class="bi bi-trash"></i>
-                                            <input type="submit" class="btn peque" value="">
-                                        </div>
-                                    </form>
-                                </div>
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="/rendicion/actualizar?id=<?php echo $rendicion->id; ?>&actividad_id=<?php echo $actividad_id ?>"
+                                    class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                    title="Editar rendición">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+
+                                <form method="POST" class="d-inline" action="/rendicion/eliminar">
+                                    <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
+                                    <input type="hidden" name="tipo" value="rubro">
+                                    <button type="submit"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        title="Eliminar rendición"
+                                        onclick="return confirm('¿Estás seguro de eliminar esta rendición?');">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
                             </div>
                             <!-- Div de Acciones     -->
                         </td>

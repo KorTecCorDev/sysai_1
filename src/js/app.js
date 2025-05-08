@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
   mostrarModales();
   actualizarIdprograma();
   closeModal();
+  eliminarAlertas();
 });
 
 //Listeners
@@ -67,10 +68,9 @@ function eventListeners(e) {
     });
   }
 
-
   //MODAL DE GUARDAR POA
   //Elección de guardar o no poa luego de crear el reporte en excel
-  var modalpoa=document.getElementById("guardarModal");
+  var modalpoa = document.getElementById("guardarModal");
   var guardarBtn = document.getElementById("guardarBtn");
   var cancelarBtn = document.getElementById("cancelarBtn");
   var descargarReporte = document.getElementById("descargarReporte");
@@ -79,7 +79,6 @@ function eventListeners(e) {
   // if (modal && guardarBtn && cancelarBtn && descargarReporte) {
   // Manejar el clic en el enlace de descarga
   if (descargarReporte) {
-    console.log("Llegamos hasta aquí inicio");
     descargarReporte.addEventListener("click", function (event) {
       event.preventDefault();
       window.open(this.href, "_blank");
@@ -90,7 +89,6 @@ function eventListeners(e) {
       console.log(bootstrapModal);
     });
     console.log(modalpoa);
-    console.log("Llegamos hasta aquí final");
   }
 
   //Deberíamos de guardar los valores necesarios para la tabla POA
@@ -105,7 +103,7 @@ function eventListeners(e) {
       form.submit();
     });
   }
-//Fin de la modificación
+  //Fin de la modificación
   if (cancelarBtn) {
     // Manejar el clic en el botón "No"
     cancelarBtn.addEventListener("click", function () {
@@ -117,14 +115,40 @@ function eventListeners(e) {
   }
 
   //FIN DE MODAL DE GUARDAR POA
-  
 
   //Existe el combo SELECT cargo con el cargo_id=3 (COORDINADORES)
   const cargo = document.querySelector("#cargo");
   // Si existe el combo con id cargo, entonces se debe de mostrar el combo con id programas_coordinador que está por defecto como oculto
   if (cargo) {
     cargo.addEventListener("change", mostrarProgramasCoordinador);
-    
+  }
+
+  //Guardar POA en el MODAL
+  const btnguardar = document.getElementById("guardarBtn");
+  if (btnguardar) {
+    btnguardar.addEventListener("click", function () {
+      document.getElementById("guardarForm").submit();
+    });
+  }
+
+  //Cambiar las fechas del DATE(límites de los reportes)
+  // Establecer las fechas por defecto
+  const fechaInicio = document.getElementById("fecha_inicio");
+  const fechaFin = document.getElementById("fecha_fin");
+
+  if (fechaInicio && fechaFin) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    // Primer día del año actual
+    const firstDayOfYear = new Date(currentYear, 0, 1)
+      .toISOString()
+      .split("T")[0];
+    // Fecha actual
+    const todayDate = today.toISOString().split("T")[0];
+
+    fechaInicio.value = firstDayOfYear;
+    fechaFin.value = todayDate;
   }
 }
 
@@ -220,13 +244,42 @@ function closeModal() {
 }
 
 function mostrarProgramasCoordinador(e) {
+  const programasCoordinadorlabel = document.querySelector(
+    "#programas_coordinador_label"
+  );
   const programasCoordinador = document.querySelector("#programas_coordinador");
-  const programasCoordinadorlabel = document.querySelector("#programas_coordinador_label");
-  const programasCoordinadorhelp = document.querySelector("#programas_coordinador_help");
+  const programasCoordinadorhelp = document.querySelector(
+    "#programas_coordinador_help"
+  );
 
   if (e.target.value == 3) {
     programasCoordinador.classList.remove("oculto");
+    programasCoordinadorlabel.classList.remove("oculto");
+    programasCoordinadorhelp.classList.remove("oculto");
   } else {
     programasCoordinador.classList.add("oculto");
+    programasCoordinadorlabel.classList.add("oculto");
+    programasCoordinadorhelp.classList.add("oculto");
+    programasCoordinador.value = 0;
   }
+}
+
+//Función para desaparecer las alertas del CRUD en los admin
+function eliminarAlertas() {
+  // Seleccionar todas las alertas
+  const alerts = document.querySelectorAll(".alert");
+
+  // Configurar el timeout para cada alerta encontrada
+  alerts.forEach((alert) => {
+    setTimeout(() => {
+      // Agregar efecto de desvanecimiento
+      alert.style.transition = "opacity 0.5s ease-out";
+      alert.style.opacity = "0";
+
+      // Eliminar el elemento después de la transición
+      setTimeout(() => {
+        alert.remove();
+      }, 500); // Medio segundo para el fade
+    }, 3000); // 3 segundos antes de empezar a desaparecer
+  });
 }

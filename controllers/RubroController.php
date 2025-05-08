@@ -23,19 +23,20 @@ class RubroController
             $rubros = RubroVista::findxatributo("actividad_id", $respt[0]);
             $resultado = $respt[1] ?? null;
             $actividadid = $respt[0];
-            $aux = Actividad::findxatributo("id", $actividadid);
-            $productoid = $aux[0]->producto_id;
+            $objactividad = Actividad::find($actividadid);
+            $productoid = $objactividad->producto_id;
         } else {
             $rubros = RubroVista::findxatributo("actividad_id", $respt);
             $resultado = null;
             $actividadid = $respt ?? null;
-            $aux = Actividad::findxatributo("id", $actividadid);
-            $productoid = $aux[0]->producto_id;
+            $objactividad = Actividad::find($actividadid);
+            $productoid = $objactividad->producto_id;
         }
         $router->render('rubro/admin', [
             'rubros' => $rubros,
             'resultado' => $resultado,
             'actividadid' => $actividadid,
+            'objactividad' => $objactividad,
             'productoid' => $productoid
         ]);
     }
@@ -46,7 +47,7 @@ class RubroController
         $idactividad = validarId('actividad');
         $categoriarubros = CategoriaRubro::all();
         $tiporubros = TipoRubro::all();
-            $rubro = new Rubro();
+        $rubro = new Rubro();
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $rubro = new Rubro($_POST);
             $rubro->agregarIdtoObjeto($idactividad, 'actividad_id');
@@ -79,10 +80,10 @@ class RubroController
             $actividad = Actividad::find($id[1]);
             $categoriarubros = CategoriaRubro::all();
             $tiporubros = TipoRubro::all();
-            
+
             if ($_SERVER["REQUEST_METHOD"] === 'POST') {
                 $argsrubro = $_POST;
-                $rubro->sincronizar($argsrubro);                
+                $rubro->sincronizar($argsrubro);
                 $errores = $rubro->validar();
                 if (empty($errores)) {
                     $rubro->guardarsinRedireccion();
@@ -105,18 +106,12 @@ class RubroController
     public static function eliminar(Router $router)
     {
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
-            $id = validarORedireccionarDosParametrosPost("resultado/admin", "actividad_id", "id");
-            $resultado = null;
-            if (!is_array($id)) {
-                header("Location: /rubro/error!!");
-                exit();
-            } else {
-                $rubro = Rubro::find($id[1]);
-                $rubro->eliminarsinRedireccion();
-                $resultado = 3;
-                header("Location: /rubro/admin?actividad_id=" . $id[0] . "&resultado=" . $resultado);
-                exit();
-            }
+            $id = validarORedireccionarPost("/resultado/admin");
+            $rubro = Rubro::find($id);
+            $rubro->eliminarsinRedireccion();
+            $resultado = 3;
+            header("Location: /rubro/admin?actividad_id=" . $id . "&resultado=" . $resultado);
+            exit();
             $router->render('rubro/eliminar', []);
         }
     }

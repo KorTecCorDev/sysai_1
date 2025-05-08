@@ -46,7 +46,7 @@ class TipoCambioController
             
             $errores = $tipoCambioDolar->validar();
             if (empty($errores)) {
-                $resultado = $tipoCambioDolar->guardar();
+                $resultado = $tipoCambioDolar->guardarsinRedireccion();
                 header('Location: /tcambio/dolar/admin?resultado=1');
                 exit();
             }
