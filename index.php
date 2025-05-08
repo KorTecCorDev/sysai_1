@@ -45,7 +45,6 @@ $router->post('/token_verify', [LoginController::class, 'token_verify']);
 $router->get('/updtepsswd', [LoginController::class, 'updatePassword']);
 $router->post('/updtepsswd', [LoginController::class, 'updatePassword']);
 
-
 //Existe un logueo activo?
 if (isset($_SESSION['login'])) {
     // Importando rutas del administrador, contador y coordinador
