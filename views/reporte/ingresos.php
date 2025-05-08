@@ -1,4 +1,3 @@
-
 <?php
 
 use Model\ReportePoaRubros;
@@ -7,6 +6,13 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+
+// Mostrar el formulario siempre, que exista la cadena $formulario
+if (!empty($formulario)) {
+    echo $formulario;
+} else {
+    $formulario = null;
+}
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();

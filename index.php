@@ -159,7 +159,10 @@ $router->get('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'crearpo
 $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'indexrendicion']);
 $router->get('/reporte/poarubros', [ReportePoaRubrosController::class, 'indexrubro']);
 $router->get('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
+$router->post('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
 $router->get('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexreporteingresos']);
+$router->post('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexreporteingresos']);
+
 
 //Rutas para los saldos contables
 $router->get('/saldos_contables/saldos', [ReportePoaRubrosController::class, 'indexsaldos']);

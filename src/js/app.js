@@ -130,6 +130,26 @@ function eventListeners(e) {
       document.getElementById("guardarForm").submit();
     });
   }
+
+  //Cambiar las fechas del DATE(límites de los reportes)
+  // Establecer las fechas por defecto
+  const fechaInicio = document.getElementById("fecha_inicio");
+  const fechaFin = document.getElementById("fecha_fin");
+
+  if (fechaInicio && fechaFin) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    // Primer día del año actual
+    const firstDayOfYear = new Date(currentYear, 0, 1)
+      .toISOString()
+      .split("T")[0];
+    // Fecha actual
+    const todayDate = today.toISOString().split("T")[0];
+
+    fechaInicio.value = firstDayOfYear;
+    fechaFin.value = todayDate;
+  }
 }
 
 function cambiarIdProgramasenCards(e) {

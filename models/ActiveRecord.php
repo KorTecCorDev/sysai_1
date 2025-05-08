@@ -282,6 +282,14 @@ class ActiveRecord
         return $resultado;
     }
 
+    //Todos los registros dentro de un rango de parámetros (BETWEEN)
+    public static function findporRango(string $campo, string $valoruno, string $valordos)
+    {
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $campo . " BETWEEN '" . $valoruno . "' AND '" . $valordos . "';";
+        $resultado = self::consultarSql($query);
+        return $resultado;
+    }
+
     //Obtiene determinado número de registros
     public static function get($cantidad)
     {
@@ -695,6 +703,86 @@ class ActiveRecord
                 ];
             }
 
+            // Insertar los valores ordenados en las celdas
+            foreach ($valores_ordenados as $value) {
+                $sheet->setCellValue("$colIndex$row", $value);
+                $colIndex++;
+            }
+
+            $sheet->getRowDimension($row)->setRowHeight(20);
+            $row++;
+        }
+
+
+
+
+        foreach (range($startColumn, $endColumn) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $sheet->getStyle("$startColumn$filaini:$endColumn$row")->getAlignment()->setWrapText(true);
+
+        return $row;
+    }
+
+    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, int $filaini = 3, array $data): int
+    {
+        $columnas = [
+            'FECHA',
+            'CODIGO',
+            'DESCRIPCION',
+            'TIPO/COMPROBANTE',
+            'FUENTE_FINANCIAMIENTO',
+            'FECHA_COMPROBANTE',
+            'RUC',
+            'RAZON_SOCIAL',
+            'SERIE',
+            'NUMERO',
+            'DETALLE',
+            'MONTO',
+        ];
+
+        $startColumn = 'A';
+        $endColumn = chr(ord($startColumn) + count($columnas) - 1);
+        $row = $filaini;
+
+        foreach ($data as $obj) {
+            $colIndex = $startColumn;
+
+            // Detectar si es un objeto 'fuente' o 'otros_ingresos_egresos'
+            if (isset($obj->rendicion_codigo)) {
+                // Es registro de rendicion
+                $valores_ordenados = [
+                    $obj->rendicion_fecha ?? '',
+                    $obj->rendicion_codigo ?? '',
+                    $obj->rendicion_descripcion ?? '',
+                    $obj->tipo_comprobante_codigo ?? '', // Tipo de comprobante
+                    $obj->fuente_financiamiento_codigo ?? '', // Fuente de financiamiento
+                    $obj->rendicion_fecha_original ?? '', // Fecha del comprobante
+                    $obj->rendicion_ruc ?? '', // Ruc del comprobante
+                    $obj->rendicion_razon_social ?? '', // Razón social
+                    $obj->rendicion_serie ?? '', // Serie del comprobante
+                    $obj->rendicion_numero ?? '', // Monto del comprobante
+                    $obj->rendicion_descripcion ?? '', // Número del comprobante
+                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                ];
+            } else if (isset($obj->otros_ingresos_egresos_codigo)) {
+                // Es registro de OIE
+                $valores_ordenados = [
+                    $obj->otros_ingresos_egresos_fecha ?? '',
+                    $obj->otros_ingresos_egresos_codigo_codigo ?? '',
+                    $obj->otros_ingresos_egresos_descripcion ?? '',
+                    $obj->oie_tipo_comprobante_codigo ?? '', // Tipo de comprobante
+                    $obj->fuente_financiamiento_codigo ?? '', // Fuente de financiamiento
+                    $obj->rendicion_fecha_original ?? '', // Fecha del comprobante
+                    $obj->rendicion_ruc ?? '', // Ruc del comprobante
+                    $obj->rendicion_razon_social ?? '', // Razón social
+                    $obj->rendicion_serie ?? '', // Serie del comprobante
+                    $obj->rendicion_numero ?? '', // Monto del comprobante
+                    $obj->rendicion_descripcion ?? '', // Número del comprobante
+                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                ];
+            }
             // Insertar los valores ordenados en las celdas
             foreach ($valores_ordenados as $value) {
                 $sheet->setCellValue("$colIndex$row", $value);
