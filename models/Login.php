@@ -8,6 +8,8 @@ class Login extends ActiveRecord
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
     protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'reset_token', 'datos', 'cargo', 'programa_id'];
+    //Contador de intentos para ingresar la contraseña en el login
+    public static $intentos = 0;
 
     public $id;
     public $cargo_id;
@@ -88,31 +90,31 @@ class Login extends ActiveRecord
         }
     }
     public function autenticar()
-{
-    // Iniciar sesión si no está activa
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    {
+        // Iniciar sesión si no está activa
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        // Regenerar ID de sesión por seguridad
+        session_regenerate_id(true);
+
+        // Establecer datos de sesión
+        $_SESSION = [
+            'id' => $this->id,
+            'cargo_id' => $this->cargo_id,
+            'email' => $this->email,
+            'datos' => $this->datos,
+            'cargo' => $this->cargo,
+            'login' => true
+        ];
+
+        // Datos específicos para coordinadores
+        if ($this->cargo_id == 3) {
+            $_SESSION['poa_id'] = $this->poa_id ?? null;
+            $_SESSION['programa_id'] = $this->programa_id ?? null;
+        }
     }
-
-    // Regenerar ID de sesión por seguridad
-    session_regenerate_id(true);
-
-    // Establecer datos de sesión
-    $_SESSION = [
-        'id' => $this->id,
-        'cargo_id' => $this->cargo_id,
-        'email' => $this->email,
-        'datos' => $this->datos,
-        'cargo' => $this->cargo,
-        'login' => true
-    ];
-
-    // Datos específicos para coordinadores
-    if ($this->cargo_id == 3) {
-        $_SESSION['poa_id'] = $this->poa_id ?? null;
-        $_SESSION['programa_id'] = $this->programa_id ?? null;
-    }
-}
     //Funciones para cambiar el password mediante envío de email
 
     public function buscarporEmail($email)

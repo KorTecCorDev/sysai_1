@@ -14,90 +14,99 @@ use Exception;
 class LoginController
 {
     public static function login(Router $router)
-{
-    // Verificar si ya está autenticado primero
-    if (isset($_SESSION['login'])) {
-        header('Location: /');
-        exit;
-    }
+    {
+        // Verificar si ya está autenticado primero
+        if (isset($_SESSION['login'])) {
+            header('Location: /');
+            exit;
+        }
 
-    $login = new Login();
-    $errores = Login::getErrores() ?? [];
+        $login = new Login();
+        $errores = Login::getErrores() ?? [];
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $login = new Login($_POST);
-        $errores = $login->validar();
-
-        if (empty($errores)) {
-            $resultado = $login->existeUsuario();
-            
-            if (!$resultado) {
-                $errores = Login::getErrores();
-            } else {
-                $login->comprobarPassword($resultado);
-                
-                if ($login->autenticado) {
-                    // Autenticación exitosa - asignar propiedades
-                    $login->id = $resultado->id;
-                    $login->cargo_id = $resultado->cargo_id;
-                    
-                    if ($login->cargo_id == 3) {
-                        $login->poa_id = $resultado->poa_id;
-                        $login->programa_id = $resultado->programa_id;
-                    }
-                    
-                    $login->email = $resultado->email;
-                    $login->password = $resultado->password;
-                    $login->reset_token = $resultado->reset_token;
-                    $login->datos = $resultado->datos;
-                    $login->cargo = $resultado->cargo;
-                    
-                    // Autenticar (esto establecerá la sesión)
-                    $login->autenticar();
-                    
-                    // Redirigir al home y salir
-                    header('Location: /');
-                    exit;
-                } else {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $login = new Login($_POST);
+            $errores = $login->validar();
+            //Contador de intentos de ingreso de contraseña
+            $intentos = Login::$intentos;
+            if (empty($errores) && $intentos < 3) {
+                // Verificar si el usuario existe
+                $resultado = $login->existeUsuario();
+                if (!$resultado) {
                     $errores = Login::getErrores();
+                } else {
+                    $login->comprobarPassword($resultado);
+
+                    if ($login->autenticado) {
+                        // Autenticación exitosa - asignar propiedades
+                        $login->id = $resultado->id;
+                        $login->cargo_id = $resultado->cargo_id;
+
+                        if ($login->cargo_id == 3) {
+                            $login->poa_id = $resultado->poa_id;
+                            $login->programa_id = $resultado->programa_id;
+                        }
+
+                        $login->email = $resultado->email;
+                        $login->password = $resultado->password;
+                        $login->reset_token = $resultado->reset_token;
+                        $login->datos = $resultado->datos;
+                        $login->cargo = $resultado->cargo;
+
+                        // Autenticar (esto establecerá la sesión)
+                        $login->autenticar();
+
+                        // Redirigir al home y salir
+                        header('Location: /');
+                        exit;
+                    } else {
+                        $errores = Login::getErrores();
+                    }
                 }
+            } else {
+                $errores = Login::getErrores();
+                $errores[] = 'Has superado el número de intentos permitidos. Por favor, contáctate con un Administrador.';
             }
         }
+
+        // Mostrar vista de login
+        $router->renderssdbr('/login', [
+            'errores' => $errores,
+            'login' => $login
+        ]);
     }
-    
-    // Mostrar vista de login
-    $router->renderssdbr('/login', [
-        'errores' => $errores,
-        'login' => $login
-    ]);
-}
 
     public static function logout()
-{
-    // Iniciar sesión si no está activa
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    {
+        // Iniciar sesión si no está activa
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        // Limpiar todos los datos de sesión
+        $_SESSION = [];
+
+        // Destruir la cookie de sesión
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+
+        // Destruir la sesión
+        session_destroy();
+
+        // Redirigir al login
+        header('Location: /login');
+        exit;
     }
-    
-    // Limpiar todos los datos de sesión
-    $_SESSION = [];
-    
-    // Destruir la cookie de sesión
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
-    }
-    
-    // Destruir la sesión
-    session_destroy();
-    
-    // Redirigir al login
-    header('Location: /login');
-    exit;
-}
 
     public static function cambiarPassword(Router $router)
     {
