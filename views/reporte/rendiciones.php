@@ -114,7 +114,7 @@ foreach (range($startColumn, $endColumn) as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 
-$reporterendi = ReporteEgresosRendiciones::insertarDatosDesdeArrayEgresosRendiciones($sheet, 3, $nuevo_array);
+$reporterendi = ReporteEgresosRendiciones::insertarDatosDesdeArrayEgresosRendiciones($sheet, $nuevo_array, 3);
 //$newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $ultcont, $respoas, $tcdolar, $tceuro);
 
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/

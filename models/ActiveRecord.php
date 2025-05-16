@@ -644,7 +644,7 @@ class ActiveRecord
         // Retornar el número de la última fila ingresada
         return $row;
     }
-    public static function insertarDatosDesdeArray($sheet, int $filaini = 3, array $data): int
+    public static function insertarDatosDesdeArray($sheet, array $data, int $filaini = 3): int
     {
         $columnas = [
             'FECHA',
@@ -725,7 +725,7 @@ class ActiveRecord
         return $row;
     }
 
-    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, int $filaini = 3, array $data): int
+    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, array $data, int $filaini = 3): int //SE modifica
     {
         $columnas = [
             'FECHA',
