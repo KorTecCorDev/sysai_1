@@ -7,15 +7,16 @@ class Login extends ActiveRecord
     //Base de datos
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
-    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'reset_token', 'datos', 'cargo', 'programa_id'];
+    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id'];
     //Contador de intentos para ingresar la contraseña en el login
-    public static $intentos = 0;
 
     public $id;
     public $cargo_id;
     public $poa_id;
     public $email;
     public $password;
+    public $intentos;
+    public $estado;
     public $reset_token;
     public $datos;
     public $cargo;
@@ -28,6 +29,8 @@ class Login extends ActiveRecord
         $this->poa_id = $args['poa_id'] ?? null;
         $this->email = $args['email'] ?? '';
         $this->password = $args['password'] ?? '';
+        $this->intentos = $args['intentos'] ?? 0;
+        $this->estado = $args['estado'] ?? 0;
         $this->reset_token = $args['reset_token'] ?? null;
         $this->datos = $args['datos'] ?? '';
         $this->cargo = $args['cargo'] ?? '';
@@ -41,6 +44,15 @@ class Login extends ActiveRecord
         if (!$this->password) {
             self::$errores[] = "El Password del usuario es obligatorio";
         }
+        if (strlen($this->password) < 6) {
+            self::$errores[] = "El Password debe tener al menos 6 caracteres";
+        }
+        //Si el número de intentos es 3, entonces el usuario no podrá ingresar
+        // if ($this->intentos = 3) {
+        //     self::$errores[] = "Ha superado el número de intentos permitidos, por favor contacte con el administrador del sistema porfis";
+        //     //Bloqueando al usuario
+        //     $this->bloquearUsuario();
+        // }
         return self::$errores;
     }
     public function validarErroresCambioPswd()
@@ -82,8 +94,9 @@ class Login extends ActiveRecord
     public function comprobarPassword($resultado)
     {
 
-        // $usuario = $resultado->fetch_object();
+        //Le asignamos el estado de autenticado en caso el password sea correcto
         $this->autenticado = password_verify($this->password, $resultado->password);
+        //Creamos una nueva propiedad en el objeto Login -> 'autenticado'
         if (!$this->autenticado) {
             self::$errores[] = 'El Password es Incorrecto';
             return;
@@ -108,7 +121,6 @@ class Login extends ActiveRecord
             'cargo' => $this->cargo,
             'login' => true
         ];
-
         // Datos específicos para coordinadores
         if ($this->cargo_id == 3) {
             $_SESSION['poa_id'] = $this->poa_id ?? null;
@@ -182,5 +194,104 @@ class Login extends ActiveRecord
         $query = "UPDATE usuario SET password='" . password_hash($newpssw, PASSWORD_DEFAULT) . "' where id = " . $this->id;
         $resultado = self::ejecutarSql($query);
         return $resultado;
+    }
+
+    //Funciones para cambiar estados de los usuarios por intentos fallidos en el login
+    public function restablecerIntentos()
+    {
+        $query = "UPDATE usuario SET intentos = 0 WHERE id = " . $this->id;
+        $resultado = self::ejecutarSql($query);
+        return $resultado;
+    }
+
+    public function bloquearUsuario()
+    {
+        //Verificamos si el usuario existe
+        $usu = $this->existeUsuario();
+        //Si el usuario existe, entonces se puede bloquear
+        if ($usu) {
+            //El estado 1 significa que el usuario está bloqueado
+            $query = "UPDATE usuario SET estado = 1 WHERE email = '" . $this->email . "'";
+            $resultado = self::ejecutarSql($query);
+            return $resultado;
+        }
+        //Si el usuario no existe, entonces no se puede bloquear
+        self::$errores[] = 'El usuario no existe';
+        return;
+    }
+    public function aumentarIntentos()
+    {
+        //Actualizamos el contador de intentos en la base de datos
+        $query = "UPDATE usuario SET intentos = " . $this->intentos . " WHERE email = '" . $this->email . "'";
+        $resultado = self::ejecutarSql($query);
+        return $resultado;
+    }
+    public function actualizarIntentos()
+    {
+        //Consultamos a la base de datos el número de intentos del usuario según su email si exisitiera
+        $query = "SELECT intentos FROM usuario WHERE email = '" . $this->email . "'";
+        $resultado = self::$db->query($query);
+        if ($resultado->num_rows) {
+            $usuario = $resultado->fetch_object();
+            //Si el usuario existe, entonces se puede actualizar el número de intentos
+            $this->intentos = intval($usuario->intentos) + 1;
+            return $this->aumentarIntentos();
+        }
+    }
+
+
+    //Funciones para la validación de intentos
+    private function getSessionKey($username, $ipAddress, $type)
+    {
+        return "login_{$type}_{$username}_{$ipAddress}";
+    }
+    public function validateLogin($username, $password, $ipAddress)
+    {
+        session_start();
+        $attemptKey = $this->getSessionKey($username, $ipAddress, 'attempts');
+        $lockKey = $this->getSessionKey($username, $ipAddress, 'lock');
+
+        // Verificar si la cuenta está bloqueada
+        if (isset($_SESSION[$lockKey]) && time() < $_SESSION[$lockKey]) {
+            $remaining = $_SESSION[$lockKey] - time();
+            return ['success' => false, 'message' => "Cuenta bloqueada. Inténtelo de nuevo en $remaining segundos."];
+        }
+
+        // Simulación de validación de usuario y contraseña (reemplazar con lógica real)
+        //$isValid = ($username === 'admin' && $password === '123456');
+
+        //Asigamos la lógica de validación a la variable $isValid
+        // Aquí deberías implementar la lógica real de validación de usuario y contraseña
+        // Por ejemplo, consultar la base de datos para verificar las credenciales
+        $login = new Login();
+        $login->email = $username;
+        $login->password = $password;
+        $resultado = $login->existeUsuario();
+        $isValid = false;
+        if ($resultado) {
+            $login->comprobarPassword($resultado);
+            if ($login->autenticado) {
+                // Autenticación exitosa
+                $isValid = true;
+            }
+        }
+
+        if ($isValid) {
+            // Reiniciar el contador de intentos en caso de éxito
+            unset($_SESSION[$attemptKey]);
+            unset($_SESSION[$lockKey]);
+            return ['success' => true, 'message' => 'Inicio de sesión exitoso'];
+        }
+
+        // Manejar intento fallido
+        $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
+
+        if ($_SESSION[$attemptKey] >= $this->maxAttempts) {
+            $_SESSION[$lockKey] = time() + $this->lockTime;
+            return ['success' => false, 'message' => 'Cuenta bloqueada por múltiples intentos fallidos.'];
+        }
+
+        $remainingAttempts = $this->maxAttempts - $_SESSION[$attemptKey];
+        return ['success' => false, 'message' => "Credenciales incorrectas. Intentos restantes: $remainingAttempts"];
     }
 }

@@ -13,62 +13,58 @@ use Exception;
 
 class LoginController
 {
+
+    //Variables para la validación de intentos
+    private $maxAttempts = 5;
+    private $lockTime = 300; // 5 minutos
+
+
+
     public static function login(Router $router)
     {
+
         // Verificar si ya está autenticado primero
         if (isset($_SESSION['login'])) {
             header('Location: /');
             exit;
         }
 
+        //Creamos los objetos para renderizar sin POST
         $login = new Login();
-        $errores = Login::getErrores() ?? [];
+        $errores = Login::getErrores();
 
+        //Sección del POST
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $login = new Login($_POST);
             $errores = $login->validar();
-            //Contador de intentos de ingreso de contraseña
-            $intentos = Login::$intentos;
-            if (empty($errores) && $intentos < 3) {
+            // Si no existen errores, procedemos a autenticar
+            if (empty($errores)) {
                 // Verificar si el usuario existe
-                $resultado = $login->existeUsuario();
-                if (!$resultado) {
-                    $errores = Login::getErrores();
-                } else {
-                    $login->comprobarPassword($resultado);
+                $usuario = $login->existeUsuario();
 
+                //Si el usuario existe, verificamos la contraseña
+                if ($usuario) {
+                    // Verificar si la contraseña es correcta
+                    $login->comprobarPassword($usuario);
                     if ($login->autenticado) {
-                        // Autenticación exitosa - asignar propiedades
-                        $login->id = $resultado->id;
-                        $login->cargo_id = $resultado->cargo_id;
-
-                        if ($login->cargo_id == 3) {
-                            $login->poa_id = $resultado->poa_id;
-                            $login->programa_id = $resultado->programa_id;
-                        }
-
-                        $login->email = $resultado->email;
-                        $login->password = $resultado->password;
-                        $login->reset_token = $resultado->reset_token;
-                        $login->datos = $resultado->datos;
-                        $login->cargo = $resultado->cargo;
-
-                        // Autenticar (esto establecerá la sesión)
+                        //Sincronizamos el resultado del usuario con el objeto Login
+                        $login->sincronizar((array) $usuario);
+                        // Iniciar sesión
                         $login->autenticar();
-
-                        // Redirigir al home y salir
+                        // Redirigir al panel de control
                         header('Location: /');
                         exit;
                     } else {
-                        $errores = Login::getErrores();
+                        $errores[] = 'La contraseña ingresada es incorrecta';
                     }
+                } else {
+                    $errores[] = 'El usuario no existe';
                 }
             } else {
                 $errores = Login::getErrores();
-                $errores[] = 'Has superado el número de intentos permitidos. Por favor, contáctate con un Administrador.';
             }
         }
-
+        //Sección del renderizado
         // Mostrar vista de login
         $router->renderssdbr('/login', [
             'errores' => $errores,
