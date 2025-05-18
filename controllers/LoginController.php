@@ -14,24 +14,24 @@ use Exception;
 class LoginController
 {
 
-    //Variables para la validación de intentos
-    private $maxAttempts = 5;
-    private $lockTime = 300; // 5 minutos
-
-
+    
 
     public static function login(Router $router)
     {
-
+        //Variables para la validación de intentos
+        $maxAttempts = 5;
+        $lockTime = 300; // 5 minutos
+        //Creamos los objetos para renderizar sin POST
+        $login = new Login();
+        $errores = Login::getErrores();
         // Verificar si ya está autenticado primero
         if (isset($_SESSION['login'])) {
             header('Location: /');
             exit;
         }
-
-        //Creamos los objetos para renderizar sin POST
-        $login = new Login();
-        $errores = Login::getErrores();
+        
+        $attemptKey = $login->getSessionKey('attempts');
+        $lockKey = $login->getSessionKey('lock');
 
         //Sección del POST
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -57,6 +57,14 @@ class LoginController
                     } else {
                         $errores[] = 'La contraseña ingresada es incorrecta';
                     }
+                            // Manejar intento fallido
+                $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
+
+                if ($_SESSION[$attemptKey] >= $maxAttempts) {
+                    $_SESSION[$lockKey] = time() + $lockTime;
+                    //Llenamos el array de errores y retornamos el mensaje
+                    $errores[] = "Ha superado el número máximo de intentos. Su cuenta está bloqueada por 5 minutos.";
+                }
                 } else {
                     $errores[] = 'El usuario no existe';
                 }

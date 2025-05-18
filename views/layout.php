@@ -4,10 +4,11 @@
 // Captamos los datos necesarios con la superglobal SESSION
 $logusuario = $_SESSION ?? null;
 // Capturamos el cargo de usuario
-$cargo = intval($logusuario['cargo_id']) ?? null;
-if (isset($cargo)) {
+if (isset($logusuario['cargo_id'])) {
+    $logusuario['cargo_id'] = intval($logusuario['cargo_id']);
+    $cargo = $logusuario['cargo_id'];
     // Creamos un switch para los 3 sidebar a insertar
-    switch ($cargo) {
+        switch ($cargo) {
         case 1:
             // SIDEBAR ADMIN en caso el $cargo=1
             include __DIR__ . '/layout_admin.php';
@@ -23,7 +24,7 @@ if (isset($cargo)) {
             break;
         default:
             break;
-    }
+        }
 }
 
 ?>

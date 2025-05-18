@@ -7,7 +7,7 @@ class Login extends ActiveRecord
     //Base de datos
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
-    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id'];
+    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
     //Contador de intentos para ingresar la contraseña en el login
 
     public $id;
@@ -21,6 +21,7 @@ class Login extends ActiveRecord
     public $datos;
     public $cargo;
     public $programa_id;
+    public $autenticado = false;
 
     public function __construct($args = [])
     {
@@ -35,7 +36,13 @@ class Login extends ActiveRecord
         $this->datos = $args['datos'] ?? '';
         $this->cargo = $args['cargo'] ?? '';
         $this->programa_id = $args['programa_id'] ?? null;
+        $this->autenticado = $args['autenticado'] ?? false;
     }
+
+    public function getSessionKey($type){
+        return "login_{$type}";
+    }
+
     public function validar()
     {
         if (!$this->email) {
@@ -93,7 +100,6 @@ class Login extends ActiveRecord
     }
     public function comprobarPassword($resultado)
     {
-
         //Le asignamos el estado de autenticado en caso el password sea correcto
         $this->autenticado = password_verify($this->password, $resultado->password);
         //Creamos una nueva propiedad en el objeto Login -> 'autenticado'
@@ -241,57 +247,4 @@ class Login extends ActiveRecord
 
 
     //Funciones para la validación de intentos
-    private function getSessionKey($username, $ipAddress, $type)
-    {
-        return "login_{$type}_{$username}_{$ipAddress}";
-    }
-    public function validateLogin($username, $password, $ipAddress)
-    {
-        session_start();
-        $attemptKey = $this->getSessionKey($username, $ipAddress, 'attempts');
-        $lockKey = $this->getSessionKey($username, $ipAddress, 'lock');
-
-        // Verificar si la cuenta está bloqueada
-        if (isset($_SESSION[$lockKey]) && time() < $_SESSION[$lockKey]) {
-            $remaining = $_SESSION[$lockKey] - time();
-            return ['success' => false, 'message' => "Cuenta bloqueada. Inténtelo de nuevo en $remaining segundos."];
-        }
-
-        // Simulación de validación de usuario y contraseña (reemplazar con lógica real)
-        //$isValid = ($username === 'admin' && $password === '123456');
-
-        //Asigamos la lógica de validación a la variable $isValid
-        // Aquí deberías implementar la lógica real de validación de usuario y contraseña
-        // Por ejemplo, consultar la base de datos para verificar las credenciales
-        $login = new Login();
-        $login->email = $username;
-        $login->password = $password;
-        $resultado = $login->existeUsuario();
-        $isValid = false;
-        if ($resultado) {
-            $login->comprobarPassword($resultado);
-            if ($login->autenticado) {
-                // Autenticación exitosa
-                $isValid = true;
-            }
-        }
-
-        if ($isValid) {
-            // Reiniciar el contador de intentos en caso de éxito
-            unset($_SESSION[$attemptKey]);
-            unset($_SESSION[$lockKey]);
-            return ['success' => true, 'message' => 'Inicio de sesión exitoso'];
-        }
-
-        // Manejar intento fallido
-        $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
-
-        if ($_SESSION[$attemptKey] >= $this->maxAttempts) {
-            $_SESSION[$lockKey] = time() + $this->lockTime;
-            return ['success' => false, 'message' => 'Cuenta bloqueada por múltiples intentos fallidos.'];
-        }
-
-        $remainingAttempts = $this->maxAttempts - $_SESSION[$attemptKey];
-        return ['success' => false, 'message' => "Credenciales incorrectas. Intentos restantes: $remainingAttempts"];
-    }
 }

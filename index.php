@@ -47,8 +47,9 @@ $router->post('/updtepsswd', [LoginController::class, 'updatePassword']);
 
 
 //Existe un logueo activo?
-if (isset($_SESSION['login'])) {
-    
+
+if (isset($_SESSION['login']) && $_SESSION['login'] == true) {
+
     // Importando rutas del administrador, contador y coordinador
     //Creamos un switch para los 3 index a insertar
     switch ($_SESSION['cargo_id']) {
