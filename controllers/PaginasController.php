@@ -18,4 +18,10 @@ class PaginasController
             $router->render('/main', []);
         }
     }
+
+    // LLamado a error 404
+    public static function error404(Router $router)
+    {
+        $router->renderssdbr('/error404', []);
+    }
 }

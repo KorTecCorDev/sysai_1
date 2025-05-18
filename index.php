@@ -27,6 +27,8 @@ use Model\ReportePoaRubros;
 $router = new Router();
 //Ruta principal al ingresar -> directo al login
 $router->get('/', [PaginasController::class, 'index']);
+//Ruta para la página de error 404
+$router->get('/error', [PaginasController::class, 'error404']);
 
 //Rutas para el LOGIN
 $router->get('/login', [LoginController::class, 'login']);
