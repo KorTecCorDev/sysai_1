@@ -62,8 +62,8 @@
             <?php
             if (!empty($programas)) {
                 foreach ($programas as $programa) { ?>
-                    <option value="<?php echo s($programa->programa_id); ?>" <?php echo $objpoa->programa_id === $programa->programa_id ? 'selected' : ''; ?>>
-                        <?php echo s("{$programa->programa_codigo} - {$programa->programa_nombre}"); ?>
+                    <option value="<?php echo $programa->id; ?>" <?php echo $objpoa->programa_id === $programa->id ? 'selected' : ''; ?>>
+                        <?php echo "{$programa->codigo} - {$programa->nombre}"; ?>
                     </option>
                 <?php } ?>
             <?php } ?>

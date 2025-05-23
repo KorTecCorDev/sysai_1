@@ -79,7 +79,7 @@
 <body>
     <div class="error-container">
         <h1 class="error-title">404</h1>
-        <p class="error-message">¡Oops! Parece que esta página no es el tesoro al final del arcoiris.</p>
+        <p class="error-message">¡Oops! Parece que esta página no es correcta.</p>
         <a href="/" class="btn back-button">Volver al inicio</a>
     </div>
     <script src="/build/js/bootstrap.bundle.min.js"></script>

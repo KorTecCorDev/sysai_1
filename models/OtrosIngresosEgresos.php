@@ -49,6 +49,10 @@ class OtrosIngresosEgresos extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes de ingresar un código válido';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro ingreso o egreso';
+        }
         return self::$errores;
     }
 
@@ -71,6 +75,10 @@ class OtrosIngresosEgresos extends ActiveRecord
         }
         if (!$this->ff_id) {
             self::$errores[] = 'Debes de seleccionar una fuente de financiamietno válida';
+        }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro ingreso o egreso';
         }
         return self::$errores;
     }

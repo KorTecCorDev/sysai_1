@@ -33,6 +33,10 @@ class Programa extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes añadir un código válido';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro programa';
+        }
         if (!$this->tipo_programa_id) {
             self::$errores[] = 'Debes seleccionar un tipo de programa válido';
         }return self::$errores;

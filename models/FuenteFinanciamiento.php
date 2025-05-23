@@ -37,6 +37,10 @@ class FuenteFinanciamiento extends ActiveRecord
         if (!$this->presupuesto) {
             self::$errores[] = 'Debes añadir un monto de presupuesto válido';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otra fuente de financiamiento';
+        }
         return self::$errores;
     }
 }

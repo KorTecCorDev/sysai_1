@@ -186,3 +186,16 @@ function validarId($tb)
     }
     return $id;
 }
+
+//Función para arrays asociativos
+function validarPropiedadArray(array $array, string $propiedad, string $subpropiedad): bool
+{
+    // Verifica si la propiedad existe en el array y su valor no es nulo ni vacío
+    if ($array[$propiedad][$subpropiedad] == 0) {
+        return false;
+    }
+    return true;
+
+    //&&array_key_exists($propiedad, $array)  && $array[$propiedad] != 0;
+}
+

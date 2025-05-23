@@ -33,6 +33,9 @@ class Actividad extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes añadir un código válido para esta actividad';
         }
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otra actividad';
+        }
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido para esta actividad';
         }

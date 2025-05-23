@@ -32,6 +32,10 @@ class SubCategoriaRubro extends ActiveRecord
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido';
         }
+        //validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otra subcategoría de rubro';
+        }
         
         return self::$errores;
     }
