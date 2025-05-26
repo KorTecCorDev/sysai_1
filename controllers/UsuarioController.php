@@ -65,7 +65,7 @@ class UsuarioController
             $usuario = new Usuario($_POST['usuario']);
             //Si existe un programa ingresado en el SELECT, es un coordinador!
             //Usaré una función que me permita identificar si la propiedad 'poa' tenga como valor un array asociativo
-            $poavalida = validarPropiedadArray($_POST, 'poa','programa_id');
+            $poavalida = validarPropiedadArray($_POST, 'poa', 'programa_id');
 
             if ($poavalida) {
                 $objpoa = new Poa($_POST['poa']);
@@ -77,7 +77,7 @@ class UsuarioController
             $errores = $persona->validar();
             $errores = $usuario->validar();
             if ($poavalida) {
-                $errores= $objpoa->validar();
+                $errores = $objpoa->validar();
             }
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
@@ -180,9 +180,16 @@ class UsuarioController
             if (empty($errores)) {
                 //Si existe un poa, sincronizamos el objeto
                 if (isset($argspoa)) {
-                    //Guardamos los cambios en los objetos persona y usuario
-                    $persona->guardarsinRedireccion();
-                    $usuario->guardarsinRedireccion();
+                    //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                    $valiusuario = Usuario::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($valiusuario) {
+                        //Guardamos los cambios en los objetos persona y usuario
+                        $usuario->guardarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     //Extraemos el objeto del array y lo sincronizamos con el objeto creado
                     $objpoa->sincronizar($argspoa);
                     //Añadimos el usuario_id al objeto poa
@@ -192,7 +199,16 @@ class UsuarioController
                     $errores_poa = $objpoa->validar();
                     //Solamente si está sin errores, guardamos
                     if (empty($errores_poa)) {
-                        $objpoa->guardarsinRedireccion();
+                        //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                        $vali = Poa::setUsuarioActual();
+                        //Si es true...
+                        //Guardando en la base de datos
+                        if ($vali) {
+                            //Guardamos el poa
+                            $resultado = $objpoa->guardarsinRedireccion();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
                     } else {
                         //combinamos los errores con los errores de persona y usuario
                         $errores = array_merge($errores, $errores_poa);
@@ -203,18 +219,42 @@ class UsuarioController
                 }
                 //Si es un coordinador y no existe un $_POST['poa'] significa que se ha eliminado el poa
                 else if ($valor === 1) {
-                    //Guardamos los cambios en los objetos persona y usuario
-                    $persona->guardarsinRedireccion();
-                    $usuario->guardarsinRedireccion();
-                    //Eliminamos el poa
-                    $objpoa->eliminarsinRedireccion();
+                    //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                    $valiusuario = Usuario::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($valiusuario) {
+                        //Guardamos los cambios en los objetos persona y usuario
+                        $persona->guardarsinRedireccion();
+                        $usuario->guardarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
+
+                    //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                    $vali = Poa::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        //Eliminamos el poa
+                        $objpoa->eliminarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     //Redirigimos hacie /usuario/admin con mensaje de actualización exitosa
                     header("Location: /usuario/admin?resultado=2");
                     exit();
                 } else {
-                    //Guardamos los cambios en los objetos persona y usuario
-                    $persona->guardarsinRedireccion();
-                    $usuario->guardarsinRedireccion();
+                    //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                    $valiusuario = Usuario::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($valiusuario) {
+                        //Guardamos los cambios en los objetos persona y usuario
+                        $persona->guardarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     //Redirigimos hacie /usuario/admin con mensaje de actualización exitosa
                     header("Location: /usuario/admin?resultado=2");
                     exit();
@@ -252,12 +292,28 @@ class UsuarioController
                         if (!empty($poa)) {
                             //Seleccionamos el objeto dentro del array
                             $objpoa = array_shift($poa);
-                            //Eliminamos el poa
-                            $objpoa->eliminarsinRedireccion();
+                            //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                            $vali = Poa::setUsuarioActual();
+                            //Si es true...
+                            //Guardando en la base de datos
+                            if ($vali) {
+                                //Eliminamos el poa
+                                $objpoa->eliminarsinRedireccion();
+                            } else {
+                                $errores[] = "Error al asignar el usuario actual.";
+                            }
                         }
-                        $usuario->eliminarsinRedireccion();
-                        $persona->eliminar();
-
+                        //Enviamos el código de usuario a la base de datos antes de actualizar el poa
+                        $valiusuario = Usuario::setUsuarioActual();
+                        //Si es true...
+                        //Guardando en la base de datos
+                        if ($valiusuario) {
+                            //Guardamos los cambios en los objetos persona y usuario
+                            $usuario->eliminarsinRedireccion();
+                            $persona->eliminarsinRedireccion();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
                         //La redirección de la URL en este caso va fuera de la función, para evitar que se redirija mal
                         header("Location: /usuario/admin?resultado=3");
                         exit();

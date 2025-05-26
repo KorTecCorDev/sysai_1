@@ -276,22 +276,6 @@ class ActiveRecord
         return static::$errores;
     }
 
-    //Funcion para verificar si existe el dato en el atributo codigo de la tabla
-    //La consulta tiene la siguiente estructura: SELECT COUNT(*) FROM tabla WHERE codigo =$dato;
-    //Retorna un booleano
-    // public static function existeCodigo($codigo)
-    // {
-    //     $query = "SELECT COUNT(*) as total FROM " . static::$tabla . " WHERE codigo = '" . self::$db->escape_string($codigo) . "'";
-    //     $resultado = self::$db->query($query);
-    //     if ($resultado) {
-    //         $row = $resultado->fetch_assoc();
-    //         return ($row['total'] >= 1);
-    //     }
-    //     return false;
-    // }
-
-
-    //Modificando la función existeCodigo
     /**
      * Verifica si existen registros en la base de datos con los mismos valores para las propiedades especificadas.
      *
@@ -346,7 +330,7 @@ class ActiveRecord
             return false;
         }
     }
-    //Fin de la modificación
+
 
     //Función que permite verificar si existe la descripción en la base de datos
     // Tablas: usuario, 
@@ -938,5 +922,22 @@ class ActiveRecord
             }
         }
         return $atributos;
+    }
+
+
+    //Función que permite enviar el código del usuario a la base de datos
+    public static function setUsuarioActual(): bool
+    {
+        if (isset($_SESSION['id'])) {
+            $usuarioId = $_SESSION['id'];
+            $usuarioObj = self::find($usuarioId);
+            if ($usuarioObj && property_exists($usuarioObj, 'descripcion')) {
+                $usuario = $usuarioObj->descripcion;
+                $query = "SET @usuario_actual = '" . self::$db->escape_string($usuario) . "'";
+                self::$db->query($query);
+                return true;
+            }
+        }
+        return false;
     }
 }

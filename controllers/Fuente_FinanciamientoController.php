@@ -14,7 +14,7 @@ class Fuente_FinanciamientoController
         $fuente_financiamiento = FuenteFinanciamiento::all();
         //Mostrando el mensaje condicional
         $resultado = $_GET['resultado'] ?? null;
-        
+
         $router->render('fuente_financiamiento/admin', [
             'fuente_financiamiento' => $fuente_financiamiento,
             'resultado' => $resultado
@@ -34,8 +34,15 @@ class Fuente_FinanciamientoController
             $errores = $fuente_financiamiento->validar();
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = FuenteFinanciamiento::setUsuarioActual();
+                //Si es true...
                 //Guardando en la base de datos
-                $resultado = $fuente_financiamiento->guardar();
+                if ($vali) {
+                    $resultado = $fuente_financiamiento->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
         $router->render('fuente_financiamiento/crear', [
@@ -61,9 +68,9 @@ class Fuente_FinanciamientoController
                 $fuente_financiamiento->guardar();
             }
         }
-        $router->render('fuente_financiamiento/actualizar',[
+        $router->render('fuente_financiamiento/actualizar', [
             'fuente_financiamiento' => $fuente_financiamiento,
-            'errores'=> $errores
+            'errores' => $errores
         ]);
     }
     public static function eliminar(Router $router)
@@ -73,14 +80,14 @@ class Fuente_FinanciamientoController
             //Las validaciones de datos nos permitirán ejecutar la instrucción, solamente con el dato requerido
             $id = filter_var($id, FILTER_VALIDATE_INT);
             if ($id) {
-                
-                $tipo=$_POST['tipo'];
+
+                $tipo = $_POST['tipo'];
                 if (validarTipoContenido($tipo)) {
                     $fuente_financiamiento = FuenteFinanciamiento::find($id);
                     $fuente_financiamiento->eliminar();
                     header("Location: /fuente_financiamiento/admin?resultado=3");
                     exit();
-                }  
+                }
             }
         }
     }
