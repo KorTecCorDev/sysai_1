@@ -331,6 +331,7 @@ class IngresoEgresoController
                         } else {
                             $errores[] = "Error al asignar el usuario actual.";
                         }
+                        
                         header("Location: /ingreso_egreso/admin");
                         exit();
                     }
