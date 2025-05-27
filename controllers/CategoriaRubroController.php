@@ -31,13 +31,22 @@ class CategoriaRubroController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //Creamos una nueva instancia
             $categoria_rubro = new CategoriaRubro($_POST['categoria_rubro']);
-            
+
             //Validamos
             $errores = $categoria_rubro->validar();
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = CategoriaRubro::setUsuarioActual();
+                //Si es true...
                 //Guardando en la base de datos
-                $resultado = $categoria_rubro->guardar();
+                if ($vali) {
+                    //Guardando en la base de datos
+                    $resultado = $categoria_rubro->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
         $router->render('categoria_rubro/crear', [
@@ -61,13 +70,23 @@ class CategoriaRubroController
             //Validación
             $errores = $categoria_rubro->validar();
             if (empty($errores)) {
-                $categoria_rubro->guardar();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = CategoriaRubro::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    //Guardando en la base de datos
+                    $resultado = $categoria_rubro->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
-        $router->render('categoria_rubro/actualizar',[
+        $router->render('categoria_rubro/actualizar', [
             'categoria_rubro' => $categoria_rubro,
             'subcategorias_rubro' => $subcategorias_rubro,
-            'errores'=> $errores
+            'errores' => $errores
         ]);
     }
     public static function eliminar(Router $router)
@@ -77,13 +96,23 @@ class CategoriaRubroController
             //Las validaciones de datos nos permitirán ejecutar la instrucción, solamente con el dato requerido
             $id = filter_var($id, FILTER_VALIDATE_INT);
             if ($id) {
-                
-                $tipo=$_POST['tipo'];
-                
+
+                $tipo = $_POST['tipo'];
+
                 if (validarTipoContenido($tipo)) {
                     $categoria_rubro = CategoriaRubro::find($id);
-                    $categoria_rubro->eliminar();
-                }  
+                    //Insertando la acción de audi para el usuario actual
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = CategoriaRubro::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        //Guardando en la base de datos
+                        $resultado = $categoria_rubro->eliminar();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
+                }
             }
         }
     }

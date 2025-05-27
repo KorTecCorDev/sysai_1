@@ -70,7 +70,16 @@ class RendicionController
             $rendicion = new Rendicion($_POST);
             $errores = $rendicion->validar();
             if (empty($errores)) {
-                $rendicion->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Rendicion::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $rendicion->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /rendicion/admin?actividad_id={$rendicion->actividad_id}&resultado=1");
                 exit();
             }
@@ -104,7 +113,16 @@ class RendicionController
                 $rendicion->sincronizar($argsrendicion);
                 $errores = $rendicion->validar();
                 if (empty($errores)) {
-                    $rendicion->guardarsinRedireccion();
+                    //Insertando la acción de audi para el usuario actual
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = Rendicion::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        $rendicion->guardarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     header("Location: /rendicion/admin?actividad_id=" . $actividad_id . "&resultado=2");
                     exit();
                 } else {
@@ -126,7 +144,16 @@ class RendicionController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = validarORedireccionarPost("resultado/admin");
             $rendicion = Rendicion::find($id);
-            $rendicion->eliminar();
+            //Insertando la acción de audi para el usuario actual
+            //Enviamos el codigo de usuario a la base de datos
+            $vali = Rendicion::setUsuarioActual();
+            //Si es true...
+            //Guardando en la base de datos
+            if ($vali) {
+                $rendicion->guardarsinRedireccion();
+            } else {
+                $errores[] = "Error al asignar el usuario actual.";
+            }
             //Se redirige a continuación ya que el método no tiene una redirección incluída
             header("Location: /rendicion/admin?actividad_id={$rendicion->actividad_id}&resultado=3");
             exit();

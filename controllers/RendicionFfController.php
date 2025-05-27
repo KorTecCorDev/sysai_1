@@ -45,31 +45,39 @@ class RendicionFfController
     public static function crear(Router $router)
     {
         $respt = validarORedireccionarconTabla("rendicionff/admin", "actividad");
-            $actividad_id = (int) $_GET['actividad_id'];
-            $resultados = RendicionFfActividadVista::findwithmoretables('actividad_id', $actividad_id);
-            
-            $rendi = new RendicionFf();
-            foreach ($resultados as $res) {
-                $fuentesf[] = FuenteFinanciamiento::find($res->fuente_financiamiento_id);
-            } 
-            //Array con mensajes de error
-            $errores = RendicionFf::getErrores();
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                //Creamos una nueva instancia
-                $rendi = new RendicionFf($_POST['rendi']);
-                //Validamos
-                $errores = $rendi->validar();
-                //Si no hubiera errores...
-                if (empty($errores)) {
+        $actividad_id = (int) $_GET['actividad_id'];
+        $resultados = RendicionFfActividadVista::findwithmoretables('actividad_id', $actividad_id);
+
+        $rendi = new RendicionFf();
+        foreach ($resultados as $res) {
+            $fuentesf[] = FuenteFinanciamiento::find($res->fuente_financiamiento_id);
+        }
+        //Array con mensajes de error
+        $errores = RendicionFf::getErrores();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            //Creamos una nueva instancia
+            $rendi = new RendicionFf($_POST['rendi']);
+            //Validamos
+            $errores = $rendi->validar();
+            //Si no hubiera errores...
+            if (empty($errores)) {
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = RendicionFf::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
                     //Guardando en la base de datos
                     $respt = $rendi->guardarsinRedireccion();
-                    if ($respt) {
-                        header('Location: /rendicionff/admin?actividad_id=' . $actividad_id . '&resultado=1');
-                        exit();
-                    }
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
+                if ($respt) {
+                    header('Location: /rendicionff/admin?actividad_id=' . $actividad_id . '&resultado=1');
+                    exit();
                 }
             }
- 
+        }
+
         $router->render('rendicionff/crear', [
             'resultados' => $resultados,
             'rendi' => $rendi,

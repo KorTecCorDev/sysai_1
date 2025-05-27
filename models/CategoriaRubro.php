@@ -9,9 +9,11 @@ class CategoriaRubro extends ActiveRecord
     protected static $columnasDB = ['id', 'subcategoria_rubro_id', 'nombre', 'descripcion', 'codigo', 'fecha'];
 
     public $id;
+    public $subcategoria_rubro_id;
     public $nombre;
     public $descripcion;
     public $codigo;
+    public $fecha;
 
     public function __construct($args = [])
     {

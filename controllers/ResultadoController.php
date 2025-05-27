@@ -89,7 +89,7 @@ class ResultadoController
             if (empty($errores)) {
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
-                $vali = Programa::setUsuarioActual();
+                $vali = Resultado::setUsuarioActual();
                 //Si es true...
                 //Guardando en la base de datos
                 if ($vali) {
@@ -123,7 +123,7 @@ class ResultadoController
                     if ($res) {
                         //Insertando la acción de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos
-                        $vali = Programa::setUsuarioActual();
+                        $vali = Resultado::setUsuarioActual();
                         //Si es true...
                         //Guardando en la base de datos
                         if ($vali) {

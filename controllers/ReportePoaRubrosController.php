@@ -283,8 +283,16 @@ class ReportePoaRubrosController
             $errores = Poa::getErrores();
             //Si no hay errores, procedemos a guardar el registro
             if (empty($errores)) {
-                //Guardamos el registro en la base de datos
-                $poa->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = ReportePoaRubros::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                    //Guardamos el registro en la base de datos
+                    $poa->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 //Redireccionamos a la vista de resultados
                 header('Location: /resultado/admin?resultado=6');
                 exit;

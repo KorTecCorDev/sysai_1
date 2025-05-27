@@ -66,8 +66,16 @@ class DetalleFinanciamientoController
                     //Verificamos si no tenemos errores
                     $errores = $detallefinanciamiento->validar();
                     if (empty($errores)) {
-                        //Si no existen errores creamos el registro de los datos enviados por la card
-                        $resultado = $detallefinanciamiento->guardarsinRedireccion();
+                        //Insertando la accion de audi para el usuario actual
+                        //Enviamos el codigo de usuario a la base de datos
+                        $vali = DetalleFinanciamiento::setUsuarioActual();
+                        //Si es true...
+                        if ($vali) {
+                            //Si no existen errores creamos el registro de los datos enviados por la card
+                            $resultado = $detallefinanciamiento->guardarsinRedireccion();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
                         //Redireccionamos con el resultado 1 que nos indica que se ha creado con éxito
                         header("Location: /dfinanciamiento/crear?resultado=1");
                         exit();

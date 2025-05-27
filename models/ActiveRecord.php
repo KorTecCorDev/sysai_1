@@ -930,7 +930,7 @@ class ActiveRecord
     {
         if (isset($_SESSION['id'])) {
             $usuarioId = $_SESSION['id'];
-            $usuarioObj = self::find($usuarioId);
+            $usuarioObj = Usuario::find($usuarioId);
             if ($usuarioObj && property_exists($usuarioObj, 'descripcion')) {
                 $usuario = $usuarioObj->descripcion;
                 $query = "SET @usuario_actual = '" . self::$db->escape_string($usuario) . "'";
