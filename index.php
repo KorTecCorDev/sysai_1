@@ -27,6 +27,8 @@ use Model\ReportePoaRubros;
 $router = new Router();
 //Ruta principal al ingresar -> directo al login
 $router->get('/', [PaginasController::class, 'index']);
+//Ruta para la página de error 404
+$router->get('/error', [PaginasController::class, 'error404']);
 
 //Rutas para el LOGIN
 $router->get('/login', [LoginController::class, 'login']);
@@ -46,7 +48,7 @@ $router->get('/updtepsswd', [LoginController::class, 'updatePassword']);
 $router->post('/updtepsswd', [LoginController::class, 'updatePassword']);
 
 //Existe un logueo activo?
-if (isset($_SESSION['login'])) {
+if (isset($_SESSION['login']) && $_SESSION['login'] == true) {
     // Importando rutas del administrador, contador y coordinador
     //Creamos un switch para los 3 index a insertar
     switch ($_SESSION['cargo_id']) {

@@ -39,14 +39,23 @@ class TipoCambioController
         $errores = TipoCambioDolar::getErrores();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             $tipoCambioDolar = new TipoCambioDolar();
             $tipoCambioDolar->usuario_id = $_SESSION['id'];
             $tipoCambioDolar->tipo_cambio = $_POST['tipocambio'];
-            
+
             $errores = $tipoCambioDolar->validar();
             if (empty($errores)) {
-                $resultado = $tipoCambioDolar->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = TipoCambioDolar::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $tipoCambioDolar->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header('Location: /tcambio/dolar/admin?resultado=1');
                 exit();
             }
@@ -64,14 +73,23 @@ class TipoCambioController
         $errores = TipoCambioEuro::getErrores();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             $tipoCambioEuro = new TipoCambioEuro($_POST);
             $tipoCambioEuro->usuario_id = $_SESSION['id'];
             $tipoCambioEuro->tipo_cambio = $_POST['tipocambio'];
-            
+
             $errores = $tipoCambioEuro->validar();
             if (empty($errores)) {
-                $resultado = $tipoCambioEuro->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = TipoCambioEuro::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $tipoCambioEuro->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header('Location: /tcambio/euro/admin?resultado=1');
                 exit();
             }
@@ -95,7 +113,16 @@ class TipoCambioController
             $tipoCambioDolar->sincronizar($args);
             $errores = $tipoCambioDolar->validar();
             if (empty($errores)) {
-                $resultado = $tipoCambioDolar->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = TipoCambioDolar::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $tipoCambioDolar->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header('Location: /tcambio/dolar/admin?resultado=2');
                 exit();
             }
@@ -115,14 +142,23 @@ class TipoCambioController
 
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             //Instanciamos un array asociativo $args en blanco
-            $args=[];
+            $args = [];
             //Asiganamos el valor de la propiedad tipocambio del POST a la propiedad tipo_cambio del array asociativo $args
             $args['tipo_cambio'] = $_POST['tipocambio'];
             //Sincronizamos los valores de las propiedades que si existan en el array asociativo $args
             $tipoCambioEuro->sincronizar($args);
             $errores = $tipoCambioEuro->validar();
             if (empty($errores)) {
-                $resultado = $tipoCambioEuro->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = TipoCambioEuro::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $tipoCambioEuro->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header('Location: /tcambio/euro/admin?resultado=2');
                 exit();
             }
@@ -142,7 +178,16 @@ class TipoCambioController
             if ($idTipoCambio) {
                 $tipoCambio = TipoCambioDolar::find($idTipoCambio);
                 if ($tipoCambio) {
-                    $tipoCambio->eliminar();
+                    //Insertando la acción de audi para el usuario actual
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = TipoCambioDolar::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        $resultado = $tipoCambio->eliminar();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     header("Location: /tcambio/dolar/admin?resultado=3");
                     exit();
                 }
@@ -158,7 +203,16 @@ class TipoCambioController
             if ($idTipoCambio) {
                 $tipoCambio = TipoCambioEuro::find($idTipoCambio);
                 if ($tipoCambio) {
-                    $tipoCambio->eliminar();
+                    //Insertando la acción de audi para el usuario actual
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = TipoCambioEuro::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        $resultado = $tipoCambio->eliminar();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     header("Location: /tcambio/euro/admin?resultado=3");
                     exit();
                 }

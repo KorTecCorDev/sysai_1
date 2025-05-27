@@ -7,17 +7,21 @@ class Login extends ActiveRecord
     //Base de datos
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
-    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'reset_token', 'datos', 'cargo', 'programa_id'];
+    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
+    //Contador de intentos para ingresar la contraseña en el login
 
     public $id;
     public $cargo_id;
     public $poa_id;
     public $email;
     public $password;
+    public $intentos;
+    public $estado;
     public $reset_token;
     public $datos;
     public $cargo;
     public $programa_id;
+    public $autenticado = false;
 
     public function __construct($args = [])
     {
@@ -26,11 +30,19 @@ class Login extends ActiveRecord
         $this->poa_id = $args['poa_id'] ?? null;
         $this->email = $args['email'] ?? '';
         $this->password = $args['password'] ?? '';
+        $this->intentos = $args['intentos'] ?? 0;
+        $this->estado = $args['estado'] ?? 0;
         $this->reset_token = $args['reset_token'] ?? null;
         $this->datos = $args['datos'] ?? '';
         $this->cargo = $args['cargo'] ?? '';
         $this->programa_id = $args['programa_id'] ?? null;
+        $this->autenticado = $args['autenticado'] ?? false;
     }
+
+    public function getSessionKey($type){
+        return "login_{$type}";
+    }
+
     public function validar()
     {
         if (!$this->email) {
@@ -39,6 +51,15 @@ class Login extends ActiveRecord
         if (!$this->password) {
             self::$errores[] = "El Password del usuario es obligatorio";
         }
+        if (strlen($this->password) < 6) {
+            self::$errores[] = "El Password debe tener al menos 6 caracteres";
+        }
+        //Si el número de intentos es 3, entonces el usuario no podrá ingresar
+        // if ($this->intentos = 3) {
+        //     self::$errores[] = "Ha superado el número de intentos permitidos, por favor contacte con el administrador del sistema porfis";
+        //     //Bloqueando al usuario
+        //     $this->bloquearUsuario();
+        // }
         return self::$errores;
     }
     public function validarErroresCambioPswd()
@@ -79,40 +100,39 @@ class Login extends ActiveRecord
     }
     public function comprobarPassword($resultado)
     {
-
-        // $usuario = $resultado->fetch_object();
+        //Le asignamos el estado de autenticado en caso el password sea correcto
         $this->autenticado = password_verify($this->password, $resultado->password);
+        //Creamos una nueva propiedad en el objeto Login -> 'autenticado'
         if (!$this->autenticado) {
             self::$errores[] = 'El Password es Incorrecto';
             return;
         }
     }
     public function autenticar()
-{
-    // Iniciar sesión si no está activa
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    {
+        // Iniciar sesión si no está activa
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        // Regenerar ID de sesión por seguridad
+        session_regenerate_id(true);
+
+        // Establecer datos de sesión
+        $_SESSION = [
+            'id' => $this->id,
+            'cargo_id' => $this->cargo_id,
+            'email' => $this->email,
+            'datos' => $this->datos,
+            'cargo' => $this->cargo,
+            'login' => true
+        ];
+        // Datos específicos para coordinadores
+        if ($this->cargo_id == 3) {
+            $_SESSION['poa_id'] = $this->poa_id ?? null;
+            $_SESSION['programa_id'] = $this->programa_id ?? null;
+        }
     }
-
-    // Regenerar ID de sesión por seguridad
-    session_regenerate_id(true);
-
-    // Establecer datos de sesión
-    $_SESSION = [
-        'id' => $this->id,
-        'cargo_id' => $this->cargo_id,
-        'email' => $this->email,
-        'datos' => $this->datos,
-        'cargo' => $this->cargo,
-        'login' => true
-    ];
-
-    // Datos específicos para coordinadores
-    if ($this->cargo_id == 3) {
-        $_SESSION['poa_id'] = $this->poa_id ?? null;
-        $_SESSION['programa_id'] = $this->programa_id ?? null;
-    }
-}
     //Funciones para cambiar el password mediante envío de email
 
     public function buscarporEmail($email)
@@ -181,4 +201,50 @@ class Login extends ActiveRecord
         $resultado = self::ejecutarSql($query);
         return $resultado;
     }
+
+    //Funciones para cambiar estados de los usuarios por intentos fallidos en el login
+    public function restablecerIntentos()
+    {
+        $query = "UPDATE usuario SET intentos = 0 WHERE id = " . $this->id;
+        $resultado = self::ejecutarSql($query);
+        return $resultado;
+    }
+
+    public function bloquearUsuario()
+    {
+        //Verificamos si el usuario existe
+        $usu = $this->existeUsuario();
+        //Si el usuario existe, entonces se puede bloquear
+        if ($usu) {
+            //El estado 1 significa que el usuario está bloqueado
+            $query = "UPDATE usuario SET estado = 1 WHERE email = '" . $this->email . "'";
+            $resultado = self::ejecutarSql($query);
+            return $resultado;
+        }
+        //Si el usuario no existe, entonces no se puede bloquear
+        self::$errores[] = 'El usuario no existe';
+        return;
+    }
+    public function aumentarIntentos()
+    {
+        //Actualizamos el contador de intentos en la base de datos
+        $query = "UPDATE usuario SET intentos = " . $this->intentos . " WHERE email = '" . $this->email . "'";
+        $resultado = self::ejecutarSql($query);
+        return $resultado;
+    }
+    public function actualizarIntentos()
+    {
+        //Consultamos a la base de datos el número de intentos del usuario según su email si exisitiera
+        $query = "SELECT intentos FROM usuario WHERE email = '" . $this->email . "'";
+        $resultado = self::$db->query($query);
+        if ($resultado->num_rows) {
+            $usuario = $resultado->fetch_object();
+            //Si el usuario existe, entonces se puede actualizar el número de intentos
+            $this->intentos = intval($usuario->intentos) + 1;
+            return $this->aumentarIntentos();
+        }
+    }
+
+
+    //Funciones para la validación de intentos
 }

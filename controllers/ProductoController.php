@@ -49,7 +49,17 @@ class ProductoController
             $producto->validar();
             $errores = Producto::getErrores();
             if (empty($errores)) {
-                $producto->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Producto::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $producto->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
+
                 header("Location: /producto/admin?resultado_id=" . $resultadoid);
                 exit();
             } else {
@@ -79,7 +89,16 @@ class ProductoController
             $producto->sincronizar($argsproducto);
             $errores = $producto->validar();
             if (empty($errores)) {
-                $producto->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Producto::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $producto->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /producto/admin?resultado_id=" . $resultado->id . "&resultado=2");
                 exit();
             }
@@ -95,7 +114,16 @@ class ProductoController
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $id = validarORedireccionarPost("resultado/admin");
             $producto = Producto::find($id);
-            $producto->eliminarsinRedireccion();
+            //Insertando la acción de audi para el usuario actual
+            //Enviamos el codigo de usuario a la base de datos
+            $vali = Producto::setUsuarioActual();
+            //Si es true...
+            //Guardando en la base de datos
+            if ($vali) {
+                $resultado = $producto->eliminarsinRedireccion();
+            } else {
+                $errores[] = "Error al asignar el usuario actual.";
+            }
             $resultado = 3;
             header("Location: /producto/admin?resultado_id=" . $id['resultado_id'] . "&resultado=" . $resultado);
             exit();

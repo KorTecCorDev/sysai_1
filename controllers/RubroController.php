@@ -54,7 +54,16 @@ class RubroController
             $rubro->validar();
             $errores = Rubro::getErrores();
             if (empty($errores)) {
-                $rubro->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Rubro::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $rubro->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /rubro/admin?actividad_id=" . $idactividad . "&resultado=1");
                 exit();
             } else {
@@ -86,7 +95,16 @@ class RubroController
                 $rubro->sincronizar($argsrubro);
                 $errores = $rubro->validar();
                 if (empty($errores)) {
-                    $rubro->guardarsinRedireccion();
+                    //Insertando la acción de audi para el usuario actual
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = Rubro::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        $resultado = $rubro->guardarsinRedireccion();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     header("Location: /rubro/admin?actividad_id=" . $actividad->id . "&resultado=2");
                     exit();
                 } else {
@@ -108,7 +126,16 @@ class RubroController
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $id = validarORedireccionarPost("/resultado/admin");
             $rubro = Rubro::find($id);
-            $rubro->eliminarsinRedireccion();
+            //Insertando la acción de audi para el usuario actual
+            //Enviamos el codigo de usuario a la base de datos
+            $vali = Rubro::setUsuarioActual();
+            //Si es true...
+            //Guardando en la base de datos
+            if($vali){
+                $resultado = $rubro->eliminarsinRedireccion();
+            } else {
+                $errores[] = "Error al asignar el usuario actual.";
+            }
             $resultado = 3;
             header("Location: /rubro/admin?actividad_id=" . $id . "&resultado=" . $resultado);
             exit();

@@ -33,7 +33,7 @@ class Poa extends ActiveRecord
     public function validar()
     {
         if (!$this->programa_id) {
-            self::$errores[] = 'Debe de seleccionar un programa válido';
+            self::$errores[] = 'Debe de seleccionar un programa válido poita';
         }
         //Quitamos la validación de usurio_id, puesto que lo insertaremos en la misma VISTA
         // if (!$this->usuario_id) {

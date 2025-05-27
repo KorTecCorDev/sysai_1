@@ -51,6 +51,10 @@ class Rubro extends ActiveRecord
         if (!$this->monto) {
             self::$errores[] = 'Debes ingresar un monto válido para este rubro';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro rubro';
+        }
         return self::$errores;
     }
     public function agregarIdtoObjeto(int $id, string $key): object

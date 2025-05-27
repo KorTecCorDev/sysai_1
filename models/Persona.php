@@ -45,6 +45,14 @@ class Persona extends ActiveRecord
             self::$errores[] = 'Debes añadir un número de contacto válido';
         }
 
+        //Validaciones de duplicados (nro_documento, telefono)
+        if ($this->existeDato($this, ['nro_documento'])) {
+            self::$errores[] = 'El número de documento ya existe';
+        }
+        if ($this->existeDato($this, ['telefono'])) {
+            self::$errores[] = 'El número de contacto ya existe';
+        }
+
         return self::$errores;
     }
 

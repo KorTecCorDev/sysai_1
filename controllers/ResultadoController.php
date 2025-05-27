@@ -48,7 +48,16 @@ class ResultadoController
             $res->validar();
             $errores = Resultado::getErrores();
             if (empty($errores)) {
-                $res->guardar();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Resultado::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $res->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             } else {
                 $errores = Resultado::getErrores();
             }
@@ -78,7 +87,16 @@ class ResultadoController
             $res->sincronizar($argsresultado);
             $errores = $res->validar();
             if (empty($errores)) {
-                $resultado = $res->guardar();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Resultado::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $res->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /resultado/admin?programa_id=" . $programaid . "&resultado=2");
                 exit();
             }
@@ -103,7 +121,16 @@ class ResultadoController
                 if (validarTipoContenido($tipo)) {
                     $res = Resultado::find($id);
                     if ($res) {
-                        $res->eliminar();
+                        //Insertando la acción de audi para el usuario actual
+                        //Enviamos el codigo de usuario a la base de datos
+                        $vali = Resultado::setUsuarioActual();
+                        //Si es true...
+                        //Guardando en la base de datos
+                        if ($vali) {
+                            $resultado = $res->eliminar();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
                         header("Location: /resultado/admin?resultado=3");
                         exit();
                     }

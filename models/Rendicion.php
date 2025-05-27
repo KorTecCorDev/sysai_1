@@ -55,6 +55,11 @@ class Rendicion extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes de ingresar un código válido';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro comprobante';
+        }
+
         if (!$this->serie) {
             self::$errores[] = 'Debes de ingresar una serie de comprobante válida';
         }

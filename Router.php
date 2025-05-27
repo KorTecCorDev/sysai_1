@@ -30,6 +30,7 @@ class Router
     $urlActual = $urlActual === '/' ? $urlActual : rtrim($urlActual, '/');
 
     // Rutas protegidas
+    //Falta las rutas de todas la vistas, a excepción de login todas deben estar protegidas.
     $rutas_protegidas = ['/programa/admin', '/programa/crear', '/programa/actualizar'];
     
     // Verificar rutas protegidas
@@ -53,8 +54,9 @@ class Router
     if ($fn) {
         call_user_func($fn, $this);
     } else {
-        http_response_code(404);
-        echo '<p class="alert alert-danger">Error 404 - Página no encontrada</p>';
+        //Redireccionar a error 404
+        header('Location: /error');
+        exit;
     }
 }
 

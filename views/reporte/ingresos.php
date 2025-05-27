@@ -111,7 +111,7 @@ foreach ($encabezados as $encabezado) {
 foreach (range($startColumn, $endColumn) as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
-$reporterendi = ReporteIngresosVista::insertarDatosDesdeArray($sheet, 3, $nuevo_array);
+$reporterendi = ReporteIngresosVista::insertarDatosDesdeArray($sheet, $nuevo_array, 3);
 
 // Guardando el archivo Excel
 $writer = new Xlsx($spreadsheet);

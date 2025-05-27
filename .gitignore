@@ -1,5 +1,6 @@
 vendor/
 node_modules/
+includes/config/database.php
 .env
 *.log
 *.cache

@@ -116,7 +116,7 @@ class IngresoEgresoController
 
         //En caso se hay enviado el formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             //Comenzamos con oie_comprobante
             //SECCIÓN OIE COMPROBANTE
             //Instanciando el nuevo comprobante
@@ -124,11 +124,18 @@ class IngresoEgresoController
             //Verificamos errores
             $errores = $oiecomprobante->validar();
             if (empty($errores)) {
-                //Si no hay errores, guardamos el comprobante
-                $resultado = $oiecomprobante->guardarsinRedireccion();
+                //Insertando la accion de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = OieComprobante::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                    //Si no hay errores, guardamos el comprobante
+                    $resultado = $oiecomprobante->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
             // FIN SECCIÓN OIE COMPROBANTE
-
 
 
             //SECCIÓN OIE
@@ -142,8 +149,16 @@ class IngresoEgresoController
 
             $errores = $oingresosegresos->validar();
             if (empty($errores)) {
-                //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
-                $resultado = $oingresosegresos->guardarsinRedireccion();
+                //Insertando la accion de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = OieComprobante::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                    //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
+                    $resultado = $oingresosegresos->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 //Encontramos el id del último OIE ingresado (recientemente)
                 $oieid = OtrosIngresosEgresos::findlast();
                 //Redireccionamos a la siguiente vista
@@ -203,12 +218,28 @@ class IngresoEgresoController
             $errores = $oie_comprobante->validar();
             $errores = $oie->validar();
             if (empty($errores)) {
-                //Si no hay errores, guardamos el comprobante y luego el oie
-                $resultado = $oie_comprobante->guardarsinRedireccion();
+                //Insertando la accion de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = OieComprobante::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                    //Si no hay errores, guardamos el comprobante y luego el oie
+                    $resultado = $oie_comprobante->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
             if ($resultado) {
-                //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
-                $resultado = $oie->guardarsinRedireccion();
+                //Insertando la accion de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = OieComprobante::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                    //Guardamos el registro en la tabla oie, pero el ff_id no tiene valor, haremos un UPDATE en la siguiente vista
+                    $resultado = $oie->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 //Encontramos el id del último OIE ingresado (recientemente)
                 $oieid = $oie->id;
                 //Redireccionamos a la siguiente vista
@@ -253,8 +284,14 @@ class IngresoEgresoController
             $errores = $oie->validarconFf();
 
             if (empty($errores)) {
-                //Guardamos el registro en la tabla oie
-                $resultado = $oie->guardarsinRedireccion();
+                //Insertando la accion de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = OieComprobante::setUsuarioActual();
+                //Si es true...
+                if ($vali) {
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 //Redireccionamos a la vista de administración
                 if ($resultado) {
                     header('Location: /ingreso_egreso/admin?resultado=2');
@@ -285,7 +322,15 @@ class IngresoEgresoController
                 if (validarTipoContenido($tipo)) {
                     $oie = OtrosIngresosEgresos::find($oieid);
                     if ($oie) {
-                        $oie->eliminar();
+                        //Insertando la accion de audi para el usuario actual
+                        //Enviamos el codigo de usuario a la base de datos
+                        $vali = OieComprobante::setUsuarioActual();
+                        //Si es true...
+                        if ($vali) {
+                            $oie->eliminar();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
                         header("Location: /ingreso_egreso/admin");
                         exit();
                     }

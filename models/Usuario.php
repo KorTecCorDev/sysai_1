@@ -43,6 +43,11 @@ class Usuario extends ActiveRecord
         if (!$this->cargo_id) {
             self::$errores[] = 'Debes de seleccionar un cargo válido';
         }
+        //Verificar si la descripción ya existe
+        //Usamos la propiedad codigo porque así está definido en el FRONT
+        if (self::existeDato($this,['descripcion'])) {
+            self::$errores[] = 'El código de usuario ya existe';
+        }
         return self::$errores;
     }
 

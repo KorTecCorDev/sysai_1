@@ -34,6 +34,10 @@ class Producto extends ActiveRecord
         if (!$this->codigo) {
             self::$errores[] = 'Debes ingresar un código válido';
         }
+        //Validamos que el codigo sea único
+        if ($this->existeDato($this, ['codigo'])) {
+            self::$errores[] = 'El código ingresado ya existe para otro producto';
+        }
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido para el resultado';
         }

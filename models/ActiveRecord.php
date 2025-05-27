@@ -4,6 +4,7 @@ namespace Model;
 
 class ActiveRecord
 {
+
     //Variable estática para conectar a la BD
     protected static $db;
     protected static $columnasDB = [];
@@ -274,7 +275,77 @@ class ActiveRecord
         static::$errores = [];
         return static::$errores;
     }
-    //Lista todas las propiedades
+
+    /**
+     * Verifica si existen registros en la base de datos con los mismos valores para las propiedades especificadas.
+     *
+     * Este método puede ser utilizado tanto para la creación como para la actualización de registros:
+     * - En modo actualización (cuando $obj->id está definido), verifica si existe otro registro con los mismos valores
+     *   en las propiedades dadas, pero con un id diferente.
+     * - En modo creación (cuando $obj->id no está definido), verifica si ya existe algún registro con los mismos valores
+     *   en las propiedades dadas.
+     *
+     * @param object $obj Objeto que contiene los valores de las propiedades a verificar.
+     * @param array $propertys Lista de nombres de propiedades a comparar.
+     * @return bool Retorna true si existe un registro con los mismos valores en las propiedades especificadas,
+     *              false en caso contrario o si alguna propiedad no existe en el objeto.
+     */
+    public static function existeDato(object $obj, array $propertys)
+    {
+        // Validamos que todos los propertys existan
+        foreach ($propertys as $property) {
+            if (!property_exists($obj, $property)) {
+                return false; // Si alguna propiedad no existe, retornamos false
+            }
+        }
+
+        $conditions = [];
+        foreach ($propertys as $property) {
+            $conditions[] = "$property = '" . self::$db->escape_string($obj->$property) . "'";
+        }
+        $where = implode(' AND ', $conditions);
+
+        if (isset($obj->id) && $obj->id != null) {
+            // Se está actualizando
+            // Solo permitir si los atributos iguales pertenecen al mismo id
+            $query = "SELECT id FROM " . static::$tabla . " WHERE $where";
+            $resultado = self::$db->query($query);
+            if ($resultado) {
+                while ($row = $resultado->fetch_assoc()) {
+                    if ((int)$row['id'] !== (int)$obj->id) {
+                        // Existe otro registro con los mismos atributos
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } else {
+            // Se está creando
+            $query = "SELECT COUNT(*) as total FROM " . static::$tabla . " WHERE $where";
+            $resultado = self::$db->query($query);
+            if ($resultado) {
+                $row = $resultado->fetch_assoc();
+                return ($row['total'] >= 1);
+            }
+            return false;
+        }
+    }
+
+
+    //Función que permite verificar si existe la descripción en la base de datos
+    // Tablas: usuario, 
+    public static function existeDescripcion($descripcion)
+    {
+        $query = "SELECT COUNT(*) as total FROM " . static::$tabla . " WHERE descripcion = '" . self::$db->escape_string($descripcion) . "'";
+        $resultado = self::$db->query($query);
+        if ($resultado) {
+            $row = $resultado->fetch_assoc();
+            return ($row['total'] >= 1);
+        }
+        return false;
+    }
+
+    //Lista todos los registros de la tabla
     public static function all()
     {
         $query = "SELECT * FROM " . static::$tabla . ";";
@@ -316,6 +387,13 @@ class ActiveRecord
         $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . "=" . $valor;
         $resultado = self::consultarSql($query);
         return $resultado;
+    }
+    //El único registro de una tabla, retorna el objeto
+    public static function findxatributouno(string $atributo, $valor)
+    {
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . "=" . $valor;
+        $resultado = self::consultarSql($query);
+        return (array_shift($resultado));
     }
     public static function findlast()
     {
@@ -644,7 +722,7 @@ class ActiveRecord
         // Retornar el número de la última fila ingresada
         return $row;
     }
-    public static function insertarDatosDesdeArray($sheet, int $filaini = 3, array $data): int
+    public static function insertarDatosDesdeArray($sheet, array $data, int $filaini = 3): int
     {
         $columnas = [
             'FECHA',
@@ -725,7 +803,7 @@ class ActiveRecord
         return $row;
     }
 
-    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, int $filaini = 3, array $data): int
+    public static function insertarDatosDesdeArrayEgresosRendiciones($sheet, array $data, int $filaini = 3): int //SE modifica
     {
         $columnas = [
             'FECHA',
@@ -844,5 +922,22 @@ class ActiveRecord
             }
         }
         return $atributos;
+    }
+
+
+    //Función que permite enviar el código del usuario a la base de datos
+    public static function setUsuarioActual(): bool
+    {
+        if (isset($_SESSION['id'])) {
+            $usuarioId = $_SESSION['id'];
+            $usuarioObj = Usuario::find($usuarioId);
+            if ($usuarioObj && property_exists($usuarioObj, 'descripcion')) {
+                $usuario = $usuarioObj->descripcion;
+                $query = "SET @usuario_actual = '" . self::$db->escape_string($usuario) . "'";
+                self::$db->query($query);
+                return true;
+            }
+        }
+        return false;
     }
 }

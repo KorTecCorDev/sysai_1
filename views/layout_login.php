@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Título -->
     <title>SysAI</title>
-    <!-- FavIcon -->
+    <!-- Icon -->
     <link rel="icon" type="image/x-icon" href="/build/img/arco_iris_logo_pestania.svg">
     <!-- Bootstrap -->
     <link href="/build/css/bootstrap.min.css" rel="stylesheet">

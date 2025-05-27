@@ -48,7 +48,16 @@ class ActividadController
             $actividad->validar();
             $errores = Actividad::getErrores();
             if (empty($errores)) {
-                $actividad->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Actividad::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $actividad->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /actividad/admin?producto_id=" . $idproducto . "&resultado=1");
                 exit();
             } else {
@@ -77,7 +86,16 @@ class ActividadController
             $actividad->sincronizar($argsactividad);
             $errores = $actividad->validar();
             if (empty($errores)) {
-                $actividad->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Actividad::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $actividad->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 header("Location: /actividad/admin?producto_id=" . $producto->id . "&resultado=2");
                 exit();
             }
@@ -100,7 +118,16 @@ class ActividadController
                 exit();
             } else {
                 $actividad = Actividad::find($id[1]);
-                $actividad->eliminarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Actividad::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $actividad->eliminarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
                 $resultado = 3;
                 header("Location: /actividad/admin?producto_id=" . $id[0] . "&resultado=" . $resultado);
                 exit();

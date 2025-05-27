@@ -47,8 +47,16 @@ class ProgramaController
             $errores = $programa->validar();
             //Si no hubiera errores...
             if (empty($errores)) {
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Programa::setUsuarioActual();
+                //Si es true...
                 //Guardando en la base de datos
-                $resultado = $programa->guardar();
+                if ($vali) {
+                    $resultado = $programa->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
         $router->render('programa/crear', [
@@ -84,8 +92,16 @@ class ProgramaController
             $errores = $programa->validar();
             //Si no existieran errores...
             if (empty($errores)) {
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Programa::setUsuarioActual();
+                //Si es true...
                 //Guardando en la base de datos
-                $resultado = $programa->guardar();
+                if ($vali) {
+                    $resultado = $programa->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
         $router->render('programa/actualizar', [
@@ -109,7 +125,17 @@ class ProgramaController
                 if (validarTipoContenido($tipo)) {
                     $programa = Programa::find($idprograma);
                     if ($programa) {
-                        $programa->eliminar();
+                        //Insertando la acción de audi para el usuario actual
+                        //Enviamos el codigo de usuario a la base de datos
+                        $vali = Programa::setUsuarioActual();
+                        //Si es true...
+                        //Guardando en la base de datos
+                        if ($vali) {
+                            $resultado = $programa->eliminar();
+                        } else {
+                            $errores[] = "Error al asignar el usuario actual.";
+                        }
+
                         header("Location: /programa/admin?resultado=3");
                         exit();
                     }
