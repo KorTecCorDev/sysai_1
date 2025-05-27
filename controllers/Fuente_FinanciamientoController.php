@@ -65,7 +65,15 @@ class Fuente_FinanciamientoController
             $errores = $fuente_financiamiento->validar();
 
             if (empty($errores)) {
-                $fuente_financiamiento->guardar();
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = FuenteFinanciamiento::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $fuente_financiamiento->guardar();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
             }
         }
         $router->render('fuente_financiamiento/actualizar', [
@@ -84,7 +92,15 @@ class Fuente_FinanciamientoController
                 $tipo = $_POST['tipo'];
                 if (validarTipoContenido($tipo)) {
                     $fuente_financiamiento = FuenteFinanciamiento::find($id);
-                    $fuente_financiamiento->eliminar();
+                    //Enviamos el codigo de usuario a la base de datos
+                    $vali = FuenteFinanciamiento::setUsuarioActual();
+                    //Si es true...
+                    //Guardando en la base de datos
+                    if ($vali) {
+                        $resultado = $fuente_financiamiento->eliminar();
+                    } else {
+                        $errores[] = "Error al asignar el usuario actual.";
+                    }
                     header("Location: /fuente_financiamiento/admin?resultado=3");
                     exit();
                 }

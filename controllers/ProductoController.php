@@ -49,7 +49,17 @@ class ProductoController
             $producto->validar();
             $errores = Producto::getErrores();
             if (empty($errores)) {
-                $producto->guardarsinRedireccion();
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Programa::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $producto->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
+                
                 header("Location: /producto/admin?resultado_id=" . $resultadoid);
                 exit();
             } else {
