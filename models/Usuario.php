@@ -37,6 +37,7 @@ class Usuario extends ActiveRecord
         if (!$this->descripcion) {
             self::$errores[] = 'Debes añadir un código de usuario válido';
         }
+        
         if (!$this->email) {
             self::$errores[] = 'Debes añadir el correo válido del usuario';
         }
@@ -47,6 +48,11 @@ class Usuario extends ActiveRecord
         //Usamos la propiedad codigo porque así está definido en el FRONT
         if (self::existeDato($this,['descripcion'])) {
             self::$errores[] = 'El código de usuario ya existe';
+        }
+        //Verificar si el email ya existe para otro usuario
+        //Usamos la propiedad email porque así está definido en el FRONT
+        if (self::existeDato($this,['email'])) {
+            self::$errores[] = 'El correo ya está registrado para otro usuario';
         }
         return self::$errores;
     }

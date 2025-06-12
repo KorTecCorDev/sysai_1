@@ -1,4 +1,3 @@
-
 <?php
 
 use Controllers\PoaController;
@@ -123,4 +122,5 @@ $router->post('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class,
 //Ruta del guardado del POA
 $router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
 //Ruta de modificación de estados en el admin del POA
-//RUTA PROHIBIDA PARA EL COORDINADOR
+
+?>

@@ -21,25 +21,29 @@
             </div>
         <?php } ?>
     <?php } ?>
-    <form method="POST">
+    <form method="POST" class="needs-validation" novalidate>
         <fieldset>
-            <!-- SELECT que muestra los objetos del array $ff_programas (Fuentes de Financiamiento) -->
-            <label for="ff_programa_id">Fuentes de financiamiento</label>
-            <select class="form-select w-auto" id="combo_ff_programa" name="ff_id">
-                <option value="" disabled selected>--Seleccione--</option>
-                <?php foreach ($ff_programas as $ff_programa) { ?>
-                    <option value="<?php echo $ff_programa->fuente_financiamiento_id; ?>" <?php echo $ff_programa->fuente_financiamiento_id == $oie->ff_id ? 'selected' : '' ?>><?php echo $ff_programa->fuente_financiamiento_nombre; ?></option>
-                <?php } ?>
-            </select>
+            <legend>Datos Generales</legend>
+            <div class="mb-3">
+                <label for="ff_programa_id" class="form-label">Fuentes de financiamiento</label>
+                <div style="width: auto; min-width: 200px;">
+                    <select class="form-select" id="combo_ff_programa" name="ff_id" required style="width: auto; min-width: 200px; max-width: 100%;">
+                        <option value="" disabled selected>--Seleccione--</option>
+                        <?php foreach ($ff_programas as $ff_programa) { ?>
+                            <option value="<?php echo $ff_programa->fuente_financiamiento_id; ?>" <?php echo $ff_programa->fuente_financiamiento_id == $oie->ff_id ? 'selected' : '' ?>><?php echo $ff_programa->fuente_financiamiento_nombre; ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="form-text">Seleccione la fuente de financiamiento correspondiente</div>
+            </div>
         </fieldset>
-        <div class="espacio-btn-crear">
-            <div>
-                <a href="/ingreso_egreso/actualizar?id=<?php echo s($oie->id); ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
-            </div>
-            <div class="btn-agregar-sbmt">
-                <i class="bi bi-plus-circle"></i>
-                <input type="submit" value="Agregar" class="btn">
-            </div>
+        <div class="d-flex gap-2 mt-3">
+            <a href="/ingreso_egreso/actualizar?id=<?php echo s($oie->id); ?>" class="btn btn-primary d-flex align-items-center">
+                <i class="bi bi-arrow-bar-left me-2"></i>Volver
+            </a>
+            <button type="submit" class="btn btn-success d-flex align-items-center">
+                <i class="bi bi-plus-circle me-2"></i>Agregar
+            </button>
         </div>
     </form>
 </main>

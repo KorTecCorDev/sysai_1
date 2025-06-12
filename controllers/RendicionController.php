@@ -150,7 +150,7 @@ class RendicionController
             //Si es true...
             //Guardando en la base de datos
             if ($vali) {
-                $rendicion->guardarsinRedireccion();
+                $rendicion->eliminarsinRedireccion();
             } else {
                 $errores[] = "Error al asignar el usuario actual.";
             }

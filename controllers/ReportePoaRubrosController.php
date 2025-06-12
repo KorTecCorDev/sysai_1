@@ -9,8 +9,6 @@ use Model\TipoCambioEuro;
 use Model\TipoCambioDolar;
 use Model\ReportePoaRubros;
 use Model\ReporteEgresosVista;
-
-
 use Model\ReporteFuentesVista;
 use Model\FuenteFinanciamiento;
 use Model\ReporteIngresosVista;
@@ -95,12 +93,24 @@ class ReportePoaRubrosController
 
     public static function indexrubro(Router $router)
     {
+        //Esta función es para el reporte de rubros con rendiciones exclusivo para los usuarios administrador y contador
+        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        $usuarioid = $_SESSION['id'];
+        $usuario = Usuario::find($usuarioid);
+        $usrcod = $usuario->descripcion;
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
         // Obtenemos todos los registros de ReportePoaRubros
         $resbienes = ReportePoaRubros::all();
 
+        //Tomamos todas las fuentes de financiamiento disponibles
+        $fuentes = ReporteFuentesProgramaVista::all();
+
+        //Tomamos todas las rendiciones para el reporte
+        $rendiciones = RendicionFuentesVista::all();
+        //Tomamos la cantidad de fuentes de financiamiento por rendición
+        $ffnro   = RendicionFuentesCantidadVista::all();
         // Obtenemos los demás datos requeridos
         $sumas = ReportePoaRubrosSumas::all();
         $tcdolar = TipoCambioDolar::findlast();
@@ -109,103 +119,98 @@ class ReportePoaRubrosController
         $router->render('reporte/poarubros', [
             'tcdolar'    => $tcdolar,
             'tceuro'     => $tceuro,
+            'fuentes'    => $fuentes,
             'programas'  => $programas,
             'resbienes'  => $resbienes,
-            'sumas'      => $sumas
+            'sumas'      => $sumas,
+            'rendiciones' => $rendiciones,
+            'usrcod'  => $usrcod,
+            'ffnro'      => $ffnro
         ]);
     }
 
     public static function indexreporterendiciones(Router $router)
     {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Captamos las fechas de inicio y fin
+            $fechainicio = $_POST['fechainicio'];
+            $fechafin = $_POST['fechafin'];
+            // Redirige con fechas como parámetros GET
+            header("Location: /reporte/rendicionesdesc?fechainicio=" . urlencode($fechainicio) . "&fechafin=" . urlencode($fechafin));
+            exit;
+        }
+
+        $router->render('reporte/rendiciones', []);
+    }
+    public static function indexreporterendicionesdescargar(Router $router)
+    {
+        // Validación simple de parámetros
+        if (!isset($_GET['fechainicio']) || !isset($_GET['fechafin'])) {
+            header("Location: /reporte/rendiciones");
+            exit;
+        }
+        // Captamos las fechas de inicio y fin
+        $fechainicio = $_GET['fechainicio'];
+        $fechafin = $_GET['fechafin'];
         // Obtenemos los datos del usuario para colocar los nombres de los reportes
         $usuarioid = $_SESSION['id'];
         $usuario = Usuario::find($usuarioid);
         $usrcod = $usuario->descripcion;
         $fuentes = FuenteFinanciamiento::all();
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Captamos las fechas de inicio y fin
-            $fechainicio = $_POST['fechainicio'];
-            $fechafin = $_POST['fechafin'];
-            // Filtramos los resultados de acuerdo a las fechas
-            $resreporterendiciones = ReporteRendicionesVista::findporRango('rendicion_fecha', $fechainicio, $fechafin);
-            $resreporteegresos = ReporteEgresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
-            //En este caso no existe $formulario
-            $formulario = '';
-        } else {
-            $resreporterendiciones = ReporteRendicionesVista::all();
-            $resreporteegresos = ReporteEgresosVista::all();
-            $formulario = '<form method="POST" action="" class="p-4 bg-light rounded shadow-sm" style="max-width: 350px;">
-                            <h5 class="fw-bold mb-3">Filtrar Reportes</h5>
-
-                            <div class="mb-3">
-                                <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio</label>
-                                <input type="date" name="fechainicio" id="fecha_inicio" class="form-control" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin</label>
-                                <input type="date" name="fechafin" id="fecha_fin" class="form-control" required>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-file-earmark-text"></i> Generar Reporte
-                            </button>
-                            </form>';
-        }
-
-        $router->render('reporte/rendiciones', [
+        // Filtramos los resultados de acuerdo a las fechas
+        $resreporterendiciones = ReporteRendicionesVista::findporRango('rendicion_fecha', $fechainicio, $fechafin);
+        $resreporteegresos = ReporteEgresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
+        $router->render('reporte/rendicionesdesc', [
             'resreporterendiciones' => $resreporterendiciones,
             'resreporteegresos' => $resreporteegresos,
             'fuentes' => $fuentes,
-            'usrcod' => $usrcod,
-            'formulario' => $formulario
+            'usrcod' => $usrcod
         ]);
     }
+
     public static function indexreporteingresos(Router $router)
     {
-        // Obtenemos los datos del usuario para colocar los nombres de los reportes
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fechainicio = $_POST['fechainicio'];
+            $fechafin = $_POST['fechafin'];
+
+            // Redirige con fechas como parámetros GET
+            header("Location: /reporte/ingresosdesc?fechainicio=" . urlencode($fechainicio) . "&fechafin=" . urlencode($fechafin));
+            exit;
+        }
+
+        // Renderiza el formulario si no hay POST
+        $router->render('reporte/ingresos', []);
+    }
+
+    public static function indexreporteingresosdescargar(Router $router)
+    {
+        // Validación simple de parámetros
+        if (!isset($_GET['fechainicio']) || !isset($_GET['fechafin'])) {
+            header("Location: /reporte/ingresos");
+            exit;
+        }
+
+        $fechainicio = $_GET['fechainicio'];
+        $fechafin = $_GET['fechafin'];
+
+        // Datos del usuario para nombrar el archivo
         $usuarioid = $_SESSION['id'];
         $usuario = Usuario::find($usuarioid);
         $usrcod = $usuario->descripcion;
-        // En caso haya un POST (Envío de fechas por parte del usuario)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Captamos las fechas de inicio y fin
-            $fechainicio = $_POST['fechainicio'];
-            $fechafin = $_POST['fechafin'];
-            //En este caso no existe $formulario
-            $formulario = '';
-            // Filtramos los resultados de acuerdo a las fechas
-            $resreportefuentes = ReporteFuentesVista::findporRango('fuente_fecha', $fechainicio, $fechafin);
-            $resreporteingresos = ReporteIngresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
-        } else {
-            $resreportefuentes = ReporteFuentesVista::all();
-            $resreporteingresos = ReporteIngresosVista::all();
-            $formulario = '<form method="POST" action="" class="p-4 bg-light rounded shadow-sm" style="max-width: 350px;">
-                            <h5 class="fw-bold mb-3">Filtrar Reportes</h5>
 
-                            <div class="mb-3">
-                                <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio</label>
-                                <input type="date" name="fechainicio" id="fecha_inicio" class="form-control" required>
-                            </div>
+        // Obtener los datos del reporte
+        $resreportefuentes = ReporteFuentesVista::findporRango('fuente_fecha', $fechainicio, $fechafin);
+        $resreporteingresos = ReporteIngresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
 
-                            <div class="mb-3">
-                                <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin</label>
-                                <input type="date" name="fechafin" id="fecha_fin" class="form-control" required>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-file-earmark-text"></i> Generar Reporte
-                            </button>
-                            </form>';
-        }
-        $router->render('reporte/ingresos', [
+        // Renderizar la vista que genera y guarda el archivo
+        $router->render('reporte/ingresosdesc', [
             'resreportefuentes' => $resreportefuentes,
             'resreporteingresos' => $resreporteingresos,
-            'usrcod' => $usrcod,
-            'formulario' => $formulario
+            'usrcod' => $usrcod
         ]);
     }
+
     public static function indexsaldos(Router $router)
     {
         $resreportefuentes = ReporteFuentesVista::all();
@@ -216,13 +221,34 @@ class ReportePoaRubrosController
 
     public static function indexdescarga(Router $router)
     {
-        //Seleccionamos el tipo de reporte a descargar
-        $reporte = $_GET['rprt'];
-        //Renderizamos el tipo de reporte (descripcion) y el código de usuario
-        $router->render('descargar_reporte', [
-            'rprt' => $reporte
-        ]);
+        if (!isset($_GET['rprt'])) {
+            echo "Nombre del archivo no especificado.";
+            exit;
+        }
+        $filename = $_GET['rprt'];
+        $rootPath = dirname(__DIR__); // /SysAi_1
+        $fullPath = $rootPath . "/views/reporte/storage/reports/" . $filename;
+        if (file_exists($fullPath)) {
+            // Limpia cualquier salida previa
+            if (ob_get_length()) ob_end_clean();
+
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . basename($fullPath) . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($fullPath));
+
+            flush();
+            readfile($fullPath);
+            exit;
+        } else {
+            echo "Archivo no encontrado: $fullPath";
+            exit;
+        }
     }
+
     public static function indexguardarpoa(Router $router)
     {
         //Comenzamos por validar el id recibido mediante GET y verificamos que sea un id que exista

@@ -90,11 +90,11 @@ $cargo = $_SESSION['cargo'] ?? false;
               </ul>
             </li>
 
-            <!-- Rendicion de cuentas -->
+            <!-- Rendiciones -->
             <li class="sidebar-item">
-              <a href="/reporte/poarendicion" class="sidebar-link" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Rendición de cuentas">
+              <a href="/reporte/poarendicion" class="sidebar-link" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Rendiciones">
                 <i class="bi bi-briefcase"></i>
-                <span>Rendición de cuentas</span>
+                <span>Rendiciones</span>
               </a>
             </li>
             <!-- Ingresos-Egresos -->
@@ -183,7 +183,7 @@ $cargo = $_SESSION['cargo'] ?? false;
           </div>
         </aside>
         <div class="container mt-3 ">
-          <!-- Sección del contenido -->
+          <!-- Sección del contenido de la vista-->
           <?php echo $contenido; ?>
         </div>
       </div>

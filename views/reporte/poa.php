@@ -1,4 +1,3 @@
-
 <?php
 
 use Model\ReportePoaRubros;
@@ -211,21 +210,20 @@ foreach ($resbienesAgrupados as $respoas) {
 }
 ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
 
-
-
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+// Guardando el archivo Excel
 $directory = __DIR__ . "/storage/reports/";
 if (!is_dir($directory)) {
   mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
 }
-
-$file = $directory . "reporte_poa_rubros_{$usrcod}.xlsx";
+$filename = "reporte_poa_{$usrcod}.xlsx";
+$file = $directory . $filename;
 $writer = new Xlsx($spreadsheet);
 $writer->save($file);
 
-// Mostrar mensaje de reporte exitoso
-echo "<h1>Reporte creado exitosamente</h1>";
-echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
+// Genera el nombre del archivo
+$filename = "reporte_poa_{$usrcod}.xlsx";
+echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
         <i class='bi bi-file-earmark-excel'></i> Ver POA
       </a>";
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
@@ -252,7 +250,11 @@ echo '
 </div>
 ';
 
+// Si se descarga el reporte, se debe abrir un modal con la pregunta si desea guardar el poa en la base de datos
+// Si se acepta, se debe guardar el poa en la base de datos
+// Si se cancela, se debe regresar la página a la vista anterior
 
+//Modal
 echo '
 <div class="modal fade oculto" id="guardarModal" tabindex="-1" aria-labelledby="guardarModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -276,11 +278,3 @@ echo '
 <form id="guardarForm" method="POST" action="/reporte/guardarpoa?id=' . $poaid . '" style="display: none;">
   <input type="hidden" name="monto" value="' . $montototal . '">
 </form>';
-
-
-// Si se descarga el reporte, se debe abrir un modal con la pregunta si desea guardar el poa en la base de datos
-// Si se acepta, se debe guardar el poa en la base de datos
-// Si se cancela, se debe regresar la página a la vista anterior
-
-//Modal
-?>
