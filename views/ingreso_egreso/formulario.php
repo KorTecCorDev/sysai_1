@@ -1,7 +1,7 @@
 <fieldset>
     <legend>Datos Generales</legend>
     <!-- Tipo de OIE - Ingreso/Egreso -->
-    <div class="mb-3">
+    <div class="mb-3 w-25">
         <label for="combo_oie_tipo_id" class="form-label">Tipo</label>
         <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp">
             <option value="1">Ingreso</option>
@@ -13,7 +13,7 @@
 
 
     <!-- Combo_Programa - poa -->
-    <div class="mb-3">
+    <div class="mb-3 w-50">
         <label for="combo_programa_poa" class="form-label">Programa-POA</label>
         <select class="form-select" id="combo_programa_poa" name="oie[poa_id]" aria-describedby="PoaHelp">
             <option value="0" selected disabled>--Seleccione--</option>
@@ -28,7 +28,7 @@
 
 
     <!-- Codigo -->
-    <div class="mb-3">
+    <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código</label>
         <input type="text" class="form-control" id="codigo" aria-describedby="codigoHelp" name="oie[codigo]" value="<?php echo s($oie->codigo); ?>">
         <div id="codigoHelp" class="form-text">Ingrese el código</div>
@@ -50,7 +50,7 @@
     <!-- Comprobante -->
 
     <!-- Fecha -->
-    <div class="row mb-3">
+    <div class="mb-3 w-auto">
         <div class="col-12 w-25">
             <label for="fecha" class="form-label">Fecha:</label>
             <input type="date" class="form-control" id="oie_comprobante[fecha_original]" name="oie_comprobante[fecha_original]" placeholder="Fecha del comprobante" value="<?php echo s($oie_comprobante->fecha_original); ?>">
@@ -59,7 +59,7 @@
     <!-- Fecha -->
 
     <!-- Tipo de COMPROBANTE OIE - Boleta/Factura/Recibo por Honorarios/DDJJ -->
-    <div class="mb-3">
+    <div class="mb-3 w-50">
         <label for="combo_oie_tipo_id" class="form-label">Tipo</label>
         <select class="form-select" id="combo_oie_tipo_comprobante_id" name="oie_comprobante[oie_tipo_comprobante_id]" aria-describedby="tipoOieHelp">
             <option value="0" selected disabled>--Seleccione--</option>
@@ -72,7 +72,7 @@
     <!-- Tipo de COMPROBANTE OIE - Boleta/Factura/Recibo por Honorarios/DDJJ -->
 
     <!-- RUC -->
-    <div class="row mb-3">
+    <div class="mb-3 w-25">
         <div class="col-12">
             <label for="ruc" class="form-label">RUC:</label>
             <input type="text" class="form-control" id="ruc" name="oie_comprobante[ruc]" placeholder="RUC" value="<?php echo s($oie_comprobante->ruc); ?>">
@@ -90,7 +90,7 @@
     <!-- Razón social -->
 
     <!-- Serie -->
-    <div class="row mb-3">
+    <div class="mb-3 w-25">
         <div class="col-12">
             <label for="serie" class="form-label">Serie:</label>
             <input type="text" class="form-control" id="serie" name="oie_comprobante[serie]" placeholder="Serie" value="<?php echo s($oie_comprobante->serie); ?>">
@@ -99,7 +99,7 @@
     <!-- Serie -->
 
     <!-- Número -->
-    <div class="row mb-3">
+    <div class="mb-3 w-50">
         <div class="col-12 w-25">
             <label for="numero" class="form-label">Número:</label>
             <input type="text" class="form-control" id="numero" name="oie_comprobante[numero]" placeholder="Número de Comprobante" value="<?php echo s($oie_comprobante->numero); ?>">
@@ -120,7 +120,7 @@
 
 
     <!-- Monto -->
-    <div class="mb-3">
+    <div class="mb-3 w-25">
         <label for="monto" class="form-label">Monto</label>
         <input type="money" class="form-control" id="monto" aria-describedby="montoHelp" name="oie_comprobante[monto]" value="<?php echo s($oie_comprobante->monto); ?>">
         <div id="montoHelp" class="form-text">Ingrese el monto</div>
@@ -128,3 +128,4 @@
     <!-- Monto -->
     <!-- Comprobante -->
 </fieldset>
+

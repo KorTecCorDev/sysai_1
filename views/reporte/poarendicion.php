@@ -1,6 +1,5 @@
-
 <?php
-
+//Namespaces
 use Model\ReportePoaRubros;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -36,6 +35,51 @@ $colores = [
     '00FFFF', // Cian
     'FFFF00'  // Amarillo brillante
 ];
+//Creamos la columna disponibles que tendrá para insertar la suma de rendiciones
+$cols = [
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'S',
+    'T',
+    'U',
+    'V',
+    'W',
+    'X',
+    'Y',
+    'Z',
+    'AA',
+    'AB',
+    'AC',
+    'AD',
+    'AE',
+    'AF',
+    'AG',
+    'AH',
+    'AI',
+    'AJ',
+    'AK',
+    'AL',
+    'AM',
+    'AN',
+    'AO',
+    'AP',
+    'AQ',
+    'AR',
+    'AS',
+    'AT',
+    'AU',
+    'AV',
+    'AW',
+    'AX',
+    'AY',
+    'AZ'
+];
 $colorIndex = 0;
 
 // Bucle que recorre todos los programas_id registrados
@@ -43,28 +87,51 @@ $colorIndex = 0;
 //Contador que indica la fila a insertar el nuevo POA, parámetro requerido por la función insertarCeldasReportePOA
 $resbienesAgrupados = [];
 $fuentesPrograma = [];
+//En caso sea coordinador
 if ($_SESSION['cargo_id'] == 3) {
     foreach ($resbienes as $bien) {
         if ($bien->id_programa == $prgmaid) {
+            //Array que contiene a los rubros agrupados por id_programa del coordinador
+            //Vista - reporte_poa_rubros
             $resbienesAgrupados[$prgmaid][] = $bien;
         }
     }
     foreach ($fuentes as $fuente) {
+        //Array que contiene a las fuentes relacionadas al programa por id_programa del coordinador
+        //Vista - reporte_fuentes_programa_rendicion
         if ($fuente->programa_id == $prgmaid) {
             $fuentesPrograma[$prgmaid][] = $fuente;
         }
     }
 } else {
+    //En caso sea un usuario administrador
     foreach ($resbienes as $bien) {
+        //Array que contiene a los rubros agrupados por id_programa de todos los programas (Reporte Poa Rubros Completo)
         $resbienesAgrupados[$bien->id_programa][] = $bien;
     }
     foreach ($fuentes as $fuente) {
+        //Array que contiene a las fuentes relacionadas al programa de todos los programas (Reporte Poa Rubros Completo)
         $fuentesPrograma[$fuente->programa_id][] = $fuente;
     }
 }
-
+//Recorremos el array $resbienesAgrupados
 foreach ($resbienesAgrupados as $respoas) {
-    $ultcont = $newcntrow ?? 5; // Si $newcntrow no está definido, asignar 5 a $ultcont , está definido por default a un valor 5 para queinicie en la fila correcta el reporte.
+    // Capturamos el nombre del programa actual para la cabecera principal
+    $nombreProgramaActual = $respoas[0]->programa;
+    // Determinar la última columna realmente utilizada para este bloque (antes de insertar datos)
+    $fuentesCount = isset($fuentesPrograma[$respoas[0]->id_programa]) ? count($fuentesPrograma[$respoas[0]->id_programa]) : 0;
+    $colFin = $fuentesCount > 0 ? $cols[$fuentesCount * 3 - 1] : 'I'; // Si hay fuentes, hasta la última columna de fuentes, si no, hasta I
+    // Determinar la fila actual donde irá la cabecera (antes del bloque de ese programa)
+    $cabeceraFila = isset($newcntrow) ? $newcntrow + 1 : 2;
+    $sheet->mergeCells("A{$cabeceraFila}:{$colFin}{$cabeceraFila}");
+    $sheet->setCellValue("A{$cabeceraFila}", 'PRESUPUESTO - ' . date('Y') . ' - PROGRAMA ' . strtoupper($nombreProgramaActual));
+    $sheet->getStyle("A{$cabeceraFila}")->getFont()->setBold(true)->setSize(14);
+    $sheet->getStyle("A{$cabeceraFila}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle("A{$cabeceraFila}:{$colFin}{$cabeceraFila}")->getFill()->setFillType(Fill::FILL_SOLID);
+    $sheet->getStyle("A{$cabeceraFila}:{$colFin}{$cabeceraFila}")->getFill()->getStartColor()->setRGB($colores[$colorIndex % count($colores)]);
+    $colorIndex++;
+
+    $ultcont = $newcntrow ?? 5; // Si $newcntrow no está definido, asignar 5 a $ultcont , está definido por default a un valor 5 para que inicie en la fila correcta el reporte.
     if ($ultcont != 5) {
         $ultcont += 4; //Sumamos 4 para que el contenido ingrese luego del encabezado
     }
@@ -72,6 +139,7 @@ foreach ($resbienesAgrupados as $respoas) {
     // Este contador nos permite saber en qué fila ingresamos los registros de cada POA de programa (esto incluye los encabezados)
     $cntrows = 1;
     if (isset($newcntrow)) {
+        //En caso exista la variable $newcntrow que es retornada por la función insertarCeldasDatos
         $cntrows = $newcntrow;
     }
 
@@ -86,6 +154,7 @@ foreach ($resbienesAgrupados as $respoas) {
     $sheet->getRowDimension(3)->setRowHeight(15);
     $sheet->getRowDimension(4)->setRowHeight(52);
 
+    /*Bloque de inserción de la imagen*/
     // Insertar una imagen en la celda A{$cntrows}
     $drawing = new Drawing();
     $drawing->setPath($_SERVER['DOCUMENT_ROOT'] . "/build/img/logo_last.png"); // Ruta de la imagen
@@ -98,36 +167,31 @@ foreach ($resbienesAgrupados as $respoas) {
     $drawing->setWidth(40); // Ancho de la imagen
     $drawing->setHeight(40); // Altura de la imagen
     $drawing->setWorksheet($sheet);
+    /*FIN - Bloque de inserción de la imagen*/
 
-    // Agregar el texto "PROCESO DE PROYECTOS" en la celda B1
-    $sheet->mergeCells("B{$cntrows}:C{$cntrows}"); // Combina desde B1 hasta C1 (ajusta según columnas)
-    $sheet->setCellValue("B{$cntrows}", 'PROCESO DE PROYECTOS');
-
-    // Combinar celdas para la cabecera
-    $sheet->mergeCells("A" . ($cntrows + 1) . ":I" . ($cntrows + 1)); // Combina desde A2 hasta I2
-    $sheet->setCellValue("A" . ($cntrows + 1), 'PRESUPUESTO - ' . date('Y') . ' - PROGRAMA ' . strtoupper($respoas[0]->programa));
-    // Estilo negrita y tamaño
-    $sheet->getStyle("A" . ($cntrows + 1))->getFont()->setBold(true)->setSize(14);
-    $sheet->getStyle("A" . ($cntrows + 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-    // Aplicar color de fondo a las celdas combinadas
-    $sheet->getStyle("A" . ($cntrows + 1) . ":I" . ($cntrows + 1))->getFill()->setFillType(Fill::FILL_SOLID);
-    $sheet->getStyle("A" . ($cntrows + 1) . ":I" . ($cntrows + 1))->getFill()->getStartColor()->setRGB($colores[$colorIndex]); // Color naranja
-    $sheet->getStyle("A" . ($cntrows + 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    /*Bloque del encabezado*/
+    /*Bloque de inserción del título del encabezado de cada POA*/
+    // --- ELIMINADO: Inserción de la cabecera principal aquí ---
 
     // Insertando encabezados personalizados
+    //Bloque de inserción de los encabezados estáticos (Siempre van a estar ahí para todo POA)
+    //Bloque de Bienes
     $sheet->mergeCells("C" . ($cntrows + 2) . ":D" . ($cntrows + 2)); // Combinar celdas desde C3 hasta D3 (Preparando encabezado para BIENES)
     $sheet->setCellValue("C" . ($cntrows + 2), "1. BIENES");
     $sheet->getStyle("C" . ($cntrows + 2))->getFont()->setBold(true)->setSize(12);
     $sheet->getStyle("C" . ($cntrows + 2))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle("C" . ($cntrows + 2))->getAlignment()->setWrapText(true);
+    //FIN - Bloque de Bienes
 
+    //Bloque de Servicios
     $sheet->mergeCells("E" . ($cntrows + 2) . ":F" . ($cntrows + 2)); // Combinar celdas desde E3 hasta F3 (Preparando encabezado para SERVICIOS)
     $sheet->setCellValue("E" . ($cntrows + 2), "2. SERVICIOS");
     $sheet->getStyle("E" . ($cntrows + 2))->getFont()->setBold(true)->setSize(12);
     $sheet->getStyle("E" . ($cntrows + 2))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle("E" . ($cntrows + 2))->getAlignment()->setWrapText(true);
+    //FIN Bloque de Servicios
 
+    //Bloque de Moneda Local
     // Encabezados de Detalle e Importe en moneda local para bienes
     $sheet->setCellValue("C" . ($cntrows + 3), "DETALLE");
     $sheet->setCellValue("D" . ($cntrows + 3), "Importe (moneda local)");
@@ -141,6 +205,7 @@ foreach ($resbienesAgrupados as $respoas) {
     $sheet->getStyle("E" . ($cntrows + 3) . ":F" . ($cntrows + 3))->getFont()->setBold(true)->setSize(11);
     $sheet->getStyle("E" . ($cntrows + 3) . ":F" . ($cntrows + 3))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle("E" . ($cntrows + 3) . ":F" . ($cntrows + 3))->getAlignment()->setWrapText(true);
+    //FIN - Bloque de Moneda Local
 
     // Encabezados para Total en moneda local y moneda extranjera
     $sheet->setCellValue("G" . ($cntrows + 3), "TOTAL (MONEDA LOCAL)");
@@ -150,75 +215,44 @@ foreach ($resbienesAgrupados as $respoas) {
     $sheet->getStyle("G" . ($cntrows + 3) . ":I" . ($cntrows + 3))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle("G" . ($cntrows + 3) . ":I" . ($cntrows + 3))->getAlignment()->setWrapText(true);
 
+    //FIN - Bloque de inserción de los encabezados estáticos (Siempre van a estar ahí para todo POA)
 
     // Encabezados para las fuentes de financiamiento
-    $sheet->setCellValue("K" . ($cntrows + 2), "FUENTES DE FINANCIAMIENTO");
-
+    // Determinar la cantidad de fuentes para este programa
+    $fuentesCount = isset($fuentesPrograma[$respoas[0]->id_programa]) ? count($fuentesPrograma[$respoas[0]->id_programa]) : 0;
+    if ($fuentesCount > 0) {
+        $colInicio = 'K';
+        $colFin = $cols[$fuentesCount * 3 - 1]; // Cada fuente ocupa 3 columnas (Soles, Dólares, Euros)
+        $sheet->setCellValue("{$colInicio}" . ($cntrows + 2), "FUENTES DE FINANCIAMIENTO");
+        $sheet->mergeCells("{$colInicio}" . ($cntrows + 2) . ":{$colFin}" . ($cntrows + 2));
+        $sheet->getStyle("{$colInicio}" . ($cntrows + 2) . ":{$colFin}" . ($cntrows + 2))->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle("{$colInicio}" . ($cntrows + 2) . ":{$colFin}" . ($cntrows + 2))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("{$colInicio}" . ($cntrows + 2) . ":{$colFin}" . ($cntrows + 2))->getAlignment()->setWrapText(true);
+    }
 
     //INGRESAMOS LOS ENCABEZADOS DE LAS FUENTES DE FINANCIAMIENTO PARA LAS RENDICIONES
-    //Creamos la columna disponibles que tendrá para insertar la suma de rendiciones
-    $cols = [
-        'K',
-        'L',
-        'M',
-        'N',
-        'O',
-        'P',
-        'Q',
-        'R',
-        'S',
-        'T',
-        'U',
-        'V',
-        'W',
-        'X',
-        'Y',
-        'Z',
-        'AA',
-        'AB',
-        'AC',
-        'AD',
-        'AE',
-        'AF',
-        'AG',
-        'AH',
-        'AI',
-        'AJ',
-        'AK',
-        'AL',
-        'AM',
-        'AN',
-        'AO',
-        'AP',
-        'AQ',
-        'AR',
-        'AS',
-        'AT',
-        'AU',
-        'AV',
-        'AW',
-        'AX',
-        'AY',
-        'AZ'
-    ];
+
     //Colocamos los encabezados de las fuentes de financiamiento
     //Creamos el array fuentesPrograma que te tiene las fuentes de financiamiento de cada programa almacenadas por indice del array como programa_id
     //Del array fuentesPrograma, obtenemos las fuentes de cada programa.
-
+    //Bloque del separador COLUMNA 'J'
     //Asignando tamaño de celda para la columna J, es un SEPARADOR
     $sheet->getColumnDimension('J')->setAutoSize(false);
     $sheet->getColumnDimension('J')->setWidth(3);
+    //FIN - Bloque del separador COLUMNA 'J'
 
+    //Bloque de inserción de los encabezados dinámicos (Cambian de acuerdo a la relación detalle_financiamiento que exista en la DB)
     //Creamos un array que contendrá las columnas seleccionadas según el id de la fuente de financiamiento
     $arrayFuentes = [];
-    //debuguear($respoas); //Sumas de los rubros
-    //debuguear($fuentesPrograma);
     //Insertamos los encabezados según el programa_id
-
+    //Si, existiera una sola fuente para el programa que se está recorriendo en el foreach de $resbienesAgrupados...
     if ($fuentesPrograma[$respoas[0]->id_programa]) {
+        //Creamos una variable $fte que tome una o la única fuente que está vinculada al programa que estamos recorriendo por el momento.
         $fte = $fuentesPrograma[$respoas[0]->id_programa];
         if ($fte) {
+            //Creamos un contador para ...
             $contespecial = 0;
+
             for ($i = 0; $i < count($fte); $i++) {
                 //Obtenemos el objeto fuente de financiamiento que toque en el ciclo
                 $fuenteobj = $fte[$i];
@@ -266,27 +300,28 @@ foreach ($resbienesAgrupados as $respoas) {
             }
 
             //Dando estilos a los encabezados de las fuentes de financiamiento
-            //Combinamos las celdas del encabezado hasta la últma columna que fue insertada
-            $sheet->mergeCells("K" . ($cntrows + 2) . ":{$cols[$i - 1]}" . ($cntrows + 2));
-            //Dando estilos de negrita y tamaño
+            // (Eliminada la combinación de celdas aquí para evitar conflicto con la combinación final)
             $sheet->getStyle("K" . ($cntrows + 2) . ":{$cols[$i - 1]}" . ($cntrows + 2))->getFont()->setBold(true)->setSize(12);
             $sheet->getStyle("K" . ($cntrows + 2) . ":{$cols[$i - 1]}" . ($cntrows + 2))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("K" . ($cntrows + 2) . ":{$cols[$i - 1]}" . ($cntrows + 2))->getAlignment()->setWrapText(true);
         }
     }
+    //FIN - Bloque de insericón de los encabezados dinámicos (Cambian de acuerdo a la relación detalle_financiamiento que exista en la DB)
+    /*FIN - Bloque del encabezado*/
 
+    //Considerar borrar si no se va a usar
     // Creando nueva instancia de ReportePoaRubros, sincronizando con los datos recibidos y combinando celdas
-    $repbien = new ReportePoaRubros();
+    // $repbien = new ReportePoaRubros();
+    //Considerar borrar si no se va a usar
+
     //Almacenamos la fila de inserción inicial de datos en cada reporte.
     $rowinicial = $ultcont;
-
-    $newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $respoas, $tcdolar, $tceuro, $ultcont, $rendiciones, $arrayFuentes, $cols) ?? 0;
+    $newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $respoas, $tcdolar, $tceuro, $rowinicial, $rendiciones, $arrayFuentes, $cols) ?? 0;
     $cntrows = $newcntrow; // Actualizar $cntrows con el valor retornado por la función
     //Insertamos las sumas de todas las columnas
     //Tomamos el rango de las columnas que están llenas
     $ultimacolumna = $cols[$contespecial - 1];
 
-    // $rango = "{$cols[0]}:{$ultimacolumna}";
     //Combinamos el encabezado fuentes de financiamiento
     $columnassumar = ['D', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
     $columnasumarendi = ['K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
@@ -298,8 +333,6 @@ foreach ($resbienesAgrupados as $respoas) {
     $columnassolesrendi = ['K', 'N', 'Q', 'T', 'W', 'Z', 'AC', 'AF', 'AI', 'AL'];
     $columnasdolaresrendi = ['L', 'O', 'R', 'U', 'X', 'AA', 'AD', 'AG', 'AJ', 'AM'];
     $columnaseurosrendi =    ['M', 'P', 'S', 'V', 'Y', 'AB', 'AE', 'AH', 'AK', 'AN'];
-
-
 
     //SECCIÓN DE LA SUMA TOTALES DE COLUMNAS
     $limite = array_search($ultimacolumna, $columnassumar);
@@ -360,7 +393,6 @@ foreach ($resbienesAgrupados as $respoas) {
     $filainicial = $ultcont;
     $cadenaformula = "=";
     //NUEVA SECCIÓN
-
     for ($i = $rowinicial; $i < $newcntrow; $i++) {
         //RECORREMOS TODOS LOS VALORES DE SUMASOLES
         foreach ($sumasoles as $sumasol) {
@@ -402,21 +434,51 @@ foreach ($resbienesAgrupados as $respoas) {
     $newcntrow += 3; // Incrementar en 3 el valor de $newcntrow
     $colorIndex++; // Incrementar el índice del color
 }
+
 //Combinamos las celdas repetidas
 ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
+
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+// Guardando el archivo Excel
 $directory = __DIR__ . "/storage/reports/";
 if (!is_dir($directory)) {
     mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
 }
-
-$file = $directory . "reporte_poa_rendicion_{$usrcod}.xlsx";
+$filename = "reporte_poa_rendicion_{$usrcod}.xlsx";
+$file = $directory . $filename;
 $writer = new Xlsx($spreadsheet);
 $writer->save($file);
 
-// Mostrar mensaje de reporte exitoso
-echo "<h1>Reporte creado exitosamente</h1>";
-echo "<a href='../descargar?rprt={$file}' target='_blank' class='btn btn-success' id='descargarReporte'>
-        <i class='bi bi-file-earmark-excel'></i> Ver POA
+// Genera el nombre del archivo
+$filename = "reporte_poa_rendicion_{$usrcod}.xlsx";
+echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
+        <i class='bi bi-file-earmark-excel'></i> Ver Rendiciones
       </a>";
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+
+// === INSERCIÓN DEL ENCABEZADO 'FUENTES DE FINANCIAMIENTO' AL FINAL ===
+// Buscar la primera fila donde aparece el encabezado de fuentes (K?) y la última columna utilizada para fuentes
+$fuentesMax = 0;
+foreach ($fuentesPrograma as $fuentesArr) {
+    if (count($fuentesArr) > $fuentesMax) {
+        $fuentesMax = count($fuentesArr);
+    }
+}
+if ($fuentesMax > 0) {
+    $colInicio = 'K';
+    $colFin = $cols[$fuentesMax * 3 - 1]; // Cada fuente ocupa 3 columnas
+    // Buscar la fila donde se encuentra el encabezado de fuentes (la primera vez que se usó K...)
+    $filaEncabezado = null;
+    foreach ($sheet->toArray() as $filaNum => $fila) {
+        if (isset($fila[10]) && $fila[10] === 'FUENTES DE FINANCIAMIENTO') { // K = índice 10
+            $filaEncabezado = $filaNum + 1; // +1 porque toArray es base 0
+            break;
+        }
+    }
+    if ($filaEncabezado) {
+        $sheet->mergeCells("{$colInicio}{$filaEncabezado}:{$colFin}{$filaEncabezado}");
+        $sheet->getStyle("{$colInicio}{$filaEncabezado}:{$colFin}{$filaEncabezado}")->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle("{$colInicio}{$filaEncabezado}:{$colFin}{$filaEncabezado}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("{$colInicio}{$filaEncabezado}:{$colFin}{$filaEncabezado}")->getAlignment()->setWrapText(true);
+    }
+}

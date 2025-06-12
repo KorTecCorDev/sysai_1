@@ -16,6 +16,8 @@ use Controllers\CategoriaRubroController;
 use Controllers\ReportePoaRubrosController;
 use Controllers\DetalleFinanciamientoController;
 use Controllers\Fuente_FinanciamientoController;
+use Controllers\SaldoContableController;
+
 //Ruta de Categoría Rubros
 $router->get('/categoria_rubro/admin', [CategoriaRubroController::class, 'index']);
 $router->post('/categoria_rubro/crear', [CategoriaRubroController::class, 'crear']);
@@ -134,7 +136,7 @@ $router->post('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexrep
 
 
 //Rutas para los saldos contables
-$router->get('/saldos_contables/saldos', [ReportePoaRubrosController::class, 'indexsaldos']);
+$router->get('/saldos_contables/saldos', [SaldoContableController::class, 'index']);
 
 //Rutas para los Otros Ingresos y Egresos
 $router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::class, 'index']);

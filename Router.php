@@ -31,7 +31,7 @@ class Router
 
     // Rutas protegidas
     //Falta las rutas de todas la vistas, a excepción de login todas deben estar protegidas.
-    $rutas_protegidas = ['/programa/admin', '/programa/crear', '/programa/actualizar'];
+    $rutas_protegidas = ['/programa/admin', '/programa/crear', '/programa/actualizar', '/actividad/admin','/actividad/actualizar','/actividad/crear', '/actividad/eliminar','/categoria_rubro/admin','/categoria_rubro/actualizar','/categoria_rubro/crear','/categoria_rubro/eliminar','/dfinanciamiento/admin','/dfinanciamiento/actualizar','/dfinanciamiento/crear','/dfinanciamiento/eliminar','/fuente_financiamiento/admin','/fuente_financiamiento/actualizar','/fuente_financiamiento/crear','/fuente_financiamiento/eliminar','/ingreso_egreso/admin','/ingreso_egreso/actualizar','/ingreso_egreso/crear','/ingreso_egreso/eliminar','/poa/admin','/poa/actualizar','/poa/crear','/poa/eliminar','/producto/admin','/producto/actualizar','/producto/crear','/producto/eliminar','/rendicion/admin','/rendicion/actualizar','/rendicion/crear','/rendicion/eliminar','/rendicionff/admin','/rendicionff/actualizar','/rendicionff/crear','/rendicionff/eliminar','/reporte/guardarpoa','/reporte/ingresos','/reporte/ingresosdesc','/reporte/modificarpoa','/reporte/poa','/reporte/poarendicion','/reporte/poarubros','/reporte/rendiciones','/reporte/rendicionesdesc','/resultado/admin','/resultado/actualizar','/resultado/crear','/resultado/eliminar','/resultado/admin','/resultado/actualizar','/resultado/crear','/resultado/eliminar'];
     
     // Verificar rutas protegidas
     if (in_array($urlActual, $rutas_protegidas)) {

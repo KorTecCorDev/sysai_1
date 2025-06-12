@@ -14,37 +14,36 @@
             <div class="col">
                 <h2>Otros Ingresos/Egresos</h2>
             </div>
-            <div class="col-2 espacio-btn-agregar">
-                <a href="/ingreso_egreso/crear" class="btn btn-primary btn-agregar"><i class="bi bi-plus-circle"></i> Agregar</a>
+            <div class="d-flex justify-content-end mb-4"> <!-- Contenedor flexible alineado a la derecha -->
+                <a href="/ingreso_egreso/crear" class="btn btn-primary rounded-pill shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i>Agregar</a>
             </div>
         </div>
     </div>
     <!-- Tabla que muestra los registros dentro de la tabla fuente de financiamiento -->
     <div class="container text-center">
         <table class="ingreso_egreso table table-bordered">
-            <thead>
+
+
+            <thead class="table">
                 <tr>
-                    <!-- Sección de OIE -->
-                    <th scope="col">ID</th>
+                    <th scope="col" class="text-center rounded-start">Código</th>
                     <th scope="col">Comprobante/Fecha</th>
-                    <th scope="col">Código</th>
-                    <!-- Sección de OIE -->
-                    <!-- Sección de COMPROBANTE OIE -->
                     <th scope="col">Tipo</th>
-                    <th scope="col">Tipo_Comprobante</th>
-                    <th scope="col">Monto</th>
-                    <!-- Sección de COMPROBANTE OIE -->
-                    <th scope="col" class="th-acciones">Acciones</th>
+                    <th scope="col" class="text-end">Tipo_Comprobante</th>
+                    <th scope="col" class="text-end">Monto</th>
+                    <th scope="col" class="text-center rounded-end">Acciones</th> <!-- Borde redondeado derecho -->
                 </tr>
             </thead>
+
             <tbody>
                 <!-- Muestra todos los registros -->
 
                 <?php foreach ($oies as $oe) : ?>
                     <tr>
-                        <td> <?php echo $oe->id; ?> </td>
-                        <td> <?php echo $oe->comprobante_fecha; ?> </td>
+
                         <td> <?php echo $oe->codigo; ?> </td>
+                        <td> <?php echo $oe->comprobante_fecha; ?> </td>
                         <td> <?php echo $oe->tipo; ?> </td>
                         <?php // Tooltip que aparece en el código de tipo de comprobante 
                         ?>
@@ -57,29 +56,30 @@
                         <?php // Fin de aplicación del Tooltip 
                         ?>
                         <td> <?php echo $oe->comprobante_monto; ?> </td>
-                        <td class="td-acciones">
-                            <!-- Div de Acciones     -->
-                            <div class="btn-acciones">
-                                <div>
-                                    <a href="/ingreso_egreso/actualizar?id=<?php echo $oe->id; ?>" class="btn btn-warning btn-actualizar"><i class="bi bi-pen"></i> Actualizar</a>
-                                </div>
-                                <div>
-                                    <form method="POST" class="w-100" action="/ingreso_egreso/eliminar">
-                                        <input type="hidden" name="id" value="<?php echo $oe->id; ?>">
-                                        <input type="hidden" name="tipo" value="ingreso_egreso">
-                                        <div class="btn-eliminar">
-                                            <i class="bi bi-trash"></i>
-                                            <input type="submit" class="btn" value="Eliminar">
-                                        </div>
-                                    </form>
-                                </div>
+
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="/ingreso_egreso/actualizar?id=<?php echo $oe->id; ?>"
+                                    class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                    title="Editar registro">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+
+                                <form method="POST" action="/ingreso_egreso/eliminar" class="d-inline">
+                                    <input type="hidden" name="id" value="<?php echo $oe->id; ?>">
+                                    <input type="hidden" name="tipo" value="ingreso_egreso">
+                                    <button type="submit"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        title="Eliminar registro"
+                                        onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
                             </div>
-                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-
 </main>

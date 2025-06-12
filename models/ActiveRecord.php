@@ -600,6 +600,7 @@ class ActiveRecord
     //Modificar parámetros
     private static function insertarSumaMontos($sheet, $row, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro)
     {
+        //Esta función inserta el total del monto de rubros por actividad tanto en soles, dólares, como euros
         $sheet->setCellValue("G$row", $sumaMontos);
         $sheet->setCellValue("H$row", round($sumaMontos / $tipoCambioDolar, 2));
         $sheet->setCellValue("I$row", round($sumaMontos / $tipoCambioEuro, 2));
@@ -608,15 +609,26 @@ class ActiveRecord
 
     public static function insertarCeldasReportePOA($sheet, array $data, object $dolar, object $euro, int $filaini = 5, array $rendiciones = null, array $fuentes = null, array $cols = null): int
     {
+        //Esta función inserta solos los rubros de los reportes tanto para coordinadores como para administradores
+        //Parámetros necesarios por la función
+        //$sheet -> Hoja de cálculo Excel
+        //$data -> $respoas, Son los objetos de la tabla rendicion que están agrupados por id_programa
+        //$dolar -> Objeto con el último registro de la tabla tipo_cambio_dolar
+        //$euro -> Objeto con el último registro de la tabla tipo_cambio_euro
+        //$filaini -> Fila inicial para insertar los datos (Después de los encabezados)
+        //$rendiciones -> Array con todas las rendiciones ordenadas por (actividad_id, actividad_nombre, fuente_financiamiento_id, suma_monto_rendiciones)
+        //$fuentes -> $arrayFuentes, Son las columnas donde se insertarán las rendiciones de acuerdo a su Fuente de financiamiento (K,N,etc)
+        //$cols -> Array con las columnas de celdas que están permitidas ingresar las rendiciones
         $tipoCambioDolar = floatval($dolar->tipo_cambio);
         $tipoCambioEuro = floatval($euro->tipo_cambio);
 
-        // Insertar datos sin encabezados
+        //Insertar datos sin encabezados
         $row = $filaini; // Inicia desde la fila indicada en el parámetro, por defecto 5
         $actividadactual = 0;
         $sumaMontos = 0;
-        //recopilamos los actividad_id de todos los rubros que existan
+        //Recopilamos los actividad_id de todos los rubros que existan
         $mismactividad = array_unique(array_column($data, 'actividad_id'));
+
         //Contador de actividades
         $contadoractividades = count($mismactividad);
         //Creamos 2 foreach
@@ -628,44 +640,56 @@ class ActiveRecord
                 $actividad = $dato->actividad_id;
                 $idtiporubro = $dato->id_tipo_rubro;
                 $monto = $dato->monto;
-
-                // Insertar datos
                 $codigoconproducto = $producto_codigo . " " . $dato->producto;
                 $codigoconactividad = $actividad_codigo . " " . $dato->actividad;
                 $sheet->setCellValue("A$row", $codigoconproducto);
                 $sheet->setCellValue("B$row", $codigoconactividad);
-
-                if ($idtiporubro == 1) { // Bienes
+                if ($idtiporubro == 1) {
                     $sheet->setCellValue("C$row", $dato->rubros);
                     $sheet->setCellValue("D$row", $monto);
-                } else { // Servicios
+                } else {
                     $sheet->setCellValue("E$row", $dato->rubros);
                     $sheet->setCellValue("F$row", $monto);
                 }
-
-                // Sumar el monto actual
                 $sumaMontos += $monto;
-
-                // Formatear fila
                 $sheet->getRowDimension($row)->setRowHeight(53);
-                //Cambiando posición de cambio de actividad:
                 $actividadactual = $actividad;
-                //Fin de cambio de posición
                 $row++;
             }
+            self::insertarSumaMontos($sheet, $row - 1, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro);
+            if ($rendiciones && $fuentes) {
+                $rendi = [];
+                foreach ($rendiciones as $rendicio) {
+                    if ($rendicio->actividad_id == $actividadactual) {
+                        $rendi[] = $rendicio;
+                    }
+                }
+                self::insertarRendicionesFuente($sheet, $cols, $row - 1, $fuentes, $rendi, $tipoCambioDolar, $tipoCambioEuro);
+            }
         } else {
+            $actividadactual = 0;
+            $sumaMontos = 0;
             foreach ($data as $dato) {
                 $actividad_codigo = $dato->actividad_codigo;
                 $producto_codigo = $dato->producto_codigo;
                 $actividad = $dato->actividad_id;
                 $idtiporubro = $dato->id_tipo_rubro;
                 $monto = $dato->monto;
-                //Si existen más de una actividad
-                //Si hay cambio de actividad ...
+                $codigoconproducto = $producto_codigo . " " . $dato->producto;
+                $codigoconactividad = $actividad_codigo . " " . $dato->actividad;
+                $sheet->setCellValue("A$row", $codigoconproducto);
+                $sheet->setCellValue("B$row", $codigoconactividad);
+                if ($idtiporubro == 1) {
+                    $sheet->setCellValue("C$row", $dato->rubros);
+                    $sheet->setCellValue("D$row", $monto);
+                } else {
+                    $sheet->setCellValue("E$row", $dato->rubros);
+                    $sheet->setCellValue("F$row", $monto);
+                }
                 if ($actividadactual != 0 && $actividadactual !== $actividad) {
-                    //En caso solo exista un registro de suma de rendiciones
                     self::insertarSumaMontos($sheet, $row - 1, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro);
                     if ($rendiciones && $fuentes) {
+                        $rendi = [];
                         foreach ($rendiciones as $rendicio) {
                             if ($rendicio->actividad_id == $actividadactual) {
                                 $rendi[] = $rendicio;
@@ -673,53 +697,34 @@ class ActiveRecord
                         }
                         self::insertarRendicionesFuente($sheet, $cols, $row - 1, $fuentes, $rendi, $tipoCambioDolar, $tipoCambioEuro);
                     }
-                    $sumaMontos = 0; // Reiniciar la suma
+                    $sumaMontos = 0;
                 }
-
-                // Insertar datos
-                $codigoconproducto = $producto_codigo . " " . $dato->producto;
-                $codigoconactividad = $actividad_codigo . " " . $dato->actividad;
-                $sheet->setCellValue("A$row", $codigoconproducto);
-                $sheet->setCellValue("B$row", $codigoconactividad);
-
-                if ($idtiporubro == 1) { // Bienes
-                    $sheet->setCellValue("C$row", $dato->rubros);
-                    $sheet->setCellValue("D$row", $monto);
-                } else { // Servicios
-                    $sheet->setCellValue("E$row", $dato->rubros);
-                    $sheet->setCellValue("F$row", $monto);
-                }
-
-                // Sumar el monto actual
                 $sumaMontos += $monto;
-
-                // Formatear fila
                 $sheet->getRowDimension($row)->setRowHeight(53);
-                //Cambiando posición de cambio de actividad:
                 $actividadactual = $actividad;
-                //Fin de cambio de posición
                 $row++;
+            }
+            // Insertar suma y rendiciones para la última actividad
+            if ($actividadactual != 0) {
+                self::insertarSumaMontos($sheet, $row - 1, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro);
+                if ($rendiciones && $fuentes) {
+                    $rendi = [];
+                    foreach ($rendiciones as $rendicio) {
+                        if ($rendicio->actividad_id == $actividadactual) {
+                            $rendi[] = $rendicio;
+                        }
+                    }
+                    self::insertarRendicionesFuente($sheet, $cols, $row - 1, $fuentes, $rendi, $tipoCambioDolar, $tipoCambioEuro);
+                }
             }
         }
 
-        // Insertar la suma de rubros de la última actividad
-        if ($sumaMontos > 0) {
-            self::insertarSumaMontos($sheet, $row - 1, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro);
-        }
-        //Insertamos la última rendicion en caso exista
-        if ($rendiciones && $sumaMontos > 0) {
-            //Buscamos la última rendición
-            $lastrendicion[] = end($rendiciones);
-            self::insertarRendicionesFuente($sheet, $cols, $row - 1, $fuentes, $lastrendicion, $tipoCambioDolar, $tipoCambioEuro);
-        }
-        if ($contadoractividades === 1 && $rendiciones) {
-            self::insertarRendicionesFuente($sheet, $cols, $row - 1, $fuentes, $rendiciones, $tipoCambioDolar, $tipoCambioEuro);
-        }
 
         // Aplicar ajuste de texto a todas las celdas
         $sheet->getStyle("A5:I$row")->getAlignment()->setWrapText(true);
 
         // Retornar el número de la última fila ingresada
+        //Esta sería la última fila donde se está insertando los rubros y rendiciones (todos los datos)
         return $row;
     }
     public static function insertarDatosDesdeArray($sheet, array $data, int $filaini = 3): int
@@ -790,9 +795,6 @@ class ActiveRecord
             $sheet->getRowDimension($row)->setRowHeight(20);
             $row++;
         }
-
-
-
 
         foreach (range($startColumn, $endColumn) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
@@ -885,24 +887,39 @@ class ActiveRecord
 
     private static function insertarRendicionesFuente($sheet, $cols, $row, $fuentes, $rendiciones, $tcdolar, $tceuro)
     {
+        //Parámetros necesarios
+        //$sheet -> Hoja de cálculo Excel
+        //$cols -> Array con las columnas donde se pueden insertar las RENDICIONES
+        //$row -> Fila donde se insertará la rendicion, se insertará al mismo tiempo que la suma de rubros. Por cada actividad se inserta su rendición
+        //$fuentes -> $arrayFuentes, es el mismo array que contiene la letra de la columna donde se insertará de acuerdo a la fuente de financiamiento de la rendicion.
+        //El índice que tiene cada elemento está vinculado a la fuente_financiamiento_id
+        //$rendiciones -> Array con todas las rendiciones ordenadas por (actividad_id, actividad_nombre, fuente_financiamiento_id, suma_monto_rendiciones)
+        //$tcdolar -> Objeto que contiene el último registro de la tabla tipo_cambio_dolar
+        //$tceuro -> Objeto que contiene el último registro de la tabla tipo_cambio_euro
         //Creamos 2 variables contadores
         //El contador especial está sujeta a una función algebraica
         $contespecial = 0;
         //Contador simple
         $i = 0;
-
         foreach ($rendiciones as $rendicion) {
             //Por cada rendición veremos si comparten el mismo fuente_financiamiento_id con las fuentes recibidas
             if (isset($fuentes[$rendicion->fuente_financiamiento_id])) {
+                //Tomamos la fuente_financiamiento_id de la rendición que estamos recorriendo
+                $ffrendi = $rendicion->fuente_financiamiento_id;
                 //Creamos 2 variables adicionales que nos permitirán ingresar los registros convertidos en dólares y euros
-                $columna = $contespecial;
-                $columna1 = $columna + 1;
-                $columna2 = $columna + 2;
+                $columna = $fuentes[$ffrendi];
+                //Buscamos en $cols(Array con todas las columnas solo para rendiciones), la columna donde se debe de insertar la rendición según su fuente de financiamiento.
+                // Buscar dentro de $cols el valor de $columna y almacenar su índice
+                //Array de prueba para ver donde se insertan las rendiciones
+
+                $columnaIndex = array_search($columna, $cols);
+                $columna1 = $columnaIndex + 1;
+                $columna2 = $columnaIndex + 2;
                 //Redondeamos los valores a 2 decimales
                 $dolares = round($rendicion->suma_monto_rendiciones / $tcdolar, 2);
                 $euros = round($rendicion->suma_monto_rendiciones / $tceuro, 2);
                 //Insertamos los registros en el reporte excel
-                $sheet->setCellValue("{$cols[$columna]}{$row}", "{$rendicion->suma_monto_rendiciones}");
+                $sheet->setCellValue("{$cols[$columnaIndex]}{$row}", "{$rendicion->suma_monto_rendiciones}");
                 $sheet->setCellValue("{$cols[$columna1]}{$row}", "{$dolares}");
                 $sheet->setCellValue("{$cols[$columna2]}{$row}", "{$euros}");
                 //Ingresamos el valor del contador simple dentro de la función algebraica de $contespecial

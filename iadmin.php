@@ -16,6 +16,8 @@ use Controllers\CategoriaRubroController;
 use Controllers\ReportePoaRubrosController;
 use Controllers\DetalleFinanciamientoController;
 use Controllers\Fuente_FinanciamientoController;
+use Controllers\SaldoContableController;
+
 //Ruta de Categoría Rubros
 $router->get('/categoria_rubro/admin', [CategoriaRubroController::class, 'index']);
 $router->post('/categoria_rubro/crear', [CategoriaRubroController::class, 'crear']);
@@ -117,6 +119,7 @@ $router->get('/tcambio/dolar/crear', [TipoCambioController::class, 'crearDolar']
 $router->post('/tcambio/dolar/crear', [TipoCambioController::class, 'crearDolar']);
 $router->get('/tcambio/dolar/actualizar', [TipoCambioController::class, 'actualizarDolar']);
 $router->post('/tcambio/dolar/actualizar', [TipoCambioController::class, 'actualizarDolar']);
+$router->post('/tcambio/dolar/eliminar', [TipoCambioController::class, 'eliminarDolar']);
 
 // Rutas para Tipos de Cambio Euro
 $router->get('/tcambio/euro/admin', [TipoCambioController::class, 'indexEuro']);
@@ -124,7 +127,6 @@ $router->get('/tcambio/euro/crear', [TipoCambioController::class, 'crearEuro']);
 $router->post('/tcambio/euro/crear', [TipoCambioController::class, 'crearEuro']);
 $router->get('/tcambio/euro/actualizar', [TipoCambioController::class, 'actualizarEuro']);
 $router->post('/tcambio/euro/actualizar', [TipoCambioController::class, 'actualizarEuro']);
-$router->post('/tcambio/dolar/eliminar', [TipoCambioController::class, 'eliminarDolar']);
 $router->post('/tcambio/euro/eliminar', [TipoCambioController::class, 'eliminarEuro']);
 
 //Rutas para el reporte de rendiciones
@@ -134,12 +136,13 @@ $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'index
 $router->get('/reporte/poarubros', [ReportePoaRubrosController::class, 'indexrubro']);
 $router->get('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
 $router->post('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
+$router->get('/reporte/rendicionesdesc', [ReportePoaRubrosController::class, 'indexreporterendicionesdescargar']);
 $router->get('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexreporteingresos']);
 $router->post('/reporte/ingresos', [ReportePoaRubrosController::class, 'indexreporteingresos']);
-
+$router->get('/reporte/ingresosdesc', [ReportePoaRubrosController::class, 'indexreporteingresosdescargar']);
 
 //Rutas para los saldos contables
-$router->get('/saldos_contables/saldos', [ReportePoaRubrosController::class, 'indexsaldos']);
+$router->get('/saldos_contables/saldos', [SaldoContableController::class, 'index']);
 
 //Rutas para los Otros Ingresos y Egresos
 $router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::class, 'index']);
