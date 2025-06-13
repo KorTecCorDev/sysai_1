@@ -201,7 +201,7 @@ class ReportePoaRubrosController
 
         // Obtener los datos del reporte
         $resreportefuentes = ReporteFuentesVista::findporRango('fuente_fecha', $fechainicio, $fechafin);
-        $resreporteingresos = ReporteIngresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
+        $resreporteingresos = ReporteIngresosVista::findporRango('oie_comprobante_fecha_original', $fechainicio, $fechafin);
 
         // Renderizar la vista que genera y guarda el archivo
         $router->render('reporte/ingresosdesc', [

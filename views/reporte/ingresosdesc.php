@@ -22,7 +22,6 @@ $claves_a_excluir_fuentes = [];
 
 // Inicializar el nuevo array combinado
 $nuevo_array = [];
-
 // Agregar los objetos del primer array ($resreporteegresos) excluyendo las claves específicas
 foreach ($resreporteingresos as $obj) {
     $nuevo_obj = (array) $obj; // Convertir el objeto a array
@@ -34,7 +33,6 @@ foreach ($resreporteingresos as $obj) {
 
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
-    // debuguear($nuevo_array);
 }
 
 // Agregar los objetos del segundo array ($resreporterendiciones) excluyendo las claves específicas

@@ -60,6 +60,7 @@ foreach ($resreporterendiciones as $obj) {
     // Convertir de nuevo a objeto y agregar al nuevo array
     $nuevo_array[] = (object) $nuevo_obj;
 }
+
 // Definir el array de encabezados
 $encabezados = [
     'FECHA',
@@ -107,7 +108,6 @@ foreach ($encabezados as $encabezado) {
 foreach (range($startColumn, $endColumn) as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
-
 $reporterendi = ReporteEgresosRendiciones::insertarDatosDesdeArrayEgresosRendiciones($sheet, $nuevo_array, 3);
 //$newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $ultcont, $respoas, $tcdolar, $tceuro);
 
