@@ -829,7 +829,7 @@ class ActiveRecord
         foreach ($data as $obj) {
             $colIndex = $startColumn;
 
-            // Detectar si es un objeto 'fuente' o 'otros_ingresos_egresos'
+            // Detectar si es un objeto 'rendicion' o 'otros_ingresos_egresos' (egreso)
             if (isset($obj->rendicion_codigo)) {
                 // Es registro de rendicion
                 $valores_ordenados = [
@@ -842,25 +842,25 @@ class ActiveRecord
                     $obj->rendicion_ruc ?? '', // Ruc del comprobante
                     $obj->rendicion_razon_social ?? '', // Razón social
                     $obj->rendicion_serie ?? '', // Serie del comprobante
-                    $obj->rendicion_numero ?? '', // Monto del comprobante
-                    $obj->rendicion_descripcion ?? '', // Número del comprobante
-                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                    $obj->rendicion_numero ?? '', // Número del comprobante
+                    $obj->rendicion_detalle ?? '', // Detalle del comprobante
+                    $obj->rendicion_comprobante_monto ?? '', // Monto del comprobante
                 ];
             } else if (isset($obj->otros_ingresos_egresos_codigo)) {
-                // Es registro de OIE
+                // Es registro de egreso (OIE)
                 $valores_ordenados = [
                     $obj->otros_ingresos_egresos_fecha ?? '',
-                    $obj->otros_ingresos_egresos_codigo_codigo ?? '',
+                    $obj->otros_ingresos_egresos_codigo ?? '',
                     $obj->otros_ingresos_egresos_descripcion ?? '',
                     $obj->oie_tipo_comprobante_codigo ?? '', // Tipo de comprobante
                     $obj->fuente_financiamiento_codigo ?? '', // Fuente de financiamiento
-                    $obj->rendicion_fecha_original ?? '', // Fecha del comprobante
-                    $obj->rendicion_ruc ?? '', // Ruc del comprobante
-                    $obj->rendicion_razon_social ?? '', // Razón social
-                    $obj->rendicion_serie ?? '', // Serie del comprobante
-                    $obj->rendicion_numero ?? '', // Monto del comprobante
-                    $obj->rendicion_descripcion ?? '', // Número del comprobante
-                    $obj->rendicion_comprobante_monto ?? '', // Detalle del comprobante
+                    $obj->oie_comprobante_fecha_original ?? '', // Fecha del comprobante
+                    $obj->oie_comprobante_ruc ?? '', // Ruc del comprobante
+                    $obj->oie_comprobante_razon_social ?? '', // Razón social
+                    $obj->oie_comprobante_serie ?? '', // Serie del comprobante
+                    $obj->oie_comprobante_numero ?? '', // Número del comprobante
+                    $obj->oie_comprobante_descripcion ?? '', // Detalle del comprobante
+                    $obj->oie_comprobante_monto ?? '', // Monto del comprobante
                 ];
             }
             // Insertar los valores ordenados en las celdas
