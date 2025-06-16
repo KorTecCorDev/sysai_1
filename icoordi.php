@@ -112,7 +112,17 @@ $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'index
 
 
 //Ruta para los otros egresos del coordinador
-//¡¡PENDIENTE!!
+//Rutas para los Otros Ingresos y Egresos
+$router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::class, 'index']);
+//Creando
+$router->get('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
+$router->post('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
+
+//Actualizando
+$router->get('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
+$router->post('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
+//Eliminando
+$router->post('/ingreso_egreso/eliminar', [Controllers\IngresoEgresoController::class, 'eliminar']);
 
 //Vistaff(selección de fuentes)
 $router->get('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class, 'indexff']);
@@ -122,5 +132,3 @@ $router->post('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class,
 //Ruta del guardado del POA
 $router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
 //Ruta de modificación de estados en el admin del POA
-
-?>

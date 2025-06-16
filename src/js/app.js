@@ -40,7 +40,7 @@ function eventListeners(e) {
   //Capturar el select de Programas para poder vincular los resultados
   const prgmtas = document.querySelector("select#programslist");
   if (prgmtas) {
-    const optn = prgmtas.querySelector(" option[value='']");
+    const optn = prgmtas.querySelector("option[value='']");
     optn.disabled = true;
     prgmtas.addEventListener("change", actualizarIdprograma);
     prgmtas.addEventListener("change", redireccionarUrlPOA);

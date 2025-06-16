@@ -3,11 +3,21 @@
     <!-- Tipo de OIE - Ingreso/Egreso -->
     <div class="mb-3 w-25">
         <label for="combo_oie_tipo_id" class="form-label">Tipo</label>
-        <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp">
-            <option value="1">Ingreso</option>
-            <option value="2">Egreso</option>
-        </select>
-        <div id="tipoOieHelp" class="form-text">Seleccione si es un Ingreso o un Egreso</div>
+        <?php
+        // Si el usuario es coordinador (cargo_id == 3), solo mostrar opción Egreso
+        if (isset($_SESSION['cargo_id']) && $_SESSION['cargo_id'] == 3) { ?>
+            <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp" disabled>
+                <option value="2" selected>Egreso</option>
+            </select>
+            <input type="hidden" name="oie[oie_tipo_id]" value="2">
+            <div id="tipoOieHelp" class="form-text">Solo puede registrar egresos</div>
+        <?php } else { ?>
+            <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp">
+                <option value="1" <?php echo $oie->oie_tipo_id == 1 ? 'selected' : ''; ?>>Ingreso</option>
+                <option value="2" <?php echo $oie->oie_tipo_id == 2 ? 'selected' : ''; ?>>Egreso</option>
+            </select>
+            <div id="tipoOieHelp" class="form-text">Seleccione si es un Ingreso o un Egreso</div>
+        <?php } ?>
     </div>
     <!-- Tipo de OIE - Ingreso/Egreso -->
 
