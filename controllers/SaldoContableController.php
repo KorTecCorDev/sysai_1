@@ -2,6 +2,7 @@
 
 namespace Controllers;
 
+use Model\SaldoFuenteFinanciamientoVista;
 use MVC\Router;
 use Model\VistaTotalIngresos;
 use Model\VistaTotalEgresos;
@@ -14,11 +15,14 @@ class SaldoContableController
         $totalingresos = VistaTotalIngresos::all();
         $totalegresos = VistaTotalEgresos::all();
         $totalsaldocontable = VistaSaldoContable::all();
+        $totalsaldofuentes = SaldoFuenteFinanciamientoVista::all();
 
         $router->render('saldos_contables/saldos', [
             'totalingresos' => $totalingresos,
             'totalegresos' => $totalegresos,
             'totalsaldocontable' => $totalsaldocontable,
+            'totalsaldofuentes' => $totalsaldofuentes,
+
         ]);
     }
 }

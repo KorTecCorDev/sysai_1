@@ -30,6 +30,7 @@ $naranja: #FFA726;
 $verde: #66BB6A;
 $verde_claro: color.adjust($verde, $lightness: 10%);
 $gris: #e7e7e7 ;
+$grisClaro: color.adjust($gris, $lightness: 10%);
 $grisOscuro: color.adjust($gris, $lightness: -50%);
 $rojo: #ff5a4b;
 $rojo_claro: color.adjust($rojo, $lightness: 10%);

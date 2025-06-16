@@ -1,3 +1,5 @@
+@use "../base/variables" as v;
+
 ::after,
 ::before {
   box-sizing: border-box;
@@ -7,12 +9,12 @@
 
 //Globales
 span {
-  color: $blanco;
+  color: v.$blanco;
 }
 
 a {
   text-decoration: none;
-  font-family: $fuente_principal;
+  font-family: v.$fuente_principal;
 }
 
 ul {
@@ -24,28 +26,28 @@ li {
 }
 
 h1 {
-  font-family: $fuente_titulo;
+  font-family: v.$fuente_titulo;
   font-weight: 600;
   font-size: 1.5rem;
-  color: $azul;
+  color: v.$azul;
 }
 h2 {
-  font-family: $fuente_titulo, $delgada;
+  font-family: v.$fuente_titulo, v.$delgada;
 }
 
 body {
-  font-family: $fuente_principal;
-  background-color: color.adjust($gris, $lightness: 1%);
+  font-family: v.$fuente_principal;
+  background-color: color.adjust(v.$gris, $lightness: 1%);
 }
 
 //Todos los input son MAYÚSCULAS a excepción del password-input
 input:not([type="password"]) {
-  font-family: $fuente_principal;
+  font-family: v.$fuente_principal;
   text-transform: uppercase;
 }
 //Todos los textarea también son MAYÚSCULAS
 textarea {
-  font-family: $fuente_principal;
+  font-family: v.$fuente_principal;
   text-transform: uppercase;
 }
 
@@ -68,7 +70,7 @@ input[type="number"] {
   width: 100%;
   overflow: hidden;
   transition: all 0.35s ease-in-out;
-  background-color: $gris;
+  background-color: v.$gris;
 }
 
 //SideBar
@@ -78,7 +80,7 @@ input[type="number"] {
   min-width: 80px;
   z-index: 1000;
   transition: all 0.25s ease-in-out;
-  background-color: $grisOscuro;
+  background-color: v.$grisOscuro;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -99,7 +101,7 @@ input[type="number"] {
   flex-direction: column;
   justify-content: start;
   text-align: start;
-  border: $azul, solid 2px;
+  border: v.$azul, solid 2px;
   border-radius: 5px;
   margin: 1rem 0.5rem 0 0.5rem;
   padding-bottom: 0.5rem;
@@ -112,7 +114,7 @@ input[type="number"] {
   min-width: auto;
   justify-content: center;
   text-align: start;
-  border-bottom: $gris, solid 2px;
+  border-bottom: v.$gris, solid 2px;
   margin: 1rem 0.5rem 0 0.5rem;
   padding-bottom: 0.5rem;
 }
@@ -132,7 +134,7 @@ input[type="number"] {
   padding: 0.2rem;
   transition: background-color 0.3s ease;
   &:hover {
-    background-color: $azul_claro;
+    background-color: v.$azul_claro;
   }
 }
 .toggle-btn img {
@@ -143,21 +145,21 @@ input[type="number"] {
   position: relative;
 }
 .sidebar-logo span {
-  font-family: $fuente_sidebar;
-  color: $negro;
+  font-family: v.$fuente_sidebar;
+  color: v.$negro;
   font-size: 0.9rem;
   font-weight: 600;
 }
 .sidebar-logo p {
   margin-bottom: 0;
-  font-family: $fuente_sidebar;
-  color: $azul_claro;
+  font-family: v.$fuente_sidebar;
+  color: v.$azul_claro;
   font-size: 0.9rem;
   font-weight: 600;
 }
 //Añadiendo la flecha que hace la animación de abrir y cerrar.
 #sidebar:not(.expand) .boton::after {
-  border: $gris, solid 2px;
+  border: v.$gris, solid 2px;
   border-width: 0 0.16rem 0.16rem 0;
   content: "";
   display: inline-block;
@@ -170,7 +172,7 @@ input[type="number"] {
 }
 
 #sidebar.expand .boton::after {
-  border: $gris, solid 2px;
+  border: v.$gris, solid 2px;
   border-width: 0 0.16rem 0.16rem 0;
   content: "";
   display: inline-block;
@@ -214,7 +216,7 @@ input[type="number"] {
   position: absolute;
   top: 0;
   left: 80px;
-  background-color: $grisOscuro;
+  background-color: v.$grisOscuro;
   padding: 0;
   min-width: 16rem;
   display: none;
@@ -233,16 +235,16 @@ input[type="number"] {
 //Darle un padding a los subitems
 
 a.sidebar-link {
-  color: $azul_claro;
+  color: v.$azul_claro;
+  font-family: v.$fuente_sidebar;
   padding: 0.5rem 1.3rem;
-  font-family: $fuente_sidebar;
   display: block;
   font-size: 0.9rem;
   white-space: nowrap;
   border-left: 3px solid transparent;
 }
 .sidebar-link span {
-  color: $negro;
+  color: v.$negro;
 }
 
 .sidebar-link i {
@@ -252,12 +254,11 @@ a.sidebar-link {
 
 a.sidebar-link:hover,
 i.sidebar-link {
-  transition: all 0.2s ease-out;
-  background-color: $azul;
-  border-left: 4px solid $blanco;
-  color: $gris;
+  background-color: v.$azul;
+  border-left: 4px solid v.$blanco;
+  color: v.$gris;
   span {
-    color: $gris;
+    color: v.$gris;
   }
 }
 //Seleccionamos ala lista padre y capturamos a todos los elementos con la clase "sidebar-link"
@@ -270,7 +271,7 @@ ul.padre .sidebar-link {
 
 //Asignando el background rojo al item del footer CERRAR SESIÓN al momento de recibir un hover
 #sidebar .sidebar-footer:hover .sidebar-link {
-  background-color: $rojo_claro;
+  background-color: v.$rojo_claro;
 }
 //Flechita que aparece al lado de los items que tienen más items
 #sidebar.expand .sidebar-link[data-bs-toggle="collapse"]::after {
@@ -300,27 +301,27 @@ ul.padre .sidebar-link {
 //Relación entre Programas y Fuentes de financiamiento
 .financia-dslc {
   border: solid;
-  border-color: $incorrecto;
+  border-color: v.$incorrecto;
 
   input {
-    background-color: $incorrecto;
-    border-color: $incorrecto;
+    background-color: v.$incorrecto;
+    border-color: v.$incorrecto;
     &:hover {
-      background-color: $incorrecto;
-      border-color: $incorrecto;
+      background-color: v.$incorrecto;
+      border-color: v.$incorrecto;
     }
   }
 }
 .financia-slc {
   border: solid;
-  border-color: $correcto;
+  border-color: v.$correcto;
 
   input {
-    background-color: $correcto;
-    border-color: $correcto;
+    background-color: v.$correcto;
+    border-color: v.$correcto;
     &:hover {
-      background-color: $correcto;
-      border-color: $correcto;
+      background-color: v.$correcto;
+      border-color: v.$correcto;
     }
   }
 }
@@ -330,49 +331,42 @@ ul.padre .sidebar-link {
 }
 //Botones
 .btn-volver {
-  height: auto;
-  background-color: $verde;
-  border-color: $verde;
-  color: $negro;
-  min-width: 120px;
-  font-family: $fuente_boton_formulario;
+  background-color: v.$verde;
+  border-color: v.$verde;
+  color: v.$negro;
+  font-family: v.$fuente_boton_formulario;
   &:hover {
-    background-color: color.adjust($verde, $lightness: -5%);
-    border-color: color.adjust($verde, $lightness: -20%);
-    color: $blanco;
+    background-color: color.adjust(v.$verde, $lightness: -5%);
+    border-color: color.adjust(v.$verde, $lightness: -20%);
+    color: v.$blanco;
   }
 }
 
 .btn-agregar {
-  margin: 0 0 1rem 0;
-  color: $negro;
-  background-color: $azul;
-  font-family: $fuente_boton_formulario;
-  border-color: $azul;
+  color: v.$negro;
+  background-color: v.$azul;
+  font-family: v.$fuente_boton_formulario;
+  border-color: v.$azul;
   &:hover {
-    background-color: $azul_claro;
-    border-color: $azul_claro;
-    color: $gris;
+    background-color: v.$azul_claro;
+    border-color: v.$azul_claro;
+    color: v.$gris;
   }
 }
 
 .btn-add {
-  background-color: $verde;
-  border: $verde, solid 1px;
+  background-color: v.$verde;
+  border: v.$verde, solid 1px;
   &:hover {
-    background-color: $verde_claro;
-    border-color: $verde_claro;
-    color: $gris;
+    background-color: v.$verde_claro;
+    border-color: v.$verde_claro;
+    color: v.$gris;
   }
 }
 .btn-agregar-sbmt {
-  color: $negro;
-  min-width: 120px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: $azul;
-  font-family: $fuente_boton_formulario;
+  color: v.$negro;
+  background-color: v.$azul;
+  font-family: v.$fuente_boton_formulario;
   border-radius: 5px;
 
   i {
@@ -380,38 +374,35 @@ ul.padre .sidebar-link {
   }
 
   input {
-    color: $negro;
+    color: v.$negro;
     &:hover {
-      background-color: color.adjust($azul, $lightness: -10%);
+      background-color: color.adjust(v.$azul, $lightness: -10%);
     }
   }
   &:hover {
-    background-color: color.adjust($azul, $lightness: -10%);
-    color: $blanco;
+    background-color: color.adjust(v.$azul, $lightness: -10%);
+    color: v.$blanco;
   }
 }
 
 .btn-actualizar {
-  background-color: $amarillo;
-  font-family: $fuente_boton_formulario;
-  border-color: $amarillo;
-  min-width: 8rem;
+  background-color: v.$amarillo;
+  font-family: v.$fuente_boton_formulario;
+  border-color: v.$amarillo;
   &:hover {
-    background-color: $amarillo_claro;
-    border-color: $amarillo_claro;
-    color: $gris;
+    background-color: v.$amarillo_claro;
+    border-color: v.$amarillo_claro;
+    color: v.$gris;
   }
 }
 .btn-actualizar:not(.peque) {
-  background-color: $amarillo;
-  font-family: $fuente_boton_formulario;
-  border-color: $amarillo;
-  min-width: 8rem;
-  margin: 0 3px;
+  background-color: v.$amarillo;
+  font-family: v.$fuente_boton_formulario;
+  border-color: v.$amarillo;
   &:hover {
-    background-color: $amarillo_claro;
-    border-color: $amarillo_claro;
-    color: $gris;
+    background-color: v.$amarillo_claro;
+    border-color: v.$amarillo_claro;
+    color: v.$gris;
   }
 }
 .btn-actualizar.peque {
@@ -443,21 +434,21 @@ ul.padre .sidebar-link {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: $amarillo;
-  font-family: $fuente_boton_formulario;
-  border-color: solid, $amarillo;
+  background-color: v.$amarillo;
+  font-family: v.$fuente_boton_formulario;
+  border-color: solid, v.$amarillo;
   border-radius: 5px;
   i {
     margin-left: 0.5rem;
   }
   &:hover {
-    background-color: $amarillo_claro;
-    border-color: solid, $amarillo_claro;
-    color: $blanco;
+    background-color: v.$amarillo_claro;
+    border-color: solid, v.$amarillo_claro;
+    color: v.$blanco;
   }
   input {
     &:hover {
-      background-color: $amarillo_claro;
+      background-color: v.$amarillo_claro;
     }
   }
 }
@@ -466,8 +457,8 @@ ul.padre .sidebar-link {
   display: flex;
   max-height: 2.4rem;
   align-items: center;
-  background-color: $rojo;
-  font-family: $fuente_boton_formulario;
+  background-color: v.$rojo;
+  font-family: v.$fuente_boton_formulario;
   border-radius: 5px;
   input {
     text-align: left;
@@ -486,13 +477,13 @@ ul.padre .sidebar-link {
 }
 
 .btn-eliminar:hover {
-  background-color: $rojo_claro;
-  color: $gris;
+  background-color: v.$rojo_claro;
+  color: v.$gris;
   i {
-    color: $gris;
+    color: v.$gris;
   }
   input {
-    color: $gris;
+    color: v.$gris;
   }
 }
 .btn-acciones {
@@ -523,12 +514,12 @@ ul.padre .sidebar-link {
 }
 
 .sidebar-footer {
-  background-color: $grisOscuro;
+  background-color: v.$grisOscuro;
   a {
-    color: $rojo;
+    color: v.$rojo;
   }
   span {
-    color: $rojo_oscuro;
+    color: v.$rojo_oscuro;
   }
 }
 
@@ -544,7 +535,7 @@ ul.padre .sidebar-link {
 }
 
 .tooltip-inner {
-  background-color: $grisOscuro !important; // Color de fondo del tooltip
+  background-color: v.$grisOscuro !important; // Color de fondo del tooltip
   border-radius: 0.5rem; // Esquinas redondeadas
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); // Sombra alrededor
 }
@@ -574,4 +565,31 @@ ul.padre .sidebar-link {
 }
 #programas_coordinador_help.oculto {
   display: none;
+}
+
+// Estilos para las tarjetas de saldos por fuente de financiamiento
+.fuente-saldo-card {
+  transition: box-shadow 0.2s, transform 0.2s;
+  cursor: pointer;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.10);
+  &:hover {
+    box-shadow: 0 6px 24px rgba(0, 123, 255, 0.25);
+    transform: translateY(-4px) scale(1.03);
+    border-color: v.$azul;
+  }
+}
+.fuente-saldo-header {
+  font-size: 1.1rem;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  background: linear-gradient(90deg, v.$azul 60%, v.$azul_claro 100%);
+}
+.fuente-saldo-footer {
+  background: v.$grisClaro;
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  font-size: 0.95rem;
+  min-height: 2.2rem;
+  padding: 0.3rem 0.5rem;
 }
