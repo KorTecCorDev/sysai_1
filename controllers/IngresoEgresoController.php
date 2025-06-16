@@ -11,6 +11,7 @@ use Model\ProgramaPoaVista;
 use Model\OieTipoComprobante;
 use Model\OtrosIngresosEgresos;
 use Model\IngresoEgresoAdminVista;
+use Model\OtrosIngresosEgresosAdminCoordinadorEgresoVista;
 use Model\Poa;
 
 class IngresoEgresoController
@@ -24,12 +25,21 @@ class IngresoEgresoController
 
         // Creando el nuevo objeto oie ($oie)
         $oie = new OtrosIngresosEgresos();
+        //Es un coordinador?
+        $tipousuarioid = $_SESSION['cargo_id'];
+        if ($tipousuarioid == 3) {
+            //Almacenamos el programa exclusivo del coordinador.
+            //Programa del coordinador
+            $poas = ProgramaPoaVista::findxatributo('poa_id', $_SESSION['poa_id']);
+            //Otros egresos del POA del coordinador
+            $oies = OtrosIngresosEgresosAdminCoordinadorEgresoVista::findxatributo('poa_id',$_SESSION['poa_id']);
+        } else {
+            // Creando el array con los programas que tengan POA (Vista) ($poas)
+            $poas = ProgramaPoaVista::all();
 
-        // Creando el array con los programas que tengan POA (Vista) ($poas)
-        $poas = ProgramaPoaVista::all();
-
-        // Creando el array con todos los oie registrados ($oies)
-        $oies = IngresoEgresoAdminVista::all();
+            // Creando el array con todos los oie registrados ($oies)
+            $oies = IngresoEgresoAdminVista::all();
+        }
 
         // Resultado en cero en caso que no se haya realizado ninguna acción con los datos
 
@@ -101,12 +111,23 @@ class IngresoEgresoController
         // Creando el nuevo objeto oie ($oie)
         $oie = new OtrosIngresosEgresos();
 
-        // Creando el array con los programas que tengan POA (Vista) ($poas)
-        $poas = ProgramaPoaVista::all();
+        //Es un coordinador?
+        $tipousuarioid = $_SESSION['cargo_id'];
+        if ($tipousuarioid == 3) {
+            //Almacenamos el programa exclusivo del coordinador.
+            //Programa del coordinador
+            $poas = ProgramaPoaVista::findxatributo('poa_id', $_SESSION['poa_id']);
+            //Otros egresos del POA del coordinador
+            $oies = OtrosIngresosEgresosAdminCoordinadorEgresoVista::findmany($_SESSION['poa_id']);
+            //Enviamos solo el campo egresos para el combo de selección tipo_oie
+            
+        } else {
+            // Creando el array con los programas que tengan POA (Vista) ($poas)
+            $poas = ProgramaPoaVista::all();
 
-        // Creando el array con todos los oie registrados ($oies)
-        $oies = OtrosIngresosEgresos::all();
-
+            // Creando el array con todos los oie registrados ($oies)
+            $oies = OtrosIngresosEgresos::all();
+        }
         // Resultado en cero en caso que no se haya realizado ninguna acción con los datos
 
         $resultado = 0;
@@ -146,7 +167,6 @@ class IngresoEgresoController
             //Asignamos el id del comprobante al objeto OIE
             $oingresosegresos->oie_comprobante_id = $oiecomprobanteid;
             //FIN SECCIÓN OIE
-
             $errores = $oingresosegresos->validar();
             if (empty($errores)) {
                 //Insertando la accion de audi para el usuario actual
