@@ -85,18 +85,15 @@ class Login extends ActiveRecord
     }
     public function existeUsuario()
     {
-        //Revisar si existe el usuario
-        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email='" . $this->email . "' LIMIT 1";
-        $resultado = self::$db->query($query);
-        if (!$resultado->num_rows) {
+        // Consulta preparada: el email es entrada del usuario (evita SQLi pre-autenticación).
+        // self::$tbstring y self::$tabla son constantes del modelo (no entrada del usuario).
+        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email = ? LIMIT 1";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
+        if (empty($resultado)) {
             self::$errores[] = 'El usuario no existe';
             return;
         }
-        //Devolviendo solo el objeto
-        while ($registro = $resultado->fetch_assoc()) {
-            $devolver = static::crearObjeto($registro);
-        }
-        return $devolver;
+        return array_shift($resultado);
     }
     public function comprobarPassword($resultado)
     {
@@ -137,77 +134,74 @@ class Login extends ActiveRecord
 
     public function buscarporEmail($email)
     {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE email='" . $email . "'";
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE email = ?";
+        return self::consultarPreparado($query, 's', [$email]);
     }
 
     public function guardarToken()
     {
-        $query = "UPDATE usuario SET reset_token = '" . $this->reset_token . "' WHERE id=" . $this->id;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        $query = "UPDATE usuario SET reset_token = ? WHERE id = ?";
+        return self::ejecutarPreparado($query, 'si', [$this->reset_token, $this->id]);
     }
 
     public function validarToken($token)
     {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE reset_token=" . $token;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE reset_token = ?";
+        return self::consultarPreparado($query, 's', [$token]);
     }
 
     public function actualizarPassword($email, $password)
     {
-        $query = 'UPDATE usuario SET password =' . $password . ', reset_token = NULL WHERE email=' . $email;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        // El password recibido debe venir ya hasheado por quien llama.
+        $query = "UPDATE usuario SET password = ?, reset_token = NULL WHERE email = ?";
+        return self::ejecutarPreparado($query, 'ss', [$password, $email]);
     }
 
     public function generarCodigoAleatorioSimple($longitud = 8)
     {
-        $caracteres = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $codigo = substr(str_shuffle($caracteres), 0, $longitud);
-        return $codigo;
+        // Token criptográficamente seguro (reemplaza str_shuffle).
+        $bytes = random_bytes((int) ceil($longitud / 2));
+        return substr(bin2hex($bytes), 0, $longitud);
     }
 
     public function devolverPersona()
     {
-        $id = $this->persona_id;
-        $query = "SELECT * FROM persona WHERE id='" . $id . "'";
-        $resultado = $this->consultarSql($query);
+        $query = "SELECT * FROM persona WHERE id = ?";
+        $resultado = self::consultarPreparado($query, 'i', [$this->persona_id]);
         return array_shift($resultado);
     }
 
     public function findUserxEmail(): object
     {
-        $query = "SELECT persona_id FROM usuario WHERE email='" . $this->email . "'";
-        $resultado = $this->consultarSql($query);
+        $query = "SELECT persona_id FROM usuario WHERE email = ?";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
         return array_shift($resultado);
     }
 
     public function tknvrfy()
     {
-        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token='" . $this->reset_token . "'";
-        $resultado = $this->consultarSqldvolveruno($query);
-        if ($resultado) {
-            return $resultado;
+        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token = ?";
+        $resultado = self::consultarPreparado($query, 's', [$this->reset_token]);
+        $obj = array_shift($resultado);
+        if ($obj) {
+            return $obj;
         }
         self::$errores[] = 'El código de verificación ingresado no es correcto';
     }
 
     public function updatePsswrdUser(string $newpssw): bool
     {
-        $query = "UPDATE usuario SET password='" . password_hash($newpssw, PASSWORD_DEFAULT) . "' where id = " . $this->id;
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
+        // Al cambiar la contraseña invalidamos el token (un solo uso).
+        $hash = password_hash($newpssw, PASSWORD_DEFAULT);
+        $query = "UPDATE usuario SET password = ?, reset_token = NULL WHERE id = ?";
+        return self::ejecutarPreparado($query, 'si', [$hash, $this->id]);
     }
 
     //Funciones para cambiar estados de los usuarios por intentos fallidos en el login
     public function restablecerIntentos()
     {
-        $query = "UPDATE usuario SET intentos = 0 WHERE id = " . $this->id;
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
+        $query = "UPDATE usuario SET intentos = 0 WHERE id = ?";
+        return self::ejecutarPreparado($query, 'i', [$this->id]);
     }
 
     public function bloquearUsuario()
@@ -217,9 +211,8 @@ class Login extends ActiveRecord
         //Si el usuario existe, entonces se puede bloquear
         if ($usu) {
             //El estado 1 significa que el usuario está bloqueado
-            $query = "UPDATE usuario SET estado = 1 WHERE email = '" . $this->email . "'";
-            $resultado = self::ejecutarSql($query);
-            return $resultado;
+            $query = "UPDATE usuario SET estado = 1 WHERE email = ?";
+            return self::ejecutarPreparado($query, 's', [$this->email]);
         }
         //Si el usuario no existe, entonces no se puede bloquear
         self::$errores[] = 'El usuario no existe';
@@ -228,17 +221,16 @@ class Login extends ActiveRecord
     public function aumentarIntentos()
     {
         //Actualizamos el contador de intentos en la base de datos
-        $query = "UPDATE usuario SET intentos = " . $this->intentos . " WHERE email = '" . $this->email . "'";
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
+        $query = "UPDATE usuario SET intentos = ? WHERE email = ?";
+        return self::ejecutarPreparado($query, 'is', [$this->intentos, $this->email]);
     }
     public function actualizarIntentos()
     {
         //Consultamos a la base de datos el número de intentos del usuario según su email si exisitiera
-        $query = "SELECT intentos FROM usuario WHERE email = '" . $this->email . "'";
-        $resultado = self::$db->query($query);
-        if ($resultado->num_rows) {
-            $usuario = $resultado->fetch_object();
+        $query = "SELECT intentos FROM usuario WHERE email = ?";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
+        $usuario = array_shift($resultado);
+        if ($usuario) {
             //Si el usuario existe, entonces se puede actualizar el número de intentos
             $this->intentos = intval($usuario->intentos) + 1;
             return $this->aumentarIntentos();

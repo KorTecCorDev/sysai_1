@@ -21,7 +21,7 @@
             </div>
         <?php } ?>
     <?php } ?>
-    <form method="POST" class="needs-validation" novalidate>
+    <form method="POST" class="needs-validation" novalidate><?php echo csrf_input(); ?>
         <fieldset>
             <legend>Datos Generales</legend>
             <div class="mb-3">
@@ -30,7 +30,7 @@
                     <select class="form-select" id="combo_ff_programa" name="ff_id" required style="width: auto; min-width: 200px; max-width: 100%;">
                         <option value="" disabled selected>--Seleccione--</option>
                         <?php foreach ($ff_programas as $ff_programa) { ?>
-                            <option value="<?php echo $ff_programa->fuente_financiamiento_id; ?>" <?php echo $ff_programa->fuente_financiamiento_id == $oie->ff_id ? 'selected' : '' ?>><?php echo $ff_programa->fuente_financiamiento_nombre; ?></option>
+                            <option value="<?php echo s($ff_programa->fuente_financiamiento_id); ?>" <?php echo $ff_programa->fuente_financiamiento_id == $oie->ff_id ? 'selected' : '' ?>><?php echo s($ff_programa->fuente_financiamiento_nombre); ?></option>
                         <?php } ?>
                     </select>
                 </div>

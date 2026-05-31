@@ -14,7 +14,7 @@
                             <h4 class="card-title">Ingresos Totales</h4>
                             <h2 id="ingresosTotales">
                                 <?php foreach ($totalingresos as $tingreso) : ?>
-                                    <?php echo $tingreso->total_ingresos; ?>
+                                    <?php echo s($tingreso->total_ingresos); ?>
                                 <?php endforeach ?>
                             </h2>
                         </div>
@@ -28,7 +28,7 @@
                             <h4 class="card-title">Egresos Totales</h4>
                             <h2 id="egresosTotales">
                                 <?php foreach ($totalegresos as $tegreso) : ?>
-                                    <?php echo $tegreso->total_egresos; ?>
+                                    <?php echo s($tegreso->total_egresos); ?>
                                 <?php endforeach ?>
                             </h2>
                         </div>
@@ -42,7 +42,7 @@
                             <h4 class="card-title">Saldo Total</h4>
                             <h2 id="saldoTotal">
                                 <?php foreach ($totalsaldocontable as $tsaldo) : ?>
-                                    <?php echo $tsaldo->saldo_contable; ?>
+                                    <?php echo s($tsaldo->saldo_contable); ?>
                                 <?php endforeach ?>
                             </h2>
                         </div>
@@ -60,7 +60,7 @@
                         <div class="col-md-4 mb-4">
                             <div class="card border-info h-100 shadow fuente-saldo-card">
                                 <div class="card-header bg-info text-white text-center fuente-saldo-header">
-                                    <strong><?php echo $fuente->fuente_financiamiento_codigo; ?> - <?php echo $fuente->fuente_financiamiento_nombre; ?></strong>
+                                    <strong><?php echo s($fuente->fuente_financiamiento_codigo); ?> - <?php echo s($fuente->fuente_financiamiento_nombre); ?></strong>
                                 </div>
                                 <div class="card-body text-center">
                                     <span class="fw-bold">Saldo:</span>

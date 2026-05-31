@@ -60,15 +60,13 @@ class Usuario extends ActiveRecord
     public function comprobarCoordinador(): int /*retorna un entero entre 0 y 1 */
     {
         //Realiza la consulta, luego verifica si el usuario es coordinador retornando valores entre cero y uno
-        $query = "SELECT COUNT(*) as total FROM usuario WHERE id = $this->id AND cargo_id = 3";
-        $resultado = self::$db->query($query);
-        $total = $resultado->fetch_object()->total;
-        //Si el total de poa es mayor a cero retornamos 1, de lo contrario retornamos cero
-        if ($total > 0) {
-            return 1; //Es coordinador
-        } else {
-            return 0; //No es coordinador
-        }
+        $stmt = self::$db->prepare("SELECT COUNT(*) AS total FROM usuario WHERE id = ? AND cargo_id = 3");
+        $stmt->bind_param('i', $this->id);
+        $stmt->execute();
+        $total = (int) ($stmt->get_result()->fetch_object()->total ?? 0);
+        $stmt->close();
+        //Si el total es mayor a cero retornamos 1, de lo contrario cero
+        return $total > 0 ? 1 : 0;
     }
     public function devolverIdLastInsercion()
     {

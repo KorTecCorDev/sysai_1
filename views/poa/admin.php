@@ -30,9 +30,9 @@
                         <?php foreach ($poas as $poa) {
                             if ($poa->programa_id === $programa->id) { ?>
                                 <tr>
-                                    <td class="text-center fw-semibold"> <?php echo $programa->codigo; ?> </td>
-                                    <td> <?php echo $programa->nombre; ?> </td>
-                                    <td> <?php echo $poa->anio; ?> </td>
+                                    <td class="text-center fw-semibold"> <?php echo s($programa->codigo); ?> </td>
+                                    <td> <?php echo s($programa->nombre); ?> </td>
+                                    <td> <?php echo s($poa->anio); ?> </td>
                                     <td class="text-end fw-bold text-success">S/. <?php echo number_format($poa->presupuesto, 2, '.', ','); ?></td>
                                     <td>
                                         <?php if ($poa->estado == 0) { ?>
@@ -51,7 +51,7 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2">
-                                            <button type="button" class="btn" style="background-color: #4A90E2;" data-bs-toggle="modal" data-bs-target="#modalConfirm<?php echo $poa->id; ?>">
+                                            <button type="button" class="btn" style="background-color: #4A90E2;" data-bs-toggle="modal" data-bs-target="#modalConfirm<?php echo s($poa->id); ?>">
                                                 <i class="bi bi-arrow-clockwise"></i>
                                             </button>
                                         </div>
@@ -59,17 +59,18 @@
                                 </tr>
 
                                 <!-- Modal de Confirmación -->
-                                <div class="modal fade oculto" id="modalConfirm<?php echo $poa->id; ?>" tabindex="-1" aria-labelledby="modalConfirmLabel<?php echo $poa->id; ?>" aria-hidden="true">
+                                <div class="modal fade oculto" id="modalConfirm<?php echo s($poa->id); ?>" tabindex="-1" aria-labelledby="modalConfirmLabel<?php echo s($poa->id); ?>" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="modalConfirmLabel<?php echo $poa->id; ?>">Confirmar Cambio de Estado</h5>
+                                                <h5 class="modal-title" id="modalConfirmLabel<?php echo s($poa->id); ?>">Confirmar Cambio de Estado</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                                             </div>
                                             <div class="modal-body">
                                                 <p>¿Está seguro de que desea cambiar el estado de este registro? Esta acción tiene carácter de <strong>declaración jurada</strong> y será registrada.</p>
-                                                <form method="POST" action="/reporte/modificarpoa?id=<?php echo $poa->id; ?>">
-                                                    <input type="hidden" name="id" value="<?php echo $poa->id; ?>">
+                                                <form method="POST" action="/reporte/modificarpoa?id=<?php echo s($poa->id); ?>">
+                                                    <?php echo csrf_input(); ?>
+                                                    <input type="hidden" name="id" value="<?php echo s($poa->id); ?>">
                                                     <input type="hidden" name="tipo" value="poa">
                                                     <select name="estado" class="form-select mb-3">
                                                         <?php if ($poa->estado == 0) { ?>

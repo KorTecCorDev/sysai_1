@@ -35,19 +35,19 @@
                 <!-- MostrarLosRegistrosDeTipoCambioDolar -->
                 <?php foreach ($tiposCambioDolar as $tipocambio) : ?>
                     <tr>
-                        <td> <?php echo $tipocambio->usuario; ?> </td>
-                        <td> <?php echo $tipocambio->tipo_cambio; ?> </td>
-                        <td> <?php echo $tipocambio->fecha; ?> </td>
+                        <td> <?php echo s($tipocambio->usuario); ?> </td>
+                        <td> <?php echo s($tipocambio->tipo_cambio); ?> </td>
+                        <td> <?php echo s($tipocambio->fecha); ?> </td>
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="/tcambio/dolar/actualizar?id=<?php echo $tipocambio->id; ?>"
+                                <a href="/tcambio/dolar/actualizar?id=<?php echo s($tipocambio->id); ?>"
                                     class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                     title="Editar registro">
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
 
-                                <form method="POST" action="/tcambio/dolar/eliminar" class="d-inline">
-                                    <input type="hidden" name="id" value="<?php echo $tipocambio->id; ?>">
+                                <form method="POST" action="/tcambio/dolar/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                    <input type="hidden" name="id" value="<?php echo s($tipocambio->id); ?>">
                                     <input type="hidden" name="tipo" value="tipocambiodolar">
                                     <button type="submit"
                                         class="btn btn-sm btn-outline-danger rounded-pill px-3"

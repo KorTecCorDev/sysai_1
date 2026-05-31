@@ -44,17 +44,17 @@
 
                 <?php foreach ($particiones as $particion) : ?>
                     <tr>
-                        <td> <?php echo $particion->actividad_id; ?> </td>
-                        <td> <?php echo $particion->ff_id; ?> </td>
+                        <td> <?php echo s($particion->actividad_id); ?> </td>
+                        <td> <?php echo s($particion->ff_id); ?> </td>
                         <td> <?php echo "S./ {$particion->monto}"; ?> </td>
                         <td class="td-acciones">
                             <!-- Div de Acciones     -->
                             <div class="btn-acciones">
                                 <div class="actualizar-espacio">
-                                    <a href="/rendicionff/actualizar?id=<?php echo $particion->id; ?>&actividad_id=<?php echo $particion->actividad_id; ?>" class="btn btn-warning btn-actualizar peque"><i class="bi bi-pen"></i></a>
+                                    <a href="/rendicionff/actualizar?id=<?php echo s($particion->id); ?>&actividad_id=<?php echo s($particion->actividad_id); ?>" class="btn btn-warning btn-actualizar peque"><i class="bi bi-pen"></i></a>
                                 </div>
                                 <div class="eliminar-espacio">
-                                    <form method="POST" class="w-100" action="/rendicionff/eliminar">
+                                    <form method="POST" class="w-100" action="/rendicionff/eliminar"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($particion->id); ?>">
                                         <input type="hidden" name="actividad_id" value="<?php echo s($particion->actividad_id); ?>">
                                         <input type="hidden" name="tipo" value="rendicionff">

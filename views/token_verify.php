@@ -24,7 +24,7 @@
                 <p class="texto-login text-center">
                     Ingrese aquí el código de verificación que se le envió a su correo electrónico.
                 </p>
-                <form method="POST" class="form" action="/token_verify">
+                <form method="POST" class="form" action="/token_verify"><?php echo csrf_input(); ?>
                     <div class="mb-3">
                         <label for="reset_token" class="form-label">Código de verificación</label>
                         <input type="text" class="form-control" name="reset_token" id="reset_token" placeholder="Código de verificación" require>

@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
         <h1>Administrador de Rubros de la Actividad
-            <?php echo $objactividad->codigo; ?></h1>
+            <?php echo s($objactividad->codigo); ?></h1>
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
@@ -46,22 +46,22 @@
 
                     <?php foreach ($rubros as $rubro) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $rubro->codigo; ?> </td>
-                            <td> <?php echo $rubro->categoria_rubro; ?> </td>
-                            <td> <?php echo $rubro->subcategoria_rubro; ?> </td>
-                            <td> <?php echo $rubro->tipo_rubro; ?> </td>
-                            <td> <?php echo $rubro->nombre; ?> </td>
-                            <td> <?php echo $rubro->descripcion; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($rubro->codigo); ?> </td>
+                            <td> <?php echo s($rubro->categoria_rubro); ?> </td>
+                            <td> <?php echo s($rubro->subcategoria_rubro); ?> </td>
+                            <td> <?php echo s($rubro->tipo_rubro); ?> </td>
+                            <td> <?php echo s($rubro->nombre); ?> </td>
+                            <td> <?php echo s($rubro->descripcion); ?> </td>
                             <td><?php echo 'S./ ' . number_format($rubro->monto, 2, '.', ','); ?></td>
                             <td class="td-acciones">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/rubro/actualizar?id=<?php echo $rubro->id; ?>&actividad_id=<?php echo $actividadid ?>"
+                                    <a href="/rubro/actualizar?id=<?php echo s($rubro->id); ?>&actividad_id=<?php echo $actividadid ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar rubro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/rubro/eliminar" class="d-inline">
+                                    <form method="POST" action="/rubro/eliminar" class="d-inline"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($rubro->id); ?>">
                                         <input type="hidden" name="tipo" value="rubro">
                                         <button type="submit"

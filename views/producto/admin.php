@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
         <h1>Administrador de Productos del Resultado
-            <?php echo $objresultado->codigo; ?></h1>
+            <?php echo s($objresultado->codigo); ?></h1>
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
@@ -43,25 +43,25 @@
 
                     <?php foreach ($productos as $producto) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $producto->codigo; ?> </td>
-                            <td> <?php echo $producto->nombre; ?> </td>
-                            <td> <?php echo $producto->descripcion; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($producto->codigo); ?> </td>
+                            <td> <?php echo s($producto->nombre); ?> </td>
+                            <td> <?php echo s($producto->descripcion); ?> </td>
                             <td class="text-center">
                                 <!-- Div de Acciones     -->
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/actividad/admin?producto_id=<?php echo $producto->id; ?>"
+                                    <a href="/actividad/admin?producto_id=<?php echo s($producto->id); ?>"
                                         class="btn btn-sm btn-success rounded-pill px-3"
                                         title="Agregar actividad">
                                         <i class="bi bi-plus-lg"></i>
                                     </a>
 
-                                    <a href="/producto/actualizar?id=<?php echo $producto->id; ?>&resultado_id=<?php echo $resultadoid ?>"
+                                    <a href="/producto/actualizar?id=<?php echo s($producto->id); ?>&resultado_id=<?php echo $resultadoid ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar producto">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/producto/eliminar" class="d-inline">
+                                    <form method="POST" action="/producto/eliminar" class="d-inline"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($producto->id); ?>">
                                         <input type="hidden" name="tipo" value="producto">
                                         <button type="submit"

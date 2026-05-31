@@ -1,6 +1,11 @@
 vendor/
 node_modules/
 includes/config/database.php
+includes/config/mail.php
 .env
 *.log
 *.cache
+# Reportes generados en runtime (PhpSpreadsheet)
+views/reporte/storage/
+# Volcado de BD con datos reales (solo schema/seed de prueba se versionan)
+db/sysai_schema_*.sql

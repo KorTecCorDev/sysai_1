@@ -9,9 +9,12 @@ function incluirTemplate(string $nombre, bool $inicio = false)
 
 function estaAutenticado()
 {
-    session_start();
-    if (!$_SESSION['login']) {
-        header('Location: /');
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    if (empty($_SESSION['login'])) {
+        header('Location: /login');
+        exit;
     }
 }
 
@@ -29,11 +32,128 @@ function debuguearHTML($variable)
     exit;
 }
 
-//Escapa / Sanitizar el HTML
+//Escapa / Sanitizar el HTML (null-safe, comillas y UTF-8 para contexto de atributos)
 function s($html): string
 {
-    $s = htmlspecialchars($html);
-    return $s;
+    return htmlspecialchars((string) ($html ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+// ----------------------------------------------------------------------------
+// Protección CSRF
+// ----------------------------------------------------------------------------
+
+/** Devuelve (creándolo si hace falta) el token CSRF de la sesión. */
+function csrf_token(): string
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/** Campo oculto con el token CSRF, para incrustar en los formularios POST. */
+function csrf_input(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . s(csrf_token()) . '">';
+}
+
+/** Verifica el token CSRF enviado por POST (comparación en tiempo constante). */
+function verificar_csrf(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    $token = $_POST['csrf_token'] ?? '';
+    return !empty($_SESSION['csrf_token'])
+        && is_string($token)
+        && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+// ----------------------------------------------------------------------------
+// Autorización por rol y alcance (A1 IDOR / A2 mass assignment)
+//   cargo_id: 1 = Administrador, 2 = Contador, 3 = Coordinador
+// ----------------------------------------------------------------------------
+
+function cargoActual(): ?int
+{
+    return isset($_SESSION['cargo_id']) ? (int) $_SESSION['cargo_id'] : null;
+}
+
+function esAdmin(): bool        { return cargoActual() === 1; }
+function esContador(): bool     { return cargoActual() === 2; }
+function esCoordinador(): bool  { return cargoActual() === 3; }
+
+/** POA/Programa al que está acotado el coordinador (de la sesión). */
+function poaIdCoordinador(): ?int      { return isset($_SESSION['poa_id']) ? (int) $_SESSION['poa_id'] : null; }
+function programaIdCoordinador(): ?int { return isset($_SESSION['programa_id']) ? (int) $_SESSION['programa_id'] : null; }
+
+/**
+ * Exige que el cargo actual esté dentro de la lista permitida; si no, corta con 403.
+ * Defensa en profundidad además de la separación por carga de rutas.
+ */
+function exigirRol(array $cargosPermitidos): void
+{
+    if (!in_array(cargoActual(), $cargosPermitidos, true)) {
+        http_response_code(403);
+        exit('Acceso denegado: no tiene permisos para esta acción.');
+    }
+}
+
+/**
+ * Para coordinadores: exige que el recurso pertenezca a SU POA.
+ * Admin/Contador no están acotados (pasan). Corta con 403 si hay violación.
+ */
+function exigirPoaPropio($poaIdRecurso): void
+{
+    if (esCoordinador() && (int) $poaIdRecurso !== poaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
+}
+
+/**
+ * Resuelve el programa_id de una actividad recorriendo la cadena
+ * actividad → producto → resultado → programa. Devuelve null si no se resuelve.
+ */
+function programaIdPorActividad($actividadId): ?int
+{
+    $actividadId = (int) $actividadId;
+    if ($actividadId <= 0) {
+        return null;
+    }
+    $act = \Model\Actividad::find($actividadId);
+    if (!$act || !isset($act->producto_id)) {
+        return null;
+    }
+    $prod = \Model\Producto::find($act->producto_id);
+    if (!$prod || !isset($prod->resultado_id)) {
+        return null;
+    }
+    $res = \Model\Resultado::find($prod->resultado_id);
+    if (!$res || !isset($res->programa_id)) {
+        return null;
+    }
+    return (int) $res->programa_id;
+}
+
+/**
+ * Para coordinadores: exige que la actividad (y el recurso ligado a ella:
+ * rendición, rubro, etc.) pertenezca a SU programa. Admin/Contador pasan.
+ * Corta con 403 si la actividad es de otro programa o no se resuelve.
+ */
+function exigirProgramaPropioPorActividad($actividadId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    $programaRecurso = programaIdPorActividad($actividadId);
+    if ($programaRecurso === null || $programaRecurso !== programaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
 }
 
 //Validar tipo de Contenido
@@ -185,6 +305,67 @@ function validarId($tb)
         $id = filter_var($id, FILTER_VALIDATE_INT);
     }
     return $id;
+}
+
+/**
+ * Envía el código (token) de recuperación de contraseña.
+ *  - Con SMTP configurado en includes/config/mail.php → envía el email real.
+ *  - Sin SMTP (entorno de desarrollo) → registra el token en includes/logs/mail.log
+ *    y lo trata como "enviado", para poder continuar el flujo sin servidor de correo.
+ *
+ * @return bool true si se envió (o se registró en modo dev), false si falló el SMTP.
+ */
+function enviarTokenRecuperacion(string $email, string $nombre, string $token): bool
+{
+    $cfg = require __DIR__ . '/config/mail.php';
+
+    // Modo desarrollo: sin credenciales SMTP no se puede enviar de verdad.
+    if (empty($cfg['username']) || empty($cfg['password'])) {
+        $logDir = __DIR__ . '/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+        $linea = sprintf(
+            "[%s] [DEV - correo NO enviado] PARA: %s | NOMBRE: %s | TOKEN: %s%s",
+            date('Y-m-d H:i:s'),
+            $email,
+            $nombre,
+            $token,
+            PHP_EOL
+        );
+        @file_put_contents($logDir . '/mail.log', $linea, FILE_APPEND | LOCK_EX);
+        error_log("[DEV] Token de recuperación para {$email}: {$token}");
+        return true;
+    }
+
+    try {
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = $cfg['host'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $cfg['username'];
+        $mail->Password   = $cfg['password'];
+        $mail->SMTPSecure = $cfg['secure'];
+        $mail->Port       = (int) $cfg['port'];
+        $mail->setFrom($cfg['from_email'], $cfg['from_name']);
+        $mail->addAddress($email, $nombre);
+        $mail->isHTML(true);
+        $mail->CharSet = 'UTF-8';
+        $mail->Subject = 'Respuesta a Solicitud de cambio de Contraseña';
+        $mail->Body =
+            '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">'
+            . '<h2 style="color:#42A5F5">Cambio de Contraseña</h2>'
+            . '<p>Hola, ' . htmlspecialchars($nombre) . '.</p>'
+            . '<p>Usa el siguiente código para completar el proceso:</p>'
+            . '<p style="font-size:24px;font-weight:bold;color:#42A5F5">' . htmlspecialchars($token) . '</p>'
+            . '<p>Si no solicitaste este cambio, ignora este correo electrónico.</p>'
+            . '<hr><small>Cronos Soluciones</small></div>';
+        $mail->AltBody = "Tu código de recuperación es: {$token}";
+        return $mail->send();
+    } catch (\Throwable $e) {
+        error_log('Error al enviar correo de recuperación: ' . $e->getMessage());
+        return false;
+    }
 }
 
 //Función para arrays asociativos

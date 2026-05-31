@@ -17,8 +17,8 @@
         <select class="form-select shadow-sm" id="combo_tipo_programa_id" name="programa[tipo_programa_id]" aria-describedby="tipoProgramaHelp">
             <option value="" disabled selected>--Seleccione--</option>
             <?php foreach ($tiposprograma as $tprograma) { ?>
-                <option value="<?php echo $tprograma->id; ?>" <?php echo $tprograma->id == $programa->tipo_programa_id ? 'selected' : ''; ?>>
-                    <?php echo $tprograma->descripcion; ?>
+                <option value="<?php echo s($tprograma->id); ?>" <?php echo $tprograma->id == $programa->tipo_programa_id ? 'selected' : ''; ?>>
+                    <?php echo s($tprograma->descripcion); ?>
                 </option>
             <?php } ?>
         </select>

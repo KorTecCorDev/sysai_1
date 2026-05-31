@@ -24,7 +24,7 @@
                 <p class="texto-login text-center">
                     Ingrese su email y recibirá un correo electrónico con un código de verificación.
                 </p>
-                <form method="POST" class="form" action="/chgpsswd">
+                <form method="POST" class="form" action="/chgpsswd"><?php echo csrf_input(); ?>
                     <div class="mb-3">
                         <label for="email" class="form-label">Correo Electrónico</label>
                         <input type="email" class="form-control" name="email" id="email" placeholder="Tu correo aquí" require>

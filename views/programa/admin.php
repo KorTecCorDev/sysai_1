@@ -36,24 +36,24 @@
                 <tbody>
                     <?php foreach ($programas as $programa) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $programa->codigo; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($programa->codigo); ?> </td>
                             <td> <?php
                                     foreach ($tiposprograma as $tprograma) {
                                         echo $tprograma->id == $programa->tipo_programa_id ? $tprograma->descripcion : '';
                                     }
                                     ?> </td>
-                            <td> <?php echo $programa->nombre; ?> </td>
-                            <td> <?php echo $programa->descripcion; ?> </td>
+                            <td> <?php echo s($programa->nombre); ?> </td>
+                            <td> <?php echo s($programa->descripcion); ?> </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/programa/actualizar?id=<?php echo $programa->id; ?>"
+                                    <a href="/programa/actualizar?id=<?php echo s($programa->id); ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar registro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/programa/eliminar" class="d-inline">
-                                        <input type="hidden" name="id" value="<?php echo $programa->id; ?>">
+                                    <form method="POST" action="/programa/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($programa->id); ?>">
                                         <input type="hidden" name="tipo" value="programa">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"

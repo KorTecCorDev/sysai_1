@@ -39,21 +39,21 @@
 
                     <?php foreach ($usuarios as $usuario) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $usuario->descripcion; ?> </td>
-                            <td> <?php echo $usuario->datos; ?> </td>
-                            <td> <?php echo $usuario->email; ?> </td>
-                            <td> <?php echo $usuario->telefono; ?> </td>
-                            <td> <?php echo $usuario->cargo; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($usuario->descripcion); ?> </td>
+                            <td> <?php echo s($usuario->datos); ?> </td>
+                            <td> <?php echo s($usuario->email); ?> </td>
+                            <td> <?php echo s($usuario->telefono); ?> </td>
+                            <td> <?php echo s($usuario->cargo); ?> </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/usuario/actualizar?id=<?php echo $usuario->id; ?>"
+                                    <a href="/usuario/actualizar?id=<?php echo s($usuario->id); ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar registro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/usuario/eliminar" class="d-inline">
-                                        <input type="hidden" name="id" value="<?php echo $usuario->id; ?>">
+                                    <form method="POST" action="/usuario/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($usuario->id); ?>">
                                         <input type="hidden" name="tipo" value="usuario">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"

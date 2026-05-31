@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
         <h1>Administrador de Rendiciones de la Actividad
-            <?php echo $actividad->codigo; ?></h1>
+            <?php echo s($actividad->codigo); ?></h1>
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
@@ -52,26 +52,26 @@
                         <?php $fechacmte = strtotime($rendicion->fecha_comprobante);
                         $fechafmt = date('d/m/Y', $fechacmte);
                         ?>
-                        <td> <?php echo $rendicion->codigo; ?> </td>
+                        <td> <?php echo s($rendicion->codigo); ?> </td>
                         <td> <?php echo $fechafmt; ?> </td>
-                        <td> <?php echo $rendicion->tipo_comprobante; ?> </td>
-                        <td> <?php echo $rendicion->ruc; ?> </td>
-                        <td> <?php echo $rendicion->razon_social; ?> </td>
-                        <td> <?php echo $rendicion->serie; ?> </td>
-                        <td> <?php echo $rendicion->numero; ?> </td>
-                        <td> <?php echo $rendicion->detalle; ?> </td>
-                        <td> <?php echo $rendicion->fuente_financiamiento; ?> </td>
+                        <td> <?php echo s($rendicion->tipo_comprobante); ?> </td>
+                        <td> <?php echo s($rendicion->ruc); ?> </td>
+                        <td> <?php echo s($rendicion->razon_social); ?> </td>
+                        <td> <?php echo s($rendicion->serie); ?> </td>
+                        <td> <?php echo s($rendicion->numero); ?> </td>
+                        <td> <?php echo s($rendicion->detalle); ?> </td>
+                        <td> <?php echo s($rendicion->fuente_financiamiento); ?> </td>
                         <td><?php echo 'S./ ' . number_format($rendicion->monto, 2, '.', ','); ?></td>
                         <td class="td-acciones">
                             <!-- Div de Acciones     -->
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="/rendicion/actualizar?id=<?php echo $rendicion->id; ?>&actividad_id=<?php echo $actividad_id ?>"
+                                <a href="/rendicion/actualizar?id=<?php echo s($rendicion->id); ?>&actividad_id=<?php echo $actividad_id ?>"
                                     class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                     title="Editar rendición">
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
 
-                                <form method="POST" class="d-inline" action="/rendicion/eliminar">
+                                <form method="POST" class="d-inline" action="/rendicion/eliminar"><?php echo csrf_input(); ?>
                                     <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
                                     <input type="hidden" name="tipo" value="rubro">
                                     <button type="submit"

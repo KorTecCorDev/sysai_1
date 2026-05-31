@@ -2,7 +2,7 @@
     <div class="header-admin">
         <h1>Administrador de Resultados del Programa
             <?php foreach ($programas as $programa) { ?>
-            <?php echo $programa->id == $idprograma ? $programa->codigo : '';
+            <?php echo $programa->id == $idprograma ? s($programa->codigo) : '';
             } ?></h1>
         <?php
         if ($resultado) {
@@ -50,25 +50,25 @@
 
                     <?php foreach ($resultados as $resul) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $resul->codigo; ?> </td>
-                            <td> <?php echo $resul->nombre; ?> </td>
-                            <td> <?php echo $resul->descripcion; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($resul->codigo); ?> </td>
+                            <td> <?php echo s($resul->nombre); ?> </td>
+                            <td> <?php echo s($resul->descripcion); ?> </td>
                             <td class="text-center">
                                 <!-- Div de Acciones     -->
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/producto/admin?resultado_id=<?php echo $resul->id; ?>"
+                                    <a href="/producto/admin?resultado_id=<?php echo s($resul->id); ?>"
                                         class="btn btn-sm btn-success rounded-pill px-3"
                                         title="Agregar producto">
                                         <i class="bi bi-plus-lg"></i>
                                     </a>
 
-                                    <a href="/resultado/actualizar?id=<?php echo $resul->id; ?>&programa_id=<?php echo $idprograma; ?>"
+                                    <a href="/resultado/actualizar?id=<?php echo s($resul->id); ?>&programa_id=<?php echo $idprograma; ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar resultado">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/resultado/eliminar" class="d-inline">
+                                    <form method="POST" action="/resultado/eliminar" class="d-inline"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($resul->id); ?>">
                                         <input type="hidden" name="tipo" value="resultado">
                                         <button type="submit"

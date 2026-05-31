@@ -15,6 +15,13 @@ class ActiveRecord
     protected static $errores = [];
     protected static $aux = [];
 
+    // Columnas que NUNCA deben convertirse a MAYÚSCULAS:
+    //  - password    : el hash bcrypt es case-sensitive (uppercasearlo lo corrompe)
+    //  - reset_token  : token sensible a mayúsculas/minúsculas
+    //  - email        : se preserva tal cual (calidad de dato)
+    // Los modelos pueden sobreescribir esta lista si lo necesitan.
+    protected static $columnasSinMayuscula = ['password', 'reset_token', 'email'];
+
 
     //Definimos la conexión a la base de datos
     public static function setDB($database)
@@ -356,43 +363,43 @@ class ActiveRecord
     //Todos los registros dentro de un rango de parámetros (BETWEEN)
     public static function findporRango(string $campo, string $valoruno, string $valordos)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $campo . " BETWEEN '" . $valoruno . "' AND '" . $valordos . "';";
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $campo . " BETWEEN ? AND ?";
+        return self::consultarPreparado($query, 'ss', [$valoruno, $valordos]);
     }
 
     //Obtiene determinado número de registros
     public static function get($cantidad)
     {
-        $query = "SELECT * FROM " . static::$tabla . " LIMIT " . $cantidad . ";";
+        // LIMIT no se puede enlazar de forma portable → se fuerza a entero.
+        $query = "SELECT * FROM " . static::$tabla . " LIMIT " . (int) $cantidad . ";";
         $resultado = self::consultarSql($query);
         return $resultado;
     }
     //Busca un registro por su id
     public static function find($id)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE id=$id";
-        $resultado = self::consultarSql($query);
+        $query = "SELECT * FROM " . static::$tabla . " WHERE id = ?";
+        $resultado = self::consultarPreparado($query, 'i', [(int) $id]);
         return (array_shift($resultado));
     }
     public static function findmany($id)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE id=$id";
-        $resultado = self::consultarSql($query);
+        $query = "SELECT * FROM " . static::$tabla . " WHERE id = ?";
+        $resultado = self::consultarPreparado($query, 'i', [(int) $id]);
         return ($resultado);
     }
     //Todos los registros de una tabla según un atributo y dato
     public static function findxatributo(string $atributo, $valor)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . "=" . $valor;
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        // $atributo es nombre de columna (del código); $valor se enlaza como parámetro.
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . " = ?";
+        return self::consultarPreparado($query, 's', [$valor]);
     }
     //El único registro de una tabla, retorna el objeto
     public static function findxatributouno(string $atributo, $valor)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . "=" . $valor;
-        $resultado = self::consultarSql($query);
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributo . " = ?";
+        $resultado = self::consultarPreparado($query, 's', [$valor]);
         return (array_shift($resultado));
     }
     public static function findlast()
@@ -410,9 +417,8 @@ class ActiveRecord
      */
     public static function findwithmoretables(string $atributoid, int $id)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributoid . "=" . $id;
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $atributoid . " = ?";
+        return self::consultarPreparado($query, 'i', [$id]);
     }
     //Editar Después
     //     public static function findporRangoFechas(string $fechaInicio, string $fechaFin)
@@ -429,15 +435,13 @@ class ActiveRecord
     //Editar después
     public static function findwithparameters(string $prmtuno, string $iduno, string $prmtdos, string $iddos)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $prmtuno . " = " . $iduno . " AND " . $prmtdos . " = " . $iddos;
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $prmtuno . " = ? AND " . $prmtdos . " = ?";
+        return self::consultarPreparado($query, 'ss', [$iduno, $iddos]);
     }
     public static function findwithtableforanea(string $id)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE programa_id =" . $id;
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT * FROM " . static::$tabla . " WHERE programa_id = ?";
+        return self::consultarPreparado($query, 's', [$id]);
     }
 
     /**
@@ -472,6 +476,56 @@ class ActiveRecord
     {
         $resultado = self::$db->query($query);
         return $resultado;
+    }
+
+    /**
+     * Ejecuta una consulta SELECT preparada y devuelve un array de objetos del modelo.
+     * Usar SIEMPRE que la consulta incluya valores provenientes del usuario.
+     *
+     * @param string $query  SQL con marcadores `?`
+     * @param string $types  cadena de tipos para bind_param (ej. 'si')
+     * @param array  $params valores a enlazar, en el mismo orden que los `?`
+     * @return array
+     */
+    public static function consultarPreparado(string $query, string $types = '', array $params = []): array
+    {
+        $stmt = self::$db->prepare($query);
+        if ($stmt === false) {
+            return [];
+        }
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $array = [];
+        if ($resultado instanceof \mysqli_result) {
+            while ($registro = $resultado->fetch_assoc()) {
+                $array[] = static::crearObjeto($registro);
+            }
+            $resultado->free();
+        }
+        $stmt->close();
+        return $array;
+    }
+
+    /**
+     * Ejecuta una sentencia preparada de escritura (INSERT/UPDATE/DELETE).
+     *
+     * @return bool true si la ejecución fue correcta.
+     */
+    public static function ejecutarPreparado(string $query, string $types = '', array $params = []): bool
+    {
+        $stmt = self::$db->prepare($query);
+        if ($stmt === false) {
+            return false;
+        }
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        $ok = $stmt->execute();
+        $stmt->close();
+        return $ok;
     }
     public static function consultarSql($query): array
     {
@@ -534,21 +588,18 @@ class ActiveRecord
     }
     public static function devolverIdforaneo(int $id, string $tb)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $tb . "_id=" . $id;
-        $resultados = self::consultarSql($query);
-        if (count($resultados) != 0) {
-            $arreglo = [];
-            foreach ($resultados as $resultado) {
-                $arreglo[] = $resultado->id;
-            }
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $tb . "_id = ?";
+        $resultados = self::consultarPreparado($query, 'i', [$id]);
+        $arreglo = [];
+        foreach ($resultados as $resultado) {
+            $arreglo[] = $resultado->id;
         }
         return $arreglo;
     }
     public static function devolverTodoforaneo(int $id, string $tb)
     {
-        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $tb . "_id=" . $id;
-        $resultados = self::consultarSql($query);
-        return $resultados;
+        $query = "SELECT * FROM " . static::$tabla . " WHERE " . $tb . "_id = ?";
+        return self::consultarPreparado($query, 'i', [$id]);
     }
 
 
@@ -934,7 +985,7 @@ class ActiveRecord
     protected function convertirAMayusculas(array $atributos): array
     {
         foreach ($atributos as $key => $value) {
-            if (is_string($value)) {
+            if (is_string($value) && !in_array($key, static::$columnasSinMayuscula, true)) {
                 $atributos[$key] = mb_strtoupper($value, 'UTF-8');
             }
         }

@@ -32,7 +32,7 @@
                                         <h2>Bienvenido a SySAI</h2>
                                         <p>Inicia sesión para continuar</p>
                                 </div>
-                                <form method="POST" class="form" action="/login">
+                                <form method="POST" class="form" action="/login"><?php echo csrf_input(); ?>
                                         <!-- Campo de usuario -->
                                         <div class="mb-3">
                                                 <label class="form-label" for="email">E-mail</label>

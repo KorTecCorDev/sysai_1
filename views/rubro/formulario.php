@@ -5,8 +5,8 @@
         <select class="form-select shadow-sm w-auto" id="tipo_combo" name="tipo_rubro_id">
             <option value="" disabled selected>-- Seleccione --</option>
             <?php foreach ($tiporubros as $tiporubro): ?>
-                <option <?php echo $tiporubro->id == $rubro->tipo_rubro_id ? 'selected' : ''; ?> value="<?php echo $tiporubro->id; ?>">
-                    <?php echo $tiporubro->nombre; ?>
+                <option <?php echo $tiporubro->id == $rubro->tipo_rubro_id ? 'selected' : ''; ?> value="<?php echo s($tiporubro->id); ?>">
+                    <?php echo s($tiporubro->nombre); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -17,8 +17,8 @@
         <select class="form-select shadow-sm w-auto" id="categoria_combo" name="categoria_rubro_id">
             <option value="" disabled selected>-- Seleccione --</option>
             <?php foreach ($categoriarubros as $categoriarubro): ?>
-                <option <?php echo $categoriarubro->id == $rubro->categoria_rubro_id ? 'selected' : ''; ?> value="<?php echo $categoriarubro->id; ?>">
-                    <?php echo $categoriarubro->codigo . ' ' . $categoriarubro->nombre; ?>
+                <option <?php echo $categoriarubro->id == $rubro->categoria_rubro_id ? 'selected' : ''; ?> value="<?php echo s($categoriarubro->id); ?>">
+                    <?php echo s($categoriarubro->codigo . ' ' . $categoriarubro->nombre); ?>
                 </option>
             <?php endforeach; ?>
         </select>

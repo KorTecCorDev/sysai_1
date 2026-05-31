@@ -18,7 +18,7 @@
             </div>
         </div>
     <?php } ?>
-    <form method="POST">
+    <form method="POST"><?php echo csrf_input(); ?>
         <?php include __DIR__ . '/formulario.php'; ?>
         <div class="espacio-btn-crear">
             <div>

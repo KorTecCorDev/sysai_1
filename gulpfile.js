@@ -1,4 +1,4 @@
-const { src, dest, watch , parallel } = require('gulp');
+const { src, dest, watch , parallel, series } = require('gulp');
 const sass = require('gulp-sass')(require('sass'));
 const autoprefixer = require('autoprefixer');
 const postcss    = require('gulp-postcss')
@@ -61,5 +61,23 @@ function watchArchivos() {
     watch( paths.imagenes, imagenes );
     watch( paths.imagenes, versionWebp );
 }
-  
-exports.default = parallel(css, javascript,  imagenes, versionWebp, watchArchivos ); 
+
+// Solo estilos: vigila src/scss y recompila el CSS al detectar cambios.
+function watchEstilos() {
+    watch( paths.scss, css );
+}
+
+// `gulp css` / `npm run css`: compila los estilos UNA vez y queda como OYENTE,
+// recompilando automáticamente ante cambios en src/scss.
+exports.css = series(css, watchEstilos);
+
+// Tareas individuales de un solo paso (one-shot)
+exports.js = javascript;
+exports.imagenes = imagenes;
+exports.webp = versionWebp;
+
+// Build completo SIN watcher (útil para producción / CI)
+exports.build = parallel(css, javascript, imagenes, versionWebp);
+
+// Por defecto (`gulp` / `npm run dev`): compila todo y queda escuchando cambios.
+exports.default = parallel(css, javascript,  imagenes, versionWebp, watchArchivos );

@@ -276,5 +276,6 @@ echo '
 
 <!-- Formulario oculto para envío por POST -->
 <form id="guardarForm" method="POST" action="/reporte/guardarpoa?id=' . $poaid . '" style="display: none;">
+  <input type="hidden" name="csrf_token" value="' . csrf_token() . '">
   <input type="hidden" name="monto" value="' . $montototal . '">
 </form>';

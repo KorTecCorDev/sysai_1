@@ -25,7 +25,7 @@
                 <p class="texto-login text-center">
                     Ingrese su nueva contraseña
                 </p>
-                <form method="POST" class="form">
+                <form method="POST" class="form"><?php echo csrf_input(); ?>
                     <div class="mb-3">
                         <label for="password" class="form-label">Ingrese su nueva contraseña</label>
                         <div class="password-space">

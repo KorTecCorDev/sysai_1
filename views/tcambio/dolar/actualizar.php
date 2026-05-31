@@ -22,7 +22,7 @@
 
     <div class="border rounded-3 shadow-sm p-4 mx-auto my-4" style="max-width: 700px; background-color: #fff;">
     <h4 class="mb-4 text-primary text-uppercase">Actualizar Tipo Cambio Dólar</h4>
-        <form method="POST">
+        <form method="POST"><?php echo csrf_input(); ?>
             <?php include __DIR__ . '/formulario.php'; ?>
             <div class="d-flex justify-content-between mt-4">
                 <a href="/tcambio/dolar/admin" class="btn btn-outline-danger rounded-pill px-4 py-2">

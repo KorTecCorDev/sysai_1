@@ -37,38 +37,44 @@ class LoginController
 
         //Sección del POST
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+            // 1) Si está bloqueado por intentos fallidos, rechazar ANTES de procesar.
+            if (isset($_SESSION[$lockKey]) && $_SESSION[$lockKey] > time()) {
+                $restante = (int) ceil(($_SESSION[$lockKey] - time()) / 60);
+                $errores[] = "Demasiados intentos fallidos. Intente nuevamente en {$restante} minuto(s).";
+                $router->renderssdbr('/login', ['errores' => $errores, 'login' => $login]);
+                return;
+            }
+
             $login = new Login($_POST);
             $errores = $login->validar();
-            // Si no existen errores, procedemos a autenticar
+            // Si no existen errores de validación, procedemos a autenticar
             if (empty($errores)) {
-                // Verificar si el usuario existe
+                // ¿Existe el usuario y la contraseña es correcta?
                 $usuario = $login->existeUsuario();
-
-                //Si el usuario existe, verificamos la contraseña
+                $autenticado = false;
                 if ($usuario) {
-                    // Verificar si la contraseña es correcta
                     $login->comprobarPassword($usuario);
-                    if ($login->autenticado) {
-                        //Sincronizamos el resultado del usuario con el objeto Login
-                        $login->sincronizar((array) $usuario);
-                        // Iniciar sesión
-                        $login->autenticar();
-                        // Redirigir al panel de control
-                        header('Location: /');
-                        exit;
-                    } else {
-                        $errores[] = 'La contraseña ingresada es incorrecta';
-                    }
-                            // Manejar intento fallido
-                $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
+                    $autenticado = $login->autenticado;
+                }
 
+                if ($autenticado) {
+                    // Éxito: limpiar el contador de intentos y el bloqueo.
+                    unset($_SESSION[$attemptKey], $_SESSION[$lockKey]);
+                    $login->sincronizar((array) $usuario);
+                    $login->autenticar();
+                    header('Location: /');
+                    exit;
+                }
+
+                // Fallo (usuario inexistente o contraseña incorrecta): contar el intento.
+                $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
                 if ($_SESSION[$attemptKey] >= $maxAttempts) {
                     $_SESSION[$lockKey] = time() + $lockTime;
-                    //Llenamos el array de errores y retornamos el mensaje
-                    $errores[] = "Ha superado el número máximo de intentos. Su cuenta está bloqueada por 5 minutos.";
-                }
+                    $errores[] = "Ha superado el número máximo de intentos. Acceso bloqueado por 5 minutos.";
                 } else {
-                    $errores[] = 'El usuario no existe';
+                    // Mensaje neutro (no revela si el correo existe)
+                    $errores[] = 'Las credenciales ingresadas no son correctas';
                 }
             } else {
                 $errores = Login::getErrores();
@@ -130,123 +136,18 @@ class LoginController
                 $respt = $usu->existeUsuario($email);
                 $errores = Login::getErrores();
                 if ($respt) {
-                    // Creamos un código que irá en la propiedad reset_token
+                    // Generamos y guardamos el token de recuperación
                     $respt->reset_token = generarCodigoAleatorioSimple();
-                    //Actualizando el registro de usuario con el nuevo reset_token
                     $valor = $respt->guardarToken();
                     if ($valor) {
-                        // configure an SMTP
-                        try {
-                            $mail = new PHPMailer();
-                            $mail->isSMTP();
-                            $mail->Host = 'smtp.gmail.com';
-                            $mail->SMTPAuth = true;
-                            $mail->Username = 'pruebaskorteccorsmtp@gmail.com';
-                            $mail->Password = 'exmjfrcmbmpkflsv';
-                            $mail->SMTPSecure = 'tsl';
-                            $mail->Port = 587;
-                            $mail->setFrom('pruebaskorteccorsmtp@gmail.com', 'Área de TI - CRONOS SOLUCIONES');
-                            $mail->addAddress($respt->email, $respt->datos);
-                            $mail->Subject = 'Respuesta a Solicitud de cambio de Contraseña';
-                            // Set HTML 
-                            $mail->isHTML(TRUE);
-                            $mail->CharSet = 'UTF-8';
-                            $contenido = '<!DOCTYPE html>
-                                                <html lang="en">
-                                                <head>
-                                                    <meta charset="UTF-8">
-                                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                                    <title>Código de Cambio de Contraseña</title>
-                                                    <style>
-                                                        /* Estilos generales */
-                                                        body {
-                                                            font-family: Arial, sans-serif;
-                                                            background-color: #f4f4f4;
-                                                            margin: 0;
-                                                            padding: 0;
-                                                        }
-                                                        .email-container {
-                                                            max-width: 600px;
-                                                            margin: 20px auto;
-                                                            background-color: #ffffff;
-                                                            border-radius: 8px;
-                                                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                                                            overflow: hidden;
-                                                        }
-                                                        .header {
-                                                            background-color: #42A5F5;
-                                                            color: white;
-                                                            text-align: center;
-                                                            padding: 20px;
-                                                        }
-                                                        .header h1 {
-                                                            margin: 0;
-                                                            font-size: 24px;
-                                                        }
-                                                        .content {
-                                                            padding: 20px;
-                                                            text-align: center;
-                                                        }
-                                                        .content p {
-                                                            font-size: 16px;
-                                                            line-height: 1.5;
-                                                            color: #333333;
-                                                        }
-                                                        .code {
-                                                            font-size: 24px;
-                                                            font-weight: bold;
-                                                            color: #42A5F5;
-                                                            margin: 20px 0;
-                                                        }
-                                                        .footer {
-                                                            background-color: #f9f9f9;
-                                                            color: #777777;
-                                                            text-align: center;
-                                                            font-size: 14px;
-                                                            padding: 10px 20px;
-                                                        }
-                                                        .footer a {
-                                                            color: #4CAF50;
-                                                            text-decoration: none;
-                                                        }
-                                                    </style>
-                                                </head>
-                                                <body>
-                                                    <div class="email-container">
-                                                        <!-- Encabezado -->
-                                                        <div class="header">
-                                                            <h1>Cambio de Contraseña</h1>
-                                                        </div>
-                                                        <!-- Contenido -->
-                                                        <div class="content">
-                                                            <p>Hola, ' . $respt->datos . ' </p>
-                                                            <p>Has solicitado cambiar tu contraseña. Utiliza el siguiente código para completar el proceso:</p>
-                                                            <div class="code">' . $respt->reset_token . '</div>
-                                                            <p>Si no solicitaste este cambio, ignora este correo electrónico.</p>
-                                                        </div>
-                                                        <!-- Pie de página -->
-                                                        <div class="footer">
-                                                            <p>Gracias por confiar en nosotros. Cronos Soluciones.</p>
-                                                        </div>
-                                                    </div>
-                                                </body>
-                                                </html>';
-                            $mail->Body = $contenido;
-                            $mail->AltBody = 'Esto es texto alternativo';
-                            // send the message
-                            if (!$mail->send()) {
-                                $errores = 'Hubo un Error... intente de nuevo';
-                                header('Location: /chgpsswd');
-                                exit();
-                            } else {
-                                $errores = 'Email enviado Correctamente';
-                                header('Location: /token_verify');
-                                exit();
-                            }
-                        } catch (Exception $e) {
-                            debuguear("Error " . $mail->ErrorInfo);
-                        }
+                        // Enviar el token. En producción manda el email; en desarrollo
+                        // (sin SMTP) lo registra en includes/logs/mail.log.
+                        enviarTokenRecuperacion($respt->email, $respt->datos, $respt->reset_token);
+                        // El token ya está guardado en BD → avanzamos a la verificación del código.
+                        header('Location: /token_verify');
+                        exit();
                     }
+                    $errores[] = 'No se pudo iniciar la recuperación. Intente nuevamente.';
                 } else {
                     $errores = Login::getErrores();
                 }
