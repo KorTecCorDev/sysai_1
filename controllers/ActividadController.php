@@ -40,6 +40,8 @@ class ActividadController
     {
         $errores = Actividad::getErrores();
         $idproducto = validarId('producto');
+        // A1: el coordinador solo puede crear actividades bajo un producto de SU programa.
+        exigirProgramaPropioPorProducto($idproducto);
         $actividad = new Actividad();
         $resultado = $_GET['resultado'] ?? null;
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
@@ -79,11 +81,17 @@ class ActividadController
         if (is_array($id)) {
             $producto = Producto::find($id[1]);
             $actividad = Actividad::find($id[0]);
+            if (!$actividad) { header('Location: /resultado/admin'); exit(); }
+            // A1: la actividad debe colgar de un producto de SU programa.
+            exigirProgramaPropioPorProducto($actividad->producto_id);
             $errores = Actividad::getErrores();
         }
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $productoOriginal = $actividad->producto_id;
             $argsactividad = $_POST;
             $actividad->sincronizar($argsactividad);
+            // A2: el producto padre no se reasigna vía POST.
+            $actividad->producto_id = $productoOriginal;
             $errores = $actividad->validar();
             if (empty($errores)) {
                 //Insertando la acción de audi para el usuario actual
@@ -118,6 +126,9 @@ class ActividadController
                 exit();
             } else {
                 $actividad = Actividad::find($id[1]);
+                if (!$actividad) { header('Location: /resultado/admin'); exit(); }
+                // A1: solo puede eliminar actividades de un producto de SU programa.
+                exigirProgramaPropioPorProducto($actividad->producto_id);
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = Actividad::setUsuarioActual();

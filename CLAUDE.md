@@ -374,22 +374,24 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   ⚠️ **Pendiente migrar a producción** ejecutando `db/migracion_rate_limit_login.sql` en Hostinger.
 
 ### 🟠 Altas
-- 🟡 **[PARCIAL] A1 — IDOR / control de acceso por registro.** Helpers en `funciones.php`:
+- ✅ **[RESUELTO] A1 — IDOR / control de acceso por registro.** Helpers en `funciones.php`:
   `cargoActual`, `esAdmin/esContador/esCoordinador`, `exigirRol`, `poaIdCoordinador`,
-  `programaIdCoordinador`, **`exigirPoaPropio`**, **`programaIdPorActividad`** y
-  **`exigirProgramaPropioPorActividad`** (resuelve actividad→producto→resultado→programa).
-  Aplicado y **verificado**:
-    - `IngresoEgresoController` (crear/indexff/actualizar/eliminar) → scope por `poa_id`. 403 a OIE ajeno.
-    - `RendicionController` (index/crear/actualizar/eliminar) → scope por programa de la actividad.
-      403 a rendiciones/actividades de otro programa; admin no acotado. Verificado con un programa ajeno.
-  **PENDIENTE replicar** en: `ResultadoController`, `ProductoController`, `ActividadController`,
-  `RubroController` (usar `exigirProgramaPropioPorActividad()` para rubro/actividad; para resultado/producto
-  comparar `programa_id`/cadena con `programaIdCoordinador()`).
-- 🟡 **[PARCIAL] A2 — Mass assignment / escalada.** `UsuarioController` ahora exige rol admin (`exigirRol([1])`)
-  en index/crear/actualizar/eliminar (defensa en profundidad). En `IngresoEgresoController` el coordinador
-  ya **no puede** forzar `oie_tipo_id` (se fuerza Egreso=2) ni `poa_id` (se fuerza el suyo) vía POST.
-  **PENDIENTE:** whitelist de campos por modelo/rol y forzado equivalente en rendicion/resultado/… para
-  impedir setear `programa_id`/ids ajenos vía `$_POST` (`new Modelo($_POST[...])` / `sincronizar()`).
+  `programaIdCoordinador`, `exigirPoaPropio`, `programaIdPorActividad`, `exigirProgramaPropioPorActividad`
+  y **nuevos**: `exigirProgramaPropio` (resultado), `programaIdPorResultado`, `programaIdPorProducto`,
+  `exigirProgramaPropioPorResultado`, `exigirProgramaPropioPorProducto`. Aplicado y **verificado** en:
+    - `IngresoEgresoController` → scope por `poa_id`; `RendicionController` → por programa de la actividad.
+    - **`ResultadoController`** (programa_id directo), **`ProductoController`** (vía resultado),
+      **`ActividadController`** (vía producto), **`RubroController`** (vía actividad): en `crear/actualizar/eliminar`
+      se exige que el recurso pertenezca al programa del coordinador (admin/contador no acotados).
+  Verificado: helper (coord propio→PERMITIDO, coord ajeno→403 en toda la cadena, admin→PERMITIDO,
+  recurso inexistente→403) y **HTTP** (coordinador 200 en lo suyo, 403 real en ajeno/inexistente).
+- ✅ **[RESUELTO] A2 — Mass assignment / escalada.** `UsuarioController` exige rol admin (`exigirRol([1])`).
+  `IngresoEgresoController`: el coordinador no puede forzar `oie_tipo_id` ni `poa_id` vía POST.
+  En `Resultado/Producto/Actividad/Rubro` el **FK padre** (`programa_id`/`resultado_id`/`producto_id`/
+  `actividad_id`) **no se reasigna vía POST**: se guarda el original antes de `sincronizar($_POST)` y se
+  restaura después, e impide setear un padre ajeno. En `crear`, el padre del coordinador se fuerza/verifica
+  contra su programa. *Residual menor:* falta una whitelist de campos genérica por modelo (el forzado actual
+  cubre el vector real de escalada entre programas).
 - ✅ **[RESUELTO] A3 — Recuperación de contraseña segura.** (1) **CSPRNG:** la función global
   `generarCodigoAleatorioSimple()` (la que realmente usa el flujo) usaba `str_shuffle` → ahora
   `random_bytes`+`bin2hex`; el código es de **10 hex**. (2) **Hash en BD:** `usuario.reset_token` pasa a

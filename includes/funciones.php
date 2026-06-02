@@ -156,6 +156,61 @@ function exigirProgramaPropioPorActividad($actividadId): void
     }
 }
 
+/**
+ * Para coordinadores: exige que el programa indicado sea EL SUYO (resultado, que
+ * cuelga directo de programa). Admin/Contador pasan. Corta con 403 si no coincide.
+ */
+function exigirProgramaPropio($programaId): void
+{
+    if (esCoordinador() && (int) $programaId !== programaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
+}
+
+/** programa_id de un resultado (resultado → programa). null si no se resuelve. */
+function programaIdPorResultado($resultadoId): ?int
+{
+    $res = \Model\Resultado::find((int) $resultadoId);
+    return ($res && isset($res->programa_id)) ? (int) $res->programa_id : null;
+}
+
+/** programa_id de un producto (producto → resultado → programa). null si no se resuelve. */
+function programaIdPorProducto($productoId): ?int
+{
+    $prod = \Model\Producto::find((int) $productoId);
+    if (!$prod || !isset($prod->resultado_id)) {
+        return null;
+    }
+    return programaIdPorResultado($prod->resultado_id);
+}
+
+/** Coordinadores: exige que el resultado pertenezca a su programa. Admin/Contador pasan. */
+function exigirProgramaPropioPorResultado($resultadoId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    $programaRecurso = programaIdPorResultado($resultadoId);
+    if ($programaRecurso === null || $programaRecurso !== programaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
+}
+
+/** Coordinadores: exige que el producto pertenezca a su programa. Admin/Contador pasan. */
+function exigirProgramaPropioPorProducto($productoId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    $programaRecurso = programaIdPorProducto($productoId);
+    if ($programaRecurso === null || $programaRecurso !== programaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
+}
+
 //Validar tipo de Contenido
 function validarTipoContenido($tipo)
 {

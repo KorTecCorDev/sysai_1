@@ -45,6 +45,8 @@ class RubroController
     {
         $errores = Rubro::getErrores();
         $idactividad = validarId('actividad');
+        // A1: el coordinador solo puede crear rubros en una actividad de SU programa.
+        exigirProgramaPropioPorActividad($idactividad);
         $categoriarubros = CategoriaRubro::all();
         $tiporubros = TipoRubro::all();
         $rubro = new Rubro();
@@ -86,13 +88,19 @@ class RubroController
         $errores = Rubro::getErrores();
         if (is_array($id)) {
             $rubro = Rubro::find($id[0]);
+            if (!$rubro) { header('Location: /resultado/admin'); exit(); }
+            // A1: el rubro debe colgar de una actividad de SU programa.
+            exigirProgramaPropioPorActividad($rubro->actividad_id);
             $actividad = Actividad::find($id[1]);
             $categoriarubros = CategoriaRubro::all();
             $tiporubros = TipoRubro::all();
 
             if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+                $actividadOriginal = $rubro->actividad_id;
                 $argsrubro = $_POST;
                 $rubro->sincronizar($argsrubro);
+                // A2: la actividad padre no se reasigna vía POST.
+                $rubro->actividad_id = $actividadOriginal;
                 $errores = $rubro->validar();
                 if (empty($errores)) {
                     //Insertando la acción de audi para el usuario actual
@@ -126,6 +134,9 @@ class RubroController
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $id = validarORedireccionarPost("/resultado/admin");
             $rubro = Rubro::find($id);
+            if (!$rubro) { header('Location: /resultado/admin'); exit(); }
+            // A1: solo puede eliminar rubros de una actividad de SU programa.
+            exigirProgramaPropioPorActividad($rubro->actividad_id);
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Rubro::setUsuarioActual();
