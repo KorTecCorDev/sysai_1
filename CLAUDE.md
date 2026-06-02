@@ -201,9 +201,9 @@ Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). 
 8. **CSP permisiva:** `'unsafe-inline'` y `'unsafe-eval'` habilitados (index.php y .htaccess). *(pendiente, menor)*
 9. ✅ **[parcial]** `debuguear()` del flujo de recuperación eliminado. Revisar otros usos de
    `debuguear/debuguearHTML` antes de producción. *(residual menor)*
-10. ✅ **[parcial — login]** Login ahora muestra mensaje **neutro** ("Las credenciales ingresadas no son
-    correctas") en vez de revelar si el usuario existe. *Residual:* el flujo de recuperación (`/chgpsswd`)
-    aún revela existencia del correo → neutralizar a futuro.
+10. ✅ **[RESUELTO]** Login muestra mensaje **neutro** ("Las credenciales ingresadas no son correctas")
+    y el flujo de recuperación (`/chgpsswd`) también es neutro (redirige siempre a `/token_verify` sin
+    revelar si el correo existe — ver §11 A5).
 
 ### Aspectos correctos (ya bien hechos) ✅
 - Contraseñas con `password_hash()`/`password_verify()` (bcrypt).
@@ -389,9 +389,15 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   **PENDIENTE:** whitelist de campos por modelo/rol y forzado equivalente en rendicion/resultado/… para
   impedir setear `programa_id`/ids ajenos vía `$_POST` (`new Modelo($_POST[...])` / `sincronizar()`).
 - **A3 — `reset_token`: texto plano, sin expiración, sin rate-limit.** Hashear en BD, añadir TTL y limitar envíos.
-- **A4 — `.git/` y `db/*.sql` servibles.** `.htaccess` no bloquea `.git`; bajo `php -S` no aplica `.htaccess`.
-  En Apache, `/.git/` expone código+historial (incl. SMTP filtrado). Bloquear `.git` y denegar `db/`.
-- **A5 — Enumeración de usuarios en `/chgpsswd`** (revela si el correo existe). Mensaje neutro.
+- ✅ **[RESUELTO] A4 — `.git/` y `db/` servibles.** `.htaccess` ahora añade `db` a la regla de directorios
+  bloqueados (404) y bloquea **archivos/carpetas ocultos** (`(^|/)\.` → `.git/`, `.gitignore`, `.env`...)
+  con excepción de `/.well-known/` (necesaria para SSL). Cierra la exposición de código+historial (incl.
+  el SMTP filtrado) en Apache. ⚠️ Solo verificable en Apache/Hostinger (`php -S` no procesa `.htaccess`).
+- ✅ **[RESUELTO] A5 — Enumeración de usuarios en `/chgpsswd`.** `cambiarPassword()` ahora es **neutro**:
+  exista o no el correo, valida el formato y redirige siempre a `/token_verify` (mismo código HTTP, mismo
+  destino). El token solo se genera/envía si la cuenta existe. Nuevo método `Login::buscarPorEmailParaRecuperacion()`
+  que NO agrega 'El usuario no existe' a `$errores`. Verificado vía HTTP: correo existente e inexistente →
+  302 idéntico a `/token_verify`; el token se generó solo para el existente.
 
 ### 🟡 Medias
 - **M1 — CSP permisiva** (`'unsafe-inline'`, `'unsafe-eval'`).

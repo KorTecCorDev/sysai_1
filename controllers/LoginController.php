@@ -143,30 +143,26 @@ class LoginController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //Creamos una nueva instancia de la clase Login
             $usu = new Login($_POST);
-            //Validamos si existen errores
+            //Validamos el formato del correo (no si existe)
             $errores = $usu->validarErroresCambioPswd();
-            //Consultando al DB
             if (empty($errores)) {
-                $email = $usu->email;
-                //Verificamos si exister el usuario
-                $respt = $usu->existeUsuario($email);
-                $errores = Login::getErrores();
-                if ($respt) {
-                    // Generamos y guardamos el token de recuperación
-                    $respt->reset_token = generarCodigoAleatorioSimple();
-                    $valor = $respt->guardarToken();
-                    if ($valor) {
-                        // Enviar el token. En producción manda el email; en desarrollo
-                        // (sin SMTP) lo registra en includes/logs/mail.log.
-                        enviarTokenRecuperacion($respt->email, $respt->datos, $respt->reset_token);
-                        // El token ya está guardado en BD → avanzamos a la verificación del código.
-                        header('Location: /token_verify');
-                        exit();
+                // A5 — Comportamiento NEUTRO contra enumeración de usuarios:
+                // exista o no el correo, el flujo es idéntico (mismo destino, sin
+                // mensaje que delate si la cuenta existe).
+                $cuenta = $usu->buscarPorEmailParaRecuperacion();
+                if ($cuenta) {
+                    // Solo si la cuenta existe se genera y envía el token.
+                    $login = new Login((array) $cuenta);
+                    $login->reset_token = generarCodigoAleatorioSimple();
+                    if ($login->guardarToken()) {
+                        // En producción manda el email; en desarrollo (sin SMTP) lo
+                        // registra en includes/logs/mail.log.
+                        enviarTokenRecuperacion($login->email, $login->datos, $login->reset_token);
                     }
-                    $errores[] = 'No se pudo iniciar la recuperación. Intente nuevamente.';
-                } else {
-                    $errores = Login::getErrores();
                 }
+                // Siempre se avanza a la verificación del código, exista o no la cuenta.
+                header('Location: /token_verify');
+                exit();
             }
         }
         $router->renderssdbr('/chgpsswd', [

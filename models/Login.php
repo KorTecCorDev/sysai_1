@@ -88,6 +88,15 @@ class Login extends ActiveRecord
         }
         return array_shift($resultado);
     }
+    // Búsqueda para el flujo de recuperación de contraseña. A diferencia de
+    // existeUsuario(), NO agrega 'El usuario no existe' a $errores: así el
+    // controlador puede responder de forma neutra y no permitir enumeración (A5).
+    public function buscarPorEmailParaRecuperacion()
+    {
+        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email = ? LIMIT 1";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
+        return array_shift($resultado); // null si no existe (sin tocar $errores)
+    }
     public function comprobarPassword($resultado)
     {
         //Le asignamos el estado de autenticado en caso el password sea correcto
