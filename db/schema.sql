@@ -464,6 +464,21 @@ CREATE TABLE `auditoria` (
 -- NOTA: `id` ahora AUTO_INCREMENT (el dump no lo tenía) y `monto` a decimal(12,2).
 
 -- ----------------------------------------------------------------------------
+-- Rate-limit de login (bug C2): registro persistente de intentos fallidos por
+-- IP y por email. Complementa el contador en sesión (evadible sin cookies).
+-- Solo se insertan FALLOS; al autenticar con éxito se borran los del IP/email.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `login_intentos` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `ip` varchar(45) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `fecha` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ip_fecha` (`ip`, `fecha`),
+  KEY `idx_email_fecha` (`email`, `fecha`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+-- ----------------------------------------------------------------------------
 -- VISTAS  (definidas tras las tablas; sin DEFINER explícito → portables)
 -- ----------------------------------------------------------------------------
 
@@ -573,5 +588,55 @@ CREATE OR REPLACE VIEW `vista_dolar` AS
 CREATE OR REPLACE VIEW `vista_euro` AS
   select `t`.`id` AS `id`,`u`.`descripcion` AS `usuario`,`t`.`tipo_cambio` AS `tipo_cambio`,`t`.`fecha` AS `fecha`
   from (`usuario` `u` join `tipo_cambio_euro` `t`) where (`u`.`id` = `t`.`usuario_id`);
+
+-- ----------------------------------------------------------------------------
+-- Vistas de saldos contables (página /saldos_contables/saldos) — bug B1.
+-- Faltaban en el dump original → la página daba fatal. Ver db/migracion_saldos.sql.
+-- Regla: SALDO = Presupuesto + Ingresos(OIE tipo 1) − Egresos(OIE tipo 2 + rendiciones).
+-- Subconsultas agregadas independientes para evitar fan-out cartesiano.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW `vista_total_ingresos` AS
+SELECT
+  COALESCE((SELECT SUM(`presupuesto`) FROM `fuente_financiamiento`), 0)
+  + COALESCE((
+      SELECT SUM(oc.`monto`) FROM `otros_ingresos_egresos` oie
+      JOIN `oie_comprobante` oc ON oc.`id` = oie.`oie_comprobante_id`
+      WHERE oie.`oie_tipo_id` = 1
+    ), 0) AS `total_ingresos`;
+
+CREATE OR REPLACE VIEW `vista_total_egresos` AS
+SELECT
+  COALESCE((
+      SELECT SUM(oc.`monto`) FROM `otros_ingresos_egresos` oie
+      JOIN `oie_comprobante` oc ON oc.`id` = oie.`oie_comprobante_id`
+      WHERE oie.`oie_tipo_id` = 2
+    ), 0)
+  + COALESCE((SELECT SUM(`monto`) FROM `rendicion`), 0) AS `total_egresos`;
+
+CREATE OR REPLACE VIEW `vista_saldo_contable` AS
+SELECT
+  (SELECT `total_ingresos` FROM `vista_total_ingresos`)
+  - (SELECT `total_egresos` FROM `vista_total_egresos`) AS `saldo_contable`;
+
+CREATE OR REPLACE VIEW `vista_saldo_fuente_financiamiento` AS
+SELECT
+  ff.`id`     AS `fuente_financiamiento_id`,
+  ff.`codigo` AS `fuente_financiamiento_codigo`,
+  ff.`nombre` AS `fuente_financiamiento_nombre`,
+  ff.`presupuesto`
+  + COALESCE((
+      SELECT SUM(oc.`monto`) FROM `otros_ingresos_egresos` oie
+      JOIN `oie_comprobante` oc ON oc.`id` = oie.`oie_comprobante_id`
+      WHERE oie.`ff_id` = ff.`id` AND oie.`oie_tipo_id` = 1
+    ), 0)
+  - COALESCE((
+      SELECT SUM(oc.`monto`) FROM `otros_ingresos_egresos` oie
+      JOIN `oie_comprobante` oc ON oc.`id` = oie.`oie_comprobante_id`
+      WHERE oie.`ff_id` = ff.`id` AND oie.`oie_tipo_id` = 2
+    ), 0)
+  - COALESCE((
+      SELECT SUM(r.`monto`) FROM `rendicion` r WHERE r.`ff_id` = ff.`id`
+    ), 0) AS `fuente_financiamiento_saldo`
+FROM `fuente_financiamiento` ff;
 
 SET FOREIGN_KEY_CHECKS = 1;

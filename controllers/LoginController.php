@@ -34,11 +34,15 @@ class LoginController
         
         $attemptKey = $login->getSessionKey('attempts');
         $lockKey = $login->getSessionKey('lock');
+        $ip = Login::obtenerIp();
 
         //Sección del POST
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            // 1) Si está bloqueado por intentos fallidos, rechazar ANTES de procesar.
+            // Limpieza oportunista de intentos antiguos (mantiene chica la tabla).
+            Login::purgarIntentosAntiguos();
+
+            // 1) Capa 1 — bloqueo por sesión (rápido, pero evadible sin cookies).
             if (isset($_SESSION[$lockKey]) && $_SESSION[$lockKey] > time()) {
                 $restante = (int) ceil(($_SESSION[$lockKey] - time()) / 60);
                 $errores[] = "Demasiados intentos fallidos. Intente nuevamente en {$restante} minuto(s).";
@@ -47,6 +51,15 @@ class LoginController
             }
 
             $login = new Login($_POST);
+
+            // 2) Capa 2 — bloqueo persistente en BD por IP y por email (no depende
+            //    de la cookie de sesión). Cierra el bypass de la capa anterior.
+            if (Login::estaBloqueadoPorIntentos($ip, $login->email)) {
+                $errores[] = "Demasiados intentos fallidos. Intente nuevamente en unos minutos.";
+                $router->renderssdbr('/login', ['errores' => $errores, 'login' => $login]);
+                return;
+            }
+
             $errores = $login->validar();
             // Si no existen errores de validación, procedemos a autenticar
             if (empty($errores)) {
@@ -59,16 +72,19 @@ class LoginController
                 }
 
                 if ($autenticado) {
-                    // Éxito: limpiar el contador de intentos y el bloqueo.
+                    // Éxito: limpiar el contador de intentos y el bloqueo (sesión + BD).
                     unset($_SESSION[$attemptKey], $_SESSION[$lockKey]);
+                    Login::limpiarIntentos($ip, $login->email);
                     $login->sincronizar((array) $usuario);
                     $login->autenticar();
                     header('Location: /');
                     exit;
                 }
 
-                // Fallo (usuario inexistente o contraseña incorrecta): contar el intento.
+                // Fallo (usuario inexistente o contraseña incorrecta): contar el intento
+                // tanto en sesión como en BD (IP + email).
                 $_SESSION[$attemptKey] = ($_SESSION[$attemptKey] ?? 0) + 1;
+                Login::registrarIntentoFallido($ip, $login->email);
                 if ($_SESSION[$attemptKey] >= $maxAttempts) {
                     $_SESSION[$lockKey] = time() + $lockTime;
                     $errores[] = "Ha superado el número máximo de intentos. Acceso bloqueado por 5 minutos.";

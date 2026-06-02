@@ -532,6 +532,14 @@ class ActiveRecord
         //Consultar la base de datos
         $resultado = self::$db->query($query);
 
+        // Si la consulta falla (p. ej. vista/tabla inexistente), query() devuelve false.
+        // Se registra el error y se devuelve un array vacío en lugar de provocar un
+        // fatal por llamar fetch_assoc() sobre un bool.
+        if ($resultado === false) {
+            error_log('consultarSql falló: ' . self::$db->error . ' | Query: ' . $query);
+            return [];
+        }
+
         //Iterar los resultados
         $array = [];
         while ($registro = $resultado->fetch_assoc()) {
@@ -546,6 +554,13 @@ class ActiveRecord
     {
         //Consultar la base de datos
         $resultado = self::$db->query($query);
+
+        // Igual que consultarSql(): si la consulta falla devolvemos null en vez de
+        // intentar fetch_assoc() sobre false.
+        if ($resultado === false) {
+            error_log('consultarSqldvolveruno falló: ' . self::$db->error . ' | Query: ' . $query);
+            return null;
+        }
 
         //Iterar los resultados
         $array = [];

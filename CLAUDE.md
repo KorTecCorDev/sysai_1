@@ -1,7 +1,7 @@
 # CLAUDE.md — SysAI (Sistema de reportes contables ONG Arco Iris)
 
 > Memoria de proyecto para futuras sesiones de Claude Code.
-> Última actualización del análisis: 2026-05-31.
+> Última actualización del análisis: 2026-06-01.
 
 ## 1. Qué es
 
@@ -164,9 +164,10 @@ Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). 
      `git rm --cached includes/config/database.php` para dejar de versionarlo. En nuevos clones NO existe →
      copiar `database.example.php` a `database.php`. Igual para `mail.php` (← `mail.example.php`).
    - SMTP movido a `includes/config/mail.php` (gitignored, plantilla `mail.example.php`).
-   - ⚠️ **ACCIÓN MANUAL PENDIENTE:** rotar/revocar el app-password de Gmail
-     (`pruebaskorteccorsmtp@gmail.com`) que estuvo versionado en `LoginController.php` (sigue en el
-     historial git). Verificar también las creds de BD de producción.
+   - ✅ **[HECHO 2026-06-01]** Revocado el app-password de Gmail (`pruebaskorteccorsmtp@gmail.com`) que
+     estuvo versionado en `LoginController.php`. ⚠️ **Aún pendiente:** el secreto sigue en el **historial
+     git** (commit `594f8e5`) → opcional purgarlo con `git filter-repo`/BFG + `push --force` (operación
+     destructiva, reescribe SHAs). Verificar también las creds de BD de producción.
 2. ✅ **[RESUELTO — VULN-2]** SQLi. Capa de datos parametrizada con *prepared statements*:
    - Helpers nuevos en `ActiveRecord`: `consultarPreparado()` / `ejecutarPreparado()` (usar SIEMPRE
      que haya valores del usuario).
@@ -265,11 +266,10 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
   → ⚠️ al importar en Hostinger puede fallar/crear con definer equivocado (ajustar definer).
 
 ### ⚠️ Discrepancias esquema ↔ código y bugs de datos (verificar contra producción)
-1. **`usuario` NO tiene columnas `intentos` ni `estado`**, pero `models/Login.php` las usa
-   (`aumentarIntentos()`, `actualizarIntentos()`, `bloquearUsuario()` hacen `UPDATE usuario SET intentos/estado`).
-   → Ese código es **dead/roto** con este esquema; el control real de intentos es por **sesión** en
-   `LoginController` (`$_SESSION['login_attempts']`). Confirmar si en producción se añadieron esas columnas
-   o si las funciones deben eliminarse. El dump es del 2025-03-26; el código tiene commits hasta ~jun-2025.
+1. ✅ **[RESUELTO]** `usuario` NO tiene columnas `intentos` ni `estado`. El código muerto que las usaba
+   (`aumentarIntentos/actualizarIntentos/bloquearUsuario/restablecerIntentos` + propiedades `intentos/estado`
+   del modelo `Login`) fue **eliminado** al implementar C2. El control de intentos ahora es por **sesión**
+   (`LoginController`) + **rate-limit en BD** (tabla `login_intentos`). No se requieren esas columnas.
 2. **Auditoría sin implementar:** existe la tabla `auditoria` (y `ActiveRecord::setUsuarioActual()` que
    hace `SET @usuario_actual`), pero **el dump no trae triggers** y `auditoria.id` **no es AUTO_INCREMENT**.
    → La tabla nunca se llena automáticamente. Faltan los triggers que consumirían `@usuario_actual`.
@@ -358,11 +358,18 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   `ActiveRecord::$columnasSinMayuscula = ['password','reset_token','email']` y `convertirAMayusculas()`
   ahora los excluye. Verificado: usuario creado por la capa de modelos conserva el hash bcrypt y
   `password_verify` = OK; `email` se preserva; el resto de campos siguen en MAYÚSCULAS.
-- ✅ **[RESUELTO — parcial] C2 — Lockout de intentos.** `LoginController::login()` ahora **verifica el lock
-  antes de procesar** (rechaza con mensaje y tiempo restante), cuenta también los fallos con usuario
-  inexistente, y **resetea intentos/lock al éxito**. Verificado: 5 fallos → bloqueo 5 min que persiste
-  incluso con clave correcta; sesión nueva entra normal. ⚠️ **Pendiente (robusto):** el contador vive en
-  sesión (cookie) → un atacante sin cookies lo evade; falta **rate-limit por IP/usuario en BD**.
+- ✅ **[RESUELTO] C2 — Lockout de intentos.** Dos capas: (1) contador en `$_SESSION` (primera barrera,
+  ya existía); (2) **rate-limit persistente en BD** (tabla `login_intentos`, por **IP** y por **email**,
+  5 intentos / 5 min cada uno) que cierra el bypass de la capa de sesión (un atacante sin cookies ya no
+  la evade). Métodos en `Login`: `obtenerIp()`, `estaBloqueadoPorIntentos()`, `registrarIntentoFallido()`,
+  `limpiarIntentos()` (al éxito), `purgarIntentosAntiguos()` (limpieza oportunista). La ventana se evalúa
+  con `NOW()` de MySQL (no con la hora de PHP) para evitar desajustes de zona horaria. Tabla en
+  `db/schema.sql` + `db/migracion_rate_limit_login.sql` (idempotente, para Hostinger). Se eliminaron las
+  funciones muertas `aumentarIntentos/actualizarIntentos/bloquearUsuario/restablecerIntentos` y las
+  propiedades `intentos/estado` del modelo (usaban columnas inexistentes). **Verificado end-to-end vía
+  HTTP:** 6 POST sin cookies → el 6º bloqueado por BD; password-spraying (5 emails distintos, misma IP)
+  bloqueado por el límite de IP; login correcto redirige (302) y limpia los intentos.
+  ⚠️ **Pendiente migrar a producción** ejecutando `db/migracion_rate_limit_login.sql` en Hostinger.
 
 ### 🟠 Altas
 - 🟡 **[PARCIAL] A1 — IDOR / control de acceso por registro.** Helpers en `funciones.php`:
@@ -395,12 +402,20 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
 - **M6 — Funciones de debug** (`debuguear`, `debuguearHTML`) accesibles.
 
 ### 🐛 Bugs funcionales / datos
-- **B1 — `/saldos_contables/saldos` fatal:** la vista SQL de saldos no existe en el esquema; además
-  `consultarSql()`/`consultarSqldvolveruno()` no manejan fallo de query (`fetch_assoc() on false`). Página rota.
+- ✅ **[RESUELTO] B1 — `/saldos_contables/saldos` fatal.** Se crearon las 4 vistas faltantes
+  (`vista_total_ingresos`, `vista_total_egresos`, `vista_saldo_contable`,
+  `vista_saldo_fuente_financiamiento`) en `db/schema.sql` y en `db/migracion_saldos.sql` (idempotente,
+  para Hostinger). Regla contable: **Saldo = Presupuesto + Ingresos(OIE tipo 1) − Egresos(OIE tipo 2 +
+  rendiciones)**, imputado por `ff_id`; subconsultas agregadas independientes para evitar fan-out.
+  Además `consultarSql()`/`consultarSqldvolveruno()` ahora manejan el `false` de un query fallido
+  (registran en `error_log` y devuelven `[]`/`null` en vez de `fetch_assoc()` sobre bool). Verificado
+  end-to-end con el seed (Ingresos 85000, Egresos 17650, Saldo 67350; fuentes 38550 / 28800).
+  ⚠️ **Pendiente migrar a producción** ejecutando `db/migracion_saldos.sql` en Hostinger.
 - **B2 — Reportes POA inflados en PRODUCCIÓN** (fan-out por fuentes; corregido en `db/schema.sql`, falta migrar).
-- **B3 — Esquema desalineado** (corregido en `db/schema.sql`, falta migrar): `usuario` sin `intentos`/`estado`;
-  `auditoria` sin triggers ni AUTO_INCREMENT (auditoría no funciona); `avance decimal(2,2)`; `monto decimal(7,2)` overflow;
-  `rendicion.fecha_original varchar`; `email` no UNIQUE.
+- **B3 — Esquema desalineado** (corregido en `db/schema.sql`, falta migrar): `auditoria` sin triggers ni
+  AUTO_INCREMENT (auditoría no funciona); `avance decimal(2,2)`; `monto decimal(7,2)` overflow;
+  `rendicion.fecha_original varchar`; `email` no UNIQUE. *(El desajuste `intentos`/`estado` ya se resolvió
+  eliminando el código muerto — ver §7.1.)*
 - **B4 — MAYÚSCULAS forzadas** indiscriminadas (origen de C1; degrada calidad de datos).
 - **B5 — Código muerto / de otro proyecto:** `includes/templates/formulario_propiedades.php`,
   `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.

@@ -7,16 +7,17 @@ class Login extends ActiveRecord
     //Base de datos
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
-    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
-    //Contador de intentos para ingresar la contraseña en el login
+    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
+
+    // Parámetros del rate-limit de login (bug C2). Se aplican por IP y por email.
+    const RL_MAX_INTENTOS = 5;
+    const RL_VENTANA = 300; // 5 minutos en segundos
 
     public $id;
     public $cargo_id;
     public $poa_id;
     public $email;
     public $password;
-    public $intentos;
-    public $estado;
     public $reset_token;
     public $datos;
     public $cargo;
@@ -30,8 +31,6 @@ class Login extends ActiveRecord
         $this->poa_id = $args['poa_id'] ?? null;
         $this->email = $args['email'] ?? '';
         $this->password = $args['password'] ?? '';
-        $this->intentos = $args['intentos'] ?? 0;
-        $this->estado = $args['estado'] ?? 0;
         $this->reset_token = $args['reset_token'] ?? null;
         $this->datos = $args['datos'] ?? '';
         $this->cargo = $args['cargo'] ?? '';
@@ -54,12 +53,6 @@ class Login extends ActiveRecord
         if (strlen($this->password) < 6) {
             self::$errores[] = "El Password debe tener al menos 6 caracteres";
         }
-        //Si el número de intentos es 3, entonces el usuario no podrá ingresar
-        // if ($this->intentos = 3) {
-        //     self::$errores[] = "Ha superado el número de intentos permitidos, por favor contacte con el administrador del sistema porfis";
-        //     //Bloqueando al usuario
-        //     $this->bloquearUsuario();
-        // }
         return self::$errores;
     }
     public function validarErroresCambioPswd()
@@ -197,46 +190,78 @@ class Login extends ActiveRecord
         return self::ejecutarPreparado($query, 'si', [$hash, $this->id]);
     }
 
-    //Funciones para cambiar estados de los usuarios por intentos fallidos en el login
-    public function restablecerIntentos()
+    // ------------------------------------------------------------------------
+    // Rate-limit de login persistente en BD (bug C2). Cuenta intentos fallidos
+    // por IP y por email en una ventana deslizante (RL_VENTANA). Complementa el
+    // contador en $_SESSION, que es evadible si el atacante no envía cookies.
+    // ------------------------------------------------------------------------
+
+    // IP de origen de la petición. En hosting compartido sin CDN, REMOTE_ADDR es
+    // la IP real del cliente. No se usa X-Forwarded-For por ser falsificable.
+    public static function obtenerIp(): string
     {
-        $query = "UPDATE usuario SET intentos = 0 WHERE id = ?";
-        return self::ejecutarPreparado($query, 'i', [$this->id]);
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
-    public function bloquearUsuario()
+    // ¿La IP o el email superaron el máximo de intentos fallidos en la ventana?
+    // La ventana se evalúa con la hora de MySQL (NOW()) para no depender de que
+    // el reloj/zona horaria de PHP coincida con el del servidor de BD.
+    // RL_VENTANA es una constante entera del código → se interpola como int (no SQLi).
+    public static function estaBloqueadoPorIntentos(string $ip, string $email): bool
     {
-        //Verificamos si el usuario existe
-        $usu = $this->existeUsuario();
-        //Si el usuario existe, entonces se puede bloquear
-        if ($usu) {
-            //El estado 1 significa que el usuario está bloqueado
-            $query = "UPDATE usuario SET estado = 1 WHERE email = ?";
-            return self::ejecutarPreparado($query, 's', [$this->email]);
+        $ventana = (int) self::RL_VENTANA;
+
+        $porIp = self::consultarPreparado(
+            "SELECT id FROM login_intentos WHERE ip = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        if (count($porIp) >= self::RL_MAX_INTENTOS) {
+            return true;
         }
-        //Si el usuario no existe, entonces no se puede bloquear
-        self::$errores[] = 'El usuario no existe';
-        return;
-    }
-    public function aumentarIntentos()
-    {
-        //Actualizamos el contador de intentos en la base de datos
-        $query = "UPDATE usuario SET intentos = ? WHERE email = ?";
-        return self::ejecutarPreparado($query, 'is', [$this->intentos, $this->email]);
-    }
-    public function actualizarIntentos()
-    {
-        //Consultamos a la base de datos el número de intentos del usuario según su email si exisitiera
-        $query = "SELECT intentos FROM usuario WHERE email = ?";
-        $resultado = self::consultarPreparado($query, 's', [$this->email]);
-        $usuario = array_shift($resultado);
-        if ($usuario) {
-            //Si el usuario existe, entonces se puede actualizar el número de intentos
-            $this->intentos = intval($usuario->intentos) + 1;
-            return $this->aumentarIntentos();
+
+        if ($email !== '') {
+            $porEmail = self::consultarPreparado(
+                "SELECT id FROM login_intentos WHERE email = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+                's',
+                [$email]
+            );
+            if (count($porEmail) >= self::RL_MAX_INTENTOS) {
+                return true;
+            }
         }
+
+        return false;
     }
 
+    // Registra un intento fallido (IP + email intentado).
+    public static function registrarIntentoFallido(string $ip, string $email): bool
+    {
+        return self::ejecutarPreparado(
+            "INSERT INTO login_intentos (ip, email, fecha) VALUES (?, ?, NOW())",
+            'ss',
+            [$ip, $email]
+        );
+    }
 
-    //Funciones para la validación de intentos
+    // Al autenticar con éxito se borran los intentos de esa IP y ese email.
+    public static function limpiarIntentos(string $ip, string $email): bool
+    {
+        return self::ejecutarPreparado(
+            "DELETE FROM login_intentos WHERE ip = ? OR email = ?",
+            'ss',
+            [$ip, $email]
+        );
+    }
+
+    // Limpieza oportunista de registros más antiguos que la ventana.
+    public static function purgarIntentosAntiguos(): bool
+    {
+        $ventana = (int) self::RL_VENTANA;
+        return self::ejecutarPreparado(
+            "DELETE FROM login_intentos WHERE fecha < (NOW() - INTERVAL {$ventana} SECOND)",
+            '',
+            []
+        );
+    }
 }
