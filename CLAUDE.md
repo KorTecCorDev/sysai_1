@@ -1,7 +1,7 @@
 # CLAUDE.md — SysAI (Sistema de reportes contables ONG Arco Iris)
 
 > Memoria de proyecto para futuras sesiones de Claude Code.
-> Última actualización del análisis: 2026-06-01.
+> Última actualización del análisis: 2026-06-02.
 
 ## 1. Qué es
 
@@ -75,8 +75,11 @@ local3000                             # php -S localhost:3000  → http://localh
       `C:\xampp\apache\bin\curl-ca-bundle.crt` (sin esto, el TLS a Gmail/Mailtrap falla). Reiniciar el
       servidor `local3000` tras cambiar `php.ini`.
 - **`db/schema.sql`** — estructura saneada y corregida (ver §7). **`db/seed.sql`** — datos ficticios.
-  **Credenciales de prueba (todas con `Test1234*`):** `admin@sysai.test`, `contador@sysai.test`,
-  `coordinador@sysai.test`.
+  **Credenciales de prueba en `db/seed.sql` (todas con `Test1234*`):** `admin@sysai.test`,
+  `contador@sysai.test`, `coordinador@sysai.test`.
+  ⚠️ **La BD local actual difiere del seed:** el admin está como `robertokar97@gmail.com` y **NO** entra
+  con `Test1234*` (sí entran contador y coordinador). Para probar como admin: re-sembrar con `seed.sql`
+  (queda `admin@sysai.test`) o resetear el hash del admin en la BD local. Ver §12.
 - Punto de entrada único: **`index.php`** (front controller).
 - **Producción:** Apache/Hostinger con `.htaccess` (sí enruta y protege). Allí `database.php`/`mail.php`
   tendrían las credenciales del proveedor (a rotar — ver §6).
@@ -318,6 +321,7 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
 
 - Confirmar contra **producción** las discrepancias de §7 (sobre todo `intentos`/`estado` y triggers de
   `auditoria`) y planificar la migración de las correcciones de `db/schema.sql`.
+- **Estado del sprint de seguridad y acciones de despliegue pendientes (migraciones, QA, PR): ver §12.**
 
 ### Build de assets (Gulp) — RESUELTO/documentado
 - **Pipeline** (`gulpfile.js`): SCSS `src/scss/**` → Dart Sass + autoprefixer + cssnano + sourcemaps →
@@ -463,3 +467,42 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 - **B6 — `validarPropiedadArray()`** sin `isset` (warnings).
 - **B7 — Deuda de build:** `@import` Sass *deprecated* (migrar a `@use/@forward`); `build/css/` con SVGs commiteados (basura).
+
+## 12. Estado del sprint de seguridad y despliegue (act. 2026-06-01)
+
+### Hardening: COMPLETO ✅
+Todo el backlog de seguridad cerrado y **verificado en local** (PHP + HTTP con el seed):
+- **Críticas:** VULN-1 (app-password Gmail revocado), C2 (rate-limit login en BD), B1 (saldos).
+- **Altas:** A1+A2 (IDOR/mass assignment por programa), A3 (recuperación segura), A4 (.git/db), A5 (enumeración).
+- **Medias:** M1 (CSP script-src), M2 (sesión/transporte), M3 (prepared en escrituras), M4 (XSS), M5 (CSRF auth), M6 (debug).
+- **Pendiente del backlog:** solo **bugs funcionales/datos** B2, B4, B5, B6, B7 (no son de seguridad).
+
+### Git
+- Rama **`seguridad/hardening-y-despliegue-local`** publicada en `origin` (GitHub privado), upstream configurado.
+- 6 commits del sprint: `49bad85` (B1+C2) · `b2d318e` (A4+A5) · `69e4ba3` (A3) · `da91e7a` (A1+A2) ·
+  `847315c` (M2+M5+M6) · `2b23f01` (M1+M3+M4). **No mergeado a `main`** (PR pendiente de abrir).
+
+### ⚠️ Acciones MANUALES pendientes antes de cerrar el despliegue
+1. **Migraciones en Hostinger** (BD `u612374195_sysai`), en este orden — son idempotentes salvo el ALTER de A3:
+   1. `db/migracion_saldos.sql` (B1 — 4 vistas de saldos; corrige también el fan-out B2 si se aplican las vistas saneadas)
+   2. `db/migracion_rate_limit_login.sql` (C2 — tabla `login_intentos`)
+   3. `db/migracion_recuperacion_segura.sql` (A3 — `reset_token` hasheado/64 + `reset_token_expira` + tabla `recuperacion_intentos`)
+2. **QA visual de M1** (no verificable por HTTP): botones de eliminar siguen pidiendo confirmación
+   (`data-confirm` + `build/js/seguridad.js`) y la consola del navegador no muestra violaciones de CSP.
+3. **Abrir/mergear el PR** de la rama cuando el QA esté conforme.
+4. **(Recordatorio VULN-1)** el app-password de Gmail sigue en el **historial git** (commit `594f8e5`);
+   opcional purgarlo con `git filter-repo`/BFG + `push --force` (destructivo).
+
+### Notas/known-issues encontrados durante el sprint
+- **Credencial admin:** la **BD local** difiere de `db/seed.sql` — el admin está como
+  `robertokar97@gmail.com` y **NO** entra con `Test1234*` (sí lo hacen `contador@sysai.test` y
+  `coordinador@sysai.test`). El `seed.sql` versionado trae el admin como `admin@sysai.test`/`Test1234*`.
+  Para QA como admin: re-sembrar con `seed.sql` o resetear el hash del admin en local.
+- El diff de las vistas (M4) salió inflado por renormalización **LF→CRLF** de Git en Windows (cosmético).
+- **Dependabot** reporta ~57 vulnerabilidades de dependencias (`composer`/`npm`) en la rama por defecto —
+  frente distinto (no es código propio), pendiente de abordar.
+
+### Lo siguiente (acordado con el usuario)
+- Tras el hardening, la próxima fase es **reportes / lógica de negocio** (POA, rendiciones, conversión de
+  moneda). Para esa fase el usuario aportará el **contexto de la ONG** (cadena del dinero, reportes a
+  donantes, magnitudes, calendario), que se guardará en `memory/` + este archivo. Ver [[regla-saldos-contables]].
