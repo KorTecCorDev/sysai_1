@@ -23,9 +23,6 @@ class RendicionController
         exigirProgramaPropioPorActividad($actividad_id);
 
         //Tomamos el producto_id por resultado de consultar a la DB por medio de la clase Producto.
-        //debuguear($actividad_id);
-        //debuguear((int) RendicionAdminVista::find($actividad_id));
-
         $totalrendis = RendicionAdminVista::findxatributo('actividad_id', $actividad_id);
 
         //Si no hay rendiciones

@@ -200,8 +200,8 @@ Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). 
    **hasheado (sha256)** y con **expiración** (30 min), y `updatePsswrdUser()` lo invalida al usarlo. Ver §11 A3.
 7. ✅ **[RESUELTO]** `estaAutenticado()` ahora usa `session_status()`, `empty()` y `exit` (sin warnings).
 8. **CSP permisiva:** `'unsafe-inline'` y `'unsafe-eval'` habilitados (index.php y .htaccess). *(pendiente, menor)*
-9. ✅ **[parcial]** `debuguear()` del flujo de recuperación eliminado. Revisar otros usos de
-   `debuguear/debuguearHTML` antes de producción. *(residual menor)*
+9. ✅ **[RESUELTO — M6]** Funciones `debuguear()`/`debuguearHTML()` eliminadas de `funciones.php` (y las
+   referencias comentadas en `RendicionController`). No quedan usos en el código.
 10. ✅ **[RESUELTO]** Login muestra mensaje **neutro** ("Las credenciales ingresadas no son correctas")
     y el flujo de recuperación (`/chgpsswd`) también es neutro (redirige siempre a `/token_verify` sin
     revelar si el correo existe — ver §11 A5).
@@ -413,12 +413,20 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   302 idéntico a `/token_verify`; el token se generó solo para el existente.
 
 ### 🟡 Medias
-- **M1 — CSP permisiva** (`'unsafe-inline'`, `'unsafe-eval'`).
-- **M2 — Sesión/transporte:** cookies seguras solo vía `.htaccess`; sin HSTS ni timeout de sesión en código.
-- **M3 — Escrituras sin prepared statements** (`crear/actualizar/existeDato/existeDescripcion` usan `escape_string`+join).
-- **M4 — XSS residual:** `echo` de variables planas (`$error`, ids) y concatenaciones sueltas sin `s()`.
-- **M5 — CSRF parcial:** falta en formularios-filtro de reportes (no mutan) y en formularios públicos de auth (login-CSRF).
-- **M6 — Funciones de debug** (`debuguear`, `debuguearHTML`) accesibles.
+- **M1 — CSP permisiva** (`'unsafe-inline'`, `'unsafe-eval'`). *(pendiente — requiere refactor del JS/CSS inline)*
+- ✅ **[RESUELTO] M2 — Sesión/transporte (en código).** En `index.php`: `session_set_cookie_params`
+  con `httponly` + `SameSite=Lax` siempre y `secure` auto bajo HTTPS; cabecera **HSTS** condicional a HTTPS.
+  En `Router::comprobarRutas()`: **timeout por inactividad de 30 min** (cierra sesión y redirige a
+  `/login?expirado=1`; renueva `last_activity` en cada request autenticado). Verificado: cookie con
+  `HttpOnly; SameSite=Lax`, sesión activa no expira, aritmética de expiración correcta.
+- **M3 — Escrituras sin prepared statements** (`crear/actualizar/existeDato/existeDescripcion` usan `escape_string`+join). *(pendiente)*
+- **M4 — XSS residual:** `echo` de variables planas (`$error`, ids) y concatenaciones sueltas sin `s()`. *(pendiente)*
+- ✅ **[RESUELTO] M5 — CSRF en formularios de auth.** El Router (`requiereCsrf()`) ahora exige token
+  también en `/login`, `/chgpsswd`, `/token_verify`, `/updtepsswd` (antes solo `*/crear|actualizar|eliminar`
+  y reportes). Los forms ya tenían `csrf_input()`. Verificado: POST `/login` sin token → **419**, con token → OK.
+  *(Los formularios-filtro de reportes no mutan estado → no se exigen.)*
+- ✅ **[RESUELTO] M6 — Funciones de debug.** Eliminadas `debuguear()`/`debuguearHTML()` de `funciones.php`
+  y las referencias comentadas en `RendicionController`. No quedan usos.
 
 ### 🐛 Bugs funcionales / datos
 - ✅ **[RESUELTO] B1 — `/saldos_contables/saldos` fatal.** Se crearon las 4 vistas faltantes

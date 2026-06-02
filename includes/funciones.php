@@ -18,20 +18,6 @@ function estaAutenticado()
     }
 }
 
-function debuguear($variable)
-{
-    echo '<pre>';
-    var_dump($variable);
-    echo '</pre>';
-    exit;
-}
-
-function debuguearHTML($variable)
-{
-    echo "<script>console.log('PHP dice: " . addslashes($variable) . "');</script>";
-    exit;
-}
-
 //Escapa / Sanitizar el HTML (null-safe, comillas y UTF-8 para contexto de atributos)
 function s($html): string
 {

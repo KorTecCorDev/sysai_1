@@ -21,13 +21,17 @@ class Router
     // Rutas públicas: únicas accesibles sin sesión iniciada.
     public $rutas_publicas = ['/', '/login', '/logout', '/chgpsswd', '/token_verify', '/updtepsswd', '/error'];
 
-    // ¿La ruta POST exige token CSRF? (todas las acciones que mutan datos)
+    // ¿La ruta POST exige token CSRF? (todas las acciones que mutan datos, incluidos
+    // los formularios públicos de autenticación — M5: login-CSRF y cambio de contraseña).
     private function requiereCsrf(string $url): bool
     {
         return str_ends_with($url, '/crear')
             || str_ends_with($url, '/actualizar')
             || str_ends_with($url, '/eliminar')
-            || in_array($url, ['/reporte/modificarpoa', '/reporte/guardarpoa'], true);
+            || in_array($url, [
+                '/reporte/modificarpoa', '/reporte/guardarpoa',
+                '/login', '/chgpsswd', '/token_verify', '/updtepsswd',
+            ], true);
     }
 
     public function comprobarRutas()
@@ -43,6 +47,19 @@ class Router
         $metodo = $_SERVER['REQUEST_METHOD'];
 
         $logueado = isset($_SESSION['login']) && $_SESSION['login'] === true;
+
+        // M2 — Timeout de sesión por inactividad (30 min). Si se supera, se cierra la
+        // sesión y se redirige al login; en cada petición autenticada se renueva la marca.
+        $inactividadMax = 1800;
+        if ($logueado) {
+            if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $inactividadMax) {
+                $_SESSION = [];
+                session_destroy();
+                header('Location: /login?expirado=1');
+                exit;
+            }
+            $_SESSION['last_activity'] = time();
+        }
 
         // Por defecto TODO requiere sesión, salvo la lista blanca de rutas públicas.
         if (!in_array($urlActual, $this->rutas_publicas, true) && !$logueado) {
