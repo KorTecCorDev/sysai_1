@@ -54,7 +54,7 @@
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar categoría"
-                                            onclick="return confirm('¿Estás seguro de eliminar esta categoría?');">
+                                            data-confirm="¿Estás seguro de eliminar esta categoría?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

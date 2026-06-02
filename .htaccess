@@ -105,7 +105,10 @@
     Header set X-Content-Type-Options "nosniff"
     
     # Política de seguridad de contenido (CSP) - Ajustar según necesidades
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
+    # M1 — script-src sin 'unsafe-inline'/'unsafe-eval'. style-src conserva 'unsafe-inline'
+    # (atributos style= y estilos inyectados por Bootstrap/AOS). Nota: el CSP de index.php
+    # (front controller) es el que aplica a las páginas; este cubre respuestas servidas por Apache.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
     
     # Prevenir iframing
     Header set X-Frame-Options "SAMEORIGIN"

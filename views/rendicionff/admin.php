@@ -1,5 +1,5 @@
 <main>
-    <h1>Elección de Fuente de Financiamiento para la Rendicion <?php echo $respt[0]->actividad_codigo; ?></h1>
+    <h1>Elección de Fuente de Financiamiento para la Rendicion <?php echo s($respt[0]->actividad_codigo); ?></h1>
     <?php
     if ($resultado) {
 
@@ -16,16 +16,16 @@
     ?>
     <div class="row">
         <div class="col">
-            <h3 title="<?php echo ($actividad_nombre); ?>">Actividad <?php echo $respt[0]->actividad_codigo ?> </h3>
+            <h3 title="<?php echo s($actividad_nombre); ?>">Actividad <?php echo s($respt[0]->actividad_codigo) ?> </h3>
         </div>
         <div class="col">
-            <h3>Monto rendido S./ <?php echo $resptrendiff[0]->total_monto_rendiciones ?></h3>
+            <h3>Monto rendido S./ <?php echo s($resptrendiff[0]->total_monto_rendiciones) ?></h3>
         </div>
         <div class="col-2 espacio-btn-agregar">
-            <a href="/rendicionff/crear?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-primary btn-agregar"><i class="bi bi-plus-circle"></i> Agregar</a>
+            <a href="/rendicionff/crear?actividad_id=<?php echo s($actividad_id); ?>" class="btn btn-primary btn-agregar"><i class="bi bi-plus-circle"></i> Agregar</a>
         </div>
         <div class="col-2 espacio-btn-volver">
-            <a href="/actividad/admin?producto_id=<?php echo $producto_id; ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
+            <a href="/actividad/admin?producto_id=<?php echo s($producto_id); ?>" class="btn btn-primary btn-volver"><i class="bi bi-arrow-bar-left"></i> Volver</a>
         </div>
     </div>
     <!-- Tabla que muestra los registros dentro de la tabla usuario -->

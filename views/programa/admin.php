@@ -39,7 +39,7 @@
                             <td class="text-center fw-semibold"> <?php echo s($programa->codigo); ?> </td>
                             <td> <?php
                                     foreach ($tiposprograma as $tprograma) {
-                                        echo $tprograma->id == $programa->tipo_programa_id ? $tprograma->descripcion : '';
+                                        echo s($tprograma->id == $programa->tipo_programa_id ? $tprograma->descripcion : '');
                                     }
                                     ?> </td>
                             <td> <?php echo s($programa->nombre); ?> </td>
@@ -58,7 +58,7 @@
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar registro"
-                                            onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                            data-confirm="¿Estás seguro de eliminar este registro?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

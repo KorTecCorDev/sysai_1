@@ -74,56 +74,30 @@ class ActiveRecord
      */
 
     {
-
-        //Sanitizamos los datos
-        //LLamamos a un método dentro de otro método
-        $atributos = $this->sanitizarAtributos();
-        // Convertimos todos los strings a mayúsculas
-        $atributos = $this->convertirAMayusculas($atributos);
-        $stringcolumnas = join(', ', array_keys($atributos));
-        $stringdatos = join("', '", array_values($atributos));
-
-        //Consulta a la base de datos.
-        $query = "INSERT INTO " . static::$tabla . " (";
-        $query .= $stringcolumnas;
-        $query .= ") VALUES ('";
-        $query .= $stringdatos;
-        $query .= "');";
-
-        //Insertamos a la base de datos.
-        $resultado = self::$db->query($query);
-
-        //Mensaje de exito o error
+        // M3: la inserción usa una sentencia preparada (ver crearsinRedireccion()).
+        $resultado = $this->crearsinRedireccion();
         if ($resultado) {
             //Redireccionamiento del usuario en una inserción correcta en la base de datos
-            $url = "Location: /" . static::$tabla . "/admin?resultado=1";
-            header($url);
+            header("Location: /" . static::$tabla . "/admin?resultado=1");
             exit();
         }
         return $resultado;
     }
     public function crearsinRedireccion(): bool
     {
-
-        //Sanitizamos los datos
-        //LLamamos a un método dentro de otro método
-        $atributos = $this->sanitizarAtributos();
-        // Convertimos todos los strings a mayúsculas
-        $atributos = $this->convertirAMayusculas($atributos);
-
-        $stringcolumnas = join(', ', array_keys($atributos));
-        $stringdatos = join("', '", array_values($atributos));
-
-        //Consulta a la base de datos.
-        $query = "INSERT INTO " . static::$tabla . " (";
-        $query .= $stringcolumnas;
-        $query .= ") VALUES ('";
-        $query .= $stringdatos;
-        $query .= "');";
-
-        //Insertamos a la base de datos.
-        $resultado = self::$db->query($query);
-        return $resultado;
+        // M3 — INSERT parametrizado (prepared statement) en vez de escape_string+concatenación.
+        // Los nombres de columna provienen de $columnasDB (código, no del usuario) → seguros.
+        $atributos = $this->convertirAMayusculas($this->atributos());
+        $columnas = array_keys($atributos);
+        if (empty($columnas)) {
+            return false;
+        }
+        // null → '' para preservar el comportamiento previo (escape_string) en columnas NOT NULL.
+        $valores = array_map(fn($v) => $v ?? '', array_values($atributos));
+        $stringcolumnas = implode(', ', $columnas);
+        $placeholders = implode(', ', array_fill(0, count($columnas), '?'));
+        $query = "INSERT INTO " . static::$tabla . " ($stringcolumnas) VALUES ($placeholders)";
+        return self::ejecutarPreparado($query, str_repeat('s', count($valores)), $valores);
     }
 
     /**
@@ -135,22 +109,8 @@ class ActiveRecord
      */
     public function actualizar()
     {
-        //Sanitizamos los datos
-        $atributos = $this->sanitizarAtributos();
-        // Convertimos todos los strings a mayúsculas
-        $atributos = $this->convertirAMayusculas($atributos);
-        $valores = [];
-        foreach ($atributos as $key => $value) {
-            $valores[] = "$key='$value'";
-        }
-        $query = "UPDATE " . static::$tabla . " SET ";
-        $query .= join(', ', $valores);
-        $query .= " WHERE id='";
-        $query .= self::$db->escape_string($this->id) . "'";
-        $query .= " LIMIT 1;";
-
-        $resultado = self::$db->query($query);
-
+        // M3: la actualización usa una sentencia preparada (ver actualizarsinRedireccion()).
+        $resultado = $this->actualizarsinRedireccion();
         if ($resultado) {
             //Redireccionamiento del usuario en una inserción correcta en la base de datos
             header("Location: /" . static::$tabla . "/admin?resultado=2");
@@ -159,31 +119,30 @@ class ActiveRecord
     }
     public function actualizarsinRedireccion()
     {
-        //Sanitizamos los datos
-        $atributos = $this->sanitizarAtributos();
-        // Convertimos todos los strings a mayúsculas
-        $atributos = $this->convertirAMayusculas($atributos);
-        $valores = [];
-        foreach ($atributos as $key => $value) {
-            $valores[] = "$key='$value'";
+        // M3 — UPDATE parametrizado (prepared statement). Nombres de columna desde $columnasDB.
+        $atributos = $this->convertirAMayusculas($this->atributos());
+        $columnas = array_keys($atributos);
+        if (empty($columnas)) {
+            return false;
         }
-        $query = "UPDATE " . static::$tabla . " SET ";
-        $query .= join(', ', $valores);
-        $query .= " WHERE id='";
-        $query .= self::$db->escape_string($this->id) . "'";
-        $query .= " LIMIT 1;";
-        $resultado = self::$db->query($query);
-        return $resultado;
+        // null → '' para preservar el comportamiento previo (escape_string).
+        $valores = array_map(fn($v) => $v ?? '', array_values($atributos));
+        $sets = implode(', ', array_map(fn($c) => "$c = ?", $columnas));
+        $valores[] = $this->id; // valor para el WHERE id = ?
+        $query = "UPDATE " . static::$tabla . " SET $sets WHERE id = ? LIMIT 1";
+        return self::ejecutarPreparado($query, str_repeat('s', count($valores)), $valores);
     }
     //Funciones
 
     //Eliminar un registro
     public function eliminarsinRedireccion()
     {
-        //Eliminar el archivo
-        $query = "DELETE FROM " . static::$tabla . " WHERE id=" . self::$db->escape_string($this->id) . " LIMIT 1;";
-        $resultado = self::$db->query($query);
-
+        // M3 — DELETE parametrizado.
+        $resultado = self::ejecutarPreparado(
+            "DELETE FROM " . static::$tabla . " WHERE id = ? LIMIT 1",
+            'i',
+            [(int) $this->id]
+        );
         if ($resultado) {
             $this->borrarImagen();
         }
@@ -197,10 +156,12 @@ class ActiveRecord
      */
     public function eliminar()
     {
-        //Eliminar el archivo
-        $query = "DELETE FROM " . static::$tabla . " WHERE id=" . self::$db->escape_string($this->id) . " LIMIT 1;";
-        $resultado = self::$db->query($query);
-
+        // M3 — DELETE parametrizado.
+        $resultado = self::ejecutarPreparado(
+            "DELETE FROM " . static::$tabla . " WHERE id = ? LIMIT 1",
+            'i',
+            [(int) $this->id]
+        );
         if ($resultado) {
             $this->borrarImagen();
             //Comentado por haber colocado el redireccionamiento en la misma función del controller
@@ -306,50 +267,44 @@ class ActiveRecord
             }
         }
 
-        $conditions = [];
-        foreach ($propertys as $property) {
-            $conditions[] = "$property = '" . self::$db->escape_string($obj->$property) . "'";
-        }
+        // M3 — WHERE parametrizado. Los nombres de propiedad provienen del código (no del
+        // usuario); solo los VALORES se enlazan con bind_param.
+        $conditions = array_map(fn($p) => "$p = ?", $propertys);
         $where = implode(' AND ', $conditions);
+        $valores = array_map(fn($p) => $obj->$p, $propertys);
+        $tipos = str_repeat('s', count($valores));
+
+        $filas = self::consultarPreparado(
+            "SELECT id FROM " . static::$tabla . " WHERE $where",
+            $tipos,
+            $valores
+        );
 
         if (isset($obj->id) && $obj->id != null) {
-            // Se está actualizando
-            // Solo permitir si los atributos iguales pertenecen al mismo id
-            $query = "SELECT id FROM " . static::$tabla . " WHERE $where";
-            $resultado = self::$db->query($query);
-            if ($resultado) {
-                while ($row = $resultado->fetch_assoc()) {
-                    if ((int)$row['id'] !== (int)$obj->id) {
-                        // Existe otro registro con los mismos atributos
-                        return true;
-                    }
+            // Se está actualizando: existe conflicto si hay OTRO registro (id distinto) igual.
+            foreach ($filas as $row) {
+                if ((int) $row->id !== (int) $obj->id) {
+                    return true;
                 }
             }
             return false;
-        } else {
-            // Se está creando
-            $query = "SELECT COUNT(*) as total FROM " . static::$tabla . " WHERE $where";
-            $resultado = self::$db->query($query);
-            if ($resultado) {
-                $row = $resultado->fetch_assoc();
-                return ($row['total'] >= 1);
-            }
-            return false;
         }
+        // Se está creando: existe conflicto si hay al menos un registro igual.
+        return count($filas) >= 1;
     }
 
 
     //Función que permite verificar si existe la descripción en la base de datos
-    // Tablas: usuario, 
+    // Tablas: usuario,
     public static function existeDescripcion($descripcion)
     {
-        $query = "SELECT COUNT(*) as total FROM " . static::$tabla . " WHERE descripcion = '" . self::$db->escape_string($descripcion) . "'";
-        $resultado = self::$db->query($query);
-        if ($resultado) {
-            $row = $resultado->fetch_assoc();
-            return ($row['total'] >= 1);
-        }
-        return false;
+        // M3 — consulta parametrizada.
+        $filas = self::consultarPreparado(
+            "SELECT id FROM " . static::$tabla . " WHERE descripcion = ?",
+            's',
+            [$descripcion]
+        );
+        return count($filas) >= 1;
     }
 
     //Lista todos los registros de la tabla

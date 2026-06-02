@@ -18,9 +18,9 @@
             <h2>Rubros</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rubro/crear?actividad_id=<?php echo $actividadid; ?>" class="btn btn-primary rounded-pill shadow-sm">
+            <a href="/rubro/crear?actividad_id=<?php echo s($actividadid); ?>" class="btn btn-primary rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Agregar</a>
-            <a href="/actividad/admin?producto_id=<?php echo $productoid; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+            <a href="/actividad/admin?producto_id=<?php echo s($productoid); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
         </div>
@@ -67,7 +67,7 @@
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar rubro"
-                                            onclick="return confirm('¿Estás seguro de eliminar este rubro?');">
+                                            data-confirm="¿Estás seguro de eliminar este rubro?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

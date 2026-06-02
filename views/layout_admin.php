@@ -44,8 +44,8 @@ $cargo = $_SESSION['cargo'] ?? false;
               </button>
             </div>
             <div class="sidebar-logo">
-              <p>Bienvenido, <span><?php echo $persona; ?></span></p>
-              <p>Tu rol: <span><?php echo $cargo; ?></span></p>
+              <p>Bienvenido, <span><?php echo s($persona); ?></span></p>
+              <p>Tu rol: <span><?php echo s($cargo); ?></span></p>
             </div>
           </div>
           <ul class="sidebar-nav">
@@ -192,6 +192,7 @@ $cargo = $_SESSION['cargo'] ?? false;
 
   <script src="/build/js/bootstrap.bundle.min.js"></script>
 <script src="/build/js/bundle.min.js"></script>
+<script src="/build/js/seguridad.js"></script>
 </body>
 
 </html>

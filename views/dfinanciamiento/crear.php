@@ -22,7 +22,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <p><?php echo $error; ?></p>
+                        <p><?php echo s($error); ?></p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -65,6 +65,6 @@
             </div>
         </div>
         <div class="form-text">Seleccione la fuentes de financiamiento a relacionar</div>
-        <input type="hidden" name="cantidad" value="<?php echo $cont; ?>">
+        <input type="hidden" name="cantidad" value="<?php echo s($cont); ?>">
     </fieldset>
 </main>

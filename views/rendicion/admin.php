@@ -18,9 +18,9 @@
             <h2>Comprobantes</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rendicion/crear?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-primary rounded-pill shadow-sm">
+            <a href="/rendicion/crear?actividad_id=<?php echo s($actividad_id); ?>" class="btn btn-primary rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Agregar</a>
-            <a href="/actividad/admin?producto_id=<?php echo $producto_id; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+            <a href="/actividad/admin?producto_id=<?php echo s($producto_id); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
         </div>
@@ -53,7 +53,7 @@
                         $fechafmt = date('d/m/Y', $fechacmte);
                         ?>
                         <td> <?php echo s($rendicion->codigo); ?> </td>
-                        <td> <?php echo $fechafmt; ?> </td>
+                        <td> <?php echo s($fechafmt); ?> </td>
                         <td> <?php echo s($rendicion->tipo_comprobante); ?> </td>
                         <td> <?php echo s($rendicion->ruc); ?> </td>
                         <td> <?php echo s($rendicion->razon_social); ?> </td>
@@ -77,7 +77,7 @@
                                     <button type="submit"
                                         class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                         title="Eliminar rendición"
-                                        onclick="return confirm('¿Estás seguro de eliminar esta rendición?');">
+                                        data-confirm="¿Estás seguro de eliminar esta rendición?">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </form>

@@ -49,7 +49,7 @@
                         ?>
                         <td title="<?php
                                     foreach ($tipocomprobantes as $tipocomprobante) {
-                                        echo $tipocomprobante->codigo == $oe->tipo_comprobante_codigo ? $tipocomprobante->nombre : '';
+                                        echo s($tipocomprobante->codigo == $oe->tipo_comprobante_codigo ? $tipocomprobante->nombre : '');
                                     }
                                     ?>">
                             <?php echo s($oe->tipo_comprobante_codigo); ?> </td>
@@ -71,7 +71,7 @@
                                     <button type="submit"
                                         class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                         title="Eliminar registro"
-                                        onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                        data-confirm="¿Estás seguro de eliminar este registro?">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </form>

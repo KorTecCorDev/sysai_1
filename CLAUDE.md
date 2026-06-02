@@ -129,8 +129,9 @@ Estáticos, reciben `Router $router`. Patrón típico: `index` (listado/admin), 
 Una subcarpeta por entidad (`actividad/`, `usuario/`, `poa/`, `rendicion/`, `reporte/`, etc.),
 cada una con `admin.php` (listado), `crear.php`, `actualizar.php`, `formulario.php` (parcial compartido).
 Layouts: `layout.php`, `layout_admin/contador/coordinador.php`, `layout_login.php`.
-Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). Se usa de forma
-**inconsistente** (≈84 usos de `s()` vs ≈198 `echo` crudos). Ver §6.
+Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). Tras VULN-3 + M4, las
+salidas de datos en las vistas están escapadas con `s()`; la única salida cruda intencional es
+`echo $contenido` en los layouts (HTML ya renderizado). Ver §11 M4.
 
 ## 5. Módulos funcionales (dominio)
 
@@ -199,7 +200,8 @@ Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). 
    usa el flujo) ahora usa `random_bytes()`+`bin2hex` (antes `str_shuffle`, no CSPRNG). El token se guarda
    **hasheado (sha256)** y con **expiración** (30 min), y `updatePsswrdUser()` lo invalida al usarlo. Ver §11 A3.
 7. ✅ **[RESUELTO]** `estaAutenticado()` ahora usa `session_status()`, `empty()` y `exit` (sin warnings).
-8. **CSP permisiva:** `'unsafe-inline'` y `'unsafe-eval'` habilitados (index.php y .htaccess). *(pendiente, menor)*
+8. ✅ **[RESUELTO — parcial — M1]** CSP: `script-src` sin `'unsafe-inline'`/`'unsafe-eval'`. `style-src`
+   conserva `'unsafe-inline'` (Bootstrap/AOS + 63 `style=`). Ver §11 M1.
 9. ✅ **[RESUELTO — M6]** Funciones `debuguear()`/`debuguearHTML()` eliminadas de `funciones.php` (y las
    referencias comentadas en `RendicionController`). No quedan usos en el código.
 10. ✅ **[RESUELTO]** Login muestra mensaje **neutro** ("Las credenciales ingresadas no son correctas")
@@ -413,14 +415,27 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   302 idéntico a `/token_verify`; el token se generó solo para el existente.
 
 ### 🟡 Medias
-- **M1 — CSP permisiva** (`'unsafe-inline'`, `'unsafe-eval'`). *(pendiente — requiere refactor del JS/CSS inline)*
+- ✅ **[RESUELTO — parcial] M1 — CSP de scripts endurecida.** `script-src` ya **no** usa `'unsafe-inline'`
+  ni `'unsafe-eval'` (index.php y .htaccess) → bloquea XSS por `<script>` inline (no había ninguno) y por
+  `eval`/`new Function` (no se usan). Los 12 `onclick="return confirm(...)"` se migraron a `data-confirm`
+  con un manejador delegado en `build/js/seguridad.js` (cargado en los 4 layouts). **`style-src` conserva
+  `'unsafe-inline'`** por necesidad (63 atributos `style=` + estilos que inyectan Bootstrap/AOS en runtime);
+  endurecerlo exigiría reescribir la UI. ⚠️ **Requiere QA visual** (no verificable por HTTP): que los
+  botones de eliminar sigan pidiendo confirmación y que la consola no muestre violaciones de CSP.
 - ✅ **[RESUELTO] M2 — Sesión/transporte (en código).** En `index.php`: `session_set_cookie_params`
   con `httponly` + `SameSite=Lax` siempre y `secure` auto bajo HTTPS; cabecera **HSTS** condicional a HTTPS.
   En `Router::comprobarRutas()`: **timeout por inactividad de 30 min** (cierra sesión y redirige a
   `/login?expirado=1`; renueva `last_activity` en cada request autenticado). Verificado: cookie con
   `HttpOnly; SameSite=Lax`, sesión activa no expira, aritmética de expiración correcta.
-- **M3 — Escrituras sin prepared statements** (`crear/actualizar/existeDato/existeDescripcion` usan `escape_string`+join). *(pendiente)*
-- **M4 — XSS residual:** `echo` de variables planas (`$error`, ids) y concatenaciones sueltas sin `s()`. *(pendiente)*
+- ✅ **[RESUELTO] M3 — Escrituras con prepared statements.** `crear/crearsinRedireccion`,
+  `actualizar/actualizarsinRedireccion`, `eliminar/eliminarsinRedireccion`, `existeDato` y
+  `existeDescripcion` en `ActiveRecord` pasan a sentencias preparadas (los nombres de columna vienen de
+  `$columnasDB`/código, solo los valores se enlazan). Se preserva `null → ''` para columnas NOT NULL y el
+  forzado a MAYÚSCULAS. Verificado: CRUD completo + duplicados (PHP) y crear vía HTTP (INSERT preparado, 302).
+- ✅ **[RESUELTO] M4 — XSS residual.** Se envolvieron con `s()` los ~73 `echo` de variables escalares en
+  las vistas (errores, fechas, IDs de GET/contexto) y 6 `echo` de propiedades de objeto que faltaban
+  (rendicionff, ternarios de programa/ingreso_egreso). **`$contenido` de los layouts se deja SIN escapar**
+  (es el HTML renderizado de la página). Todas las vistas pasan `php -l`; render verificado (200).
 - ✅ **[RESUELTO] M5 — CSRF en formularios de auth.** El Router (`requiereCsrf()`) ahora exige token
   también en `/login`, `/chgpsswd`, `/token_verify`, `/updtepsswd` (antes solo `*/crear|actualizar|eliminar`
   y reportes). Los forms ya tenían `csrf_input()`. Verificado: POST `/login` sin token → **419**, con token → OK.

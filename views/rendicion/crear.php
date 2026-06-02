@@ -9,7 +9,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <p><?php echo $error; ?></p>
+                        <p><?php echo s($error); ?></p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -25,7 +25,7 @@
         <form method="POST"><?php echo csrf_input(); ?>
             <?php include __DIR__ . '/formulario.php'; ?>
             <div class="d-flex justify-content-between mt-4">
-                <a href="/rendicion/admin?actividad_id=<?php echo $actividad_id; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+                <a href="/rendicion/admin?actividad_id=<?php echo s($actividad_id); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                     <i class="bi bi-arrow-left-short me-2"></i> Volver
                 </a>
                 <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">

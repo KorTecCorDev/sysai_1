@@ -16,7 +16,7 @@
     <?php
     foreach ($errores as $error) : ?>
         <div class="alert alert-danger">
-            <?php echo $error; ?>
+            <?php echo s($error); ?>
         </div>
     <?php
     endforeach;
@@ -54,6 +54,6 @@
             </div>
         </div>
         <div class="form-text">Seleccione la fuentes de financiamiento a relacionar</div>
-        <input type="hidden" name="cantidad" value="<?php echo $cont; ?>">
+        <input type="hidden" name="cantidad" value="<?php echo s($cont); ?>">
     </fieldset>
 </main>

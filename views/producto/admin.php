@@ -19,9 +19,9 @@
             <h2>Productos</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/producto/crear?resultado_id=<?php echo $resultadoid; ?>" class="btn btn-primary rounded-pill shadow-sm">
+            <a href="/producto/crear?resultado_id=<?php echo s($resultadoid); ?>" class="btn btn-primary rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Agregar</a>
-            <a href="/resultado/admin?programa_id=<?php echo $programaid; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+            <a href="/resultado/admin?programa_id=<?php echo s($programaid); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
         </div>
@@ -67,7 +67,7 @@
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar producto"
-                                            onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                            data-confirm="¿Estás seguro de eliminar este registro?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>
