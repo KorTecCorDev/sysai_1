@@ -146,20 +146,36 @@ class LoginController
             //Validamos el formato del correo (no si existe)
             $errores = $usu->validarErroresCambioPswd();
             if (empty($errores)) {
+                $ip = Login::obtenerIp();
+                Login::purgarIntentosRecuperacion();
+
+                // A3 — Rate-limit por IP de solicitudes de token (no revela enumeración,
+                // el límite es independiente de si el correo existe).
+                if (Login::excedidoSolicitudesIp($ip)) {
+                    $errores[] = 'Demasiadas solicitudes. Intente nuevamente en unos minutos.';
+                    $router->renderssdbr('/chgpsswd', ['errores' => $errores]);
+                    return;
+                }
+
                 // A5 — Comportamiento NEUTRO contra enumeración de usuarios:
                 // exista o no el correo, el flujo es idéntico (mismo destino, sin
                 // mensaje que delate si la cuenta existe).
                 $cuenta = $usu->buscarPorEmailParaRecuperacion();
-                if ($cuenta) {
-                    // Solo si la cuenta existe se genera y envía el token.
+                // A3 — cooldown anti-reenvío: solo se emite un token nuevo si la cuenta
+                // existe y no se le envió otro hace menos de RECUP_COOLDOWN.
+                if ($cuenta && !Login::enCooldownReenvio($usu->email)) {
                     $login = new Login((array) $cuenta);
-                    $login->reset_token = generarCodigoAleatorioSimple();
+                    // El código en claro viaja al correo; en BD se guarda su hash sha256.
+                    $tokenClaro = generarCodigoAleatorioSimple(10);
+                    $login->reset_token = hash('sha256', $tokenClaro);
                     if ($login->guardarToken()) {
                         // En producción manda el email; en desarrollo (sin SMTP) lo
                         // registra en includes/logs/mail.log.
-                        enviarTokenRecuperacion($login->email, $login->datos, $login->reset_token);
+                        enviarTokenRecuperacion($login->email, $login->datos, $tokenClaro);
                     }
                 }
+                // Registrar la solicitud (alimenta el límite por IP y el cooldown).
+                Login::registrarIntentoRecuperacion($ip, $usu->email, 'solicitud');
                 // Siempre se avanza a la verificación del código, exista o no la cuenta.
                 header('Location: /token_verify');
                 exit();
@@ -173,6 +189,16 @@ class LoginController
     {
         $errores = Login::getErrores();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ip = Login::obtenerIp();
+            Login::purgarIntentosRecuperacion();
+
+            // A3 — Rate-limit por IP de verificaciones (anti-fuerza bruta del código).
+            if (Login::excedidoVerificacionesIp($ip)) {
+                $errores[] = 'Demasiados intentos. Intente nuevamente en unos minutos.';
+                $router->renderssdbr('/token_verify', ['errores' => $errores]);
+                return;
+            }
+
             $log = new Login($_POST);
             $token = $log->reset_token;
 
@@ -186,7 +212,8 @@ class LoginController
                     header("Location: /updtepsswd?id=" . $usuario->id);
                     exit();
                 } else {
-                    //Mandar mensajes de Error
+                    // Código inválido o expirado: contar la verificación fallida.
+                    Login::registrarIntentoRecuperacion($ip, null, 'verificacion');
                     $errores = Login::getErrores();
                 }
             }

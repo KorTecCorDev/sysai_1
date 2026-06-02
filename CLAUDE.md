@@ -195,8 +195,9 @@ Helper de escape: **`s()`** en `includes/funciones.php` (= `htmlspecialchars`). 
    → **419** si falta o no coincide. `csrf_input()` añadido a los ~50 formularios POST correspondientes.
    Verificado: crear sin token = 419, con token = pasa. (Los formularios-filtro de reporte conservan el
    token pero no se exige, por no mutar estado.)
-6. ✅ **[RESUELTO — VULN-4 (token)]** `generarCodigoAleatorioSimple()` usa `random_bytes()`+`bin2hex`
-   (token de reset criptográficamente seguro). `updatePsswrdUser()` invalida el token al usarlo.
+6. ✅ **[RESUELTO — VULN-4 (token) + A3]** La función **global** `generarCodigoAleatorioSimple()` (la que
+   usa el flujo) ahora usa `random_bytes()`+`bin2hex` (antes `str_shuffle`, no CSPRNG). El token se guarda
+   **hasheado (sha256)** y con **expiración** (30 min), y `updatePsswrdUser()` lo invalida al usarlo. Ver §11 A3.
 7. ✅ **[RESUELTO]** `estaAutenticado()` ahora usa `session_status()`, `empty()` y `exit` (sin warnings).
 8. **CSP permisiva:** `'unsafe-inline'` y `'unsafe-eval'` habilitados (index.php y .htaccess). *(pendiente, menor)*
 9. ✅ **[parcial]** `debuguear()` del flujo de recuperación eliminado. Revisar otros usos de
@@ -282,8 +283,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
    → fechas de comprobante de rendición sin tipar (inconsistencia).
 6. **`email` de `usuario` no es UNIQUE** y el login hace `... WHERE email=... LIMIT 1` → riesgo de
    ambigüedad si se duplica.
-7. **`reset_token` en texto plano** (varchar 20) en la tabla; visible en dumps. Combinado con la
-   generación débil (`str_shuffle`, ver §6.6) → recuperación de contraseña insegura.
+7. ✅ **[RESUELTO — A3]** `reset_token` ya no se guarda en texto plano: pasa a `varchar(64)` con el
+   **sha256** del código + columna `reset_token_expira` (TTL 30 min). Generación con CSPRNG y rate-limit
+   (tabla `recuperacion_intentos`). Ver §11 A3. *(Producción: migrar `db/migracion_recuperacion_segura.sql`.)*
 8. Vistas con **joins implícitos** (coma + WHERE) en `rendicion_admin`, `rubro_admin_vista`,
    `usuario_admin_vista`, `vista_dolar/euro` (estilo antiguo, frágil pero funcional).
 9. `reporte_poa_rubros_sumas` usa `SUM(DISTINCT u.monto)` → si dos rubros tienen el mismo monto, se
@@ -388,7 +390,16 @@ aplicadas en el archivo (pendientes de migrar a producción con cuidado):
   ya **no puede** forzar `oie_tipo_id` (se fuerza Egreso=2) ni `poa_id` (se fuerza el suyo) vía POST.
   **PENDIENTE:** whitelist de campos por modelo/rol y forzado equivalente en rendicion/resultado/… para
   impedir setear `programa_id`/ids ajenos vía `$_POST` (`new Modelo($_POST[...])` / `sincronizar()`).
-- **A3 — `reset_token`: texto plano, sin expiración, sin rate-limit.** Hashear en BD, añadir TTL y limitar envíos.
+- ✅ **[RESUELTO] A3 — Recuperación de contraseña segura.** (1) **CSPRNG:** la función global
+  `generarCodigoAleatorioSimple()` (la que realmente usa el flujo) usaba `str_shuffle` → ahora
+  `random_bytes`+`bin2hex`; el código es de **10 hex**. (2) **Hash en BD:** `usuario.reset_token` pasa a
+  `varchar(64)` y guarda el **sha256** del código (el claro solo viaja al correo); `tknvrfy()` compara por
+  hash. (3) **TTL:** nueva columna `reset_token_expira` (30 min); `tknvrfy()` exige `> NOW()`;
+  `updatePsswrdUser()` limpia token+expiración (un solo uso). (4) **Rate-limit** (tabla
+  `recuperacion_intentos`, por `tipo`): solicitudes por IP (5/15min), cooldown de reenvío por email (2 min)
+  y verificaciones por IP (5/15min, anti-fuerza bruta del código). En `db/schema.sql` +
+  `db/migracion_recuperacion_segura.sql`. Verificado end-to-end (PHP + HTTP). ⚠️ **Pendiente migrar a
+  producción.**
 - ✅ **[RESUELTO] A4 — `.git/` y `db/` servibles.** `.htaccess` ahora añade `db` a la regla de directorios
   bloqueados (404) y bloquea **archivos/carpetas ocultos** (`(^|/)\.` → `.git/`, `.gitignore`, `.env`...)
   con excepción de `/.well-known/` (necesaria para SSL). Cierra la exposición de código+historial (incl.

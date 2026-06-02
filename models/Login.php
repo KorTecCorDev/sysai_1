@@ -13,6 +13,13 @@ class Login extends ActiveRecord
     const RL_MAX_INTENTOS = 5;
     const RL_VENTANA = 300; // 5 minutos en segundos
 
+    // Parámetros de la recuperación de contraseña (bug A3).
+    const RECUP_TOKEN_TTL    = 1800; // vigencia del código de recuperación: 30 min
+    const RECUP_VENTANA      = 900;  // ventana del rate-limit de recuperación: 15 min
+    const RECUP_MAX_IP       = 5;    // máx. solicitudes de token por IP en la ventana
+    const RECUP_COOLDOWN     = 120;  // no reenviar token al mismo email antes de 2 min
+    const RECUP_MAX_VERIFY   = 5;    // máx. verificaciones de código por IP en la ventana
+
     public $id;
     public $cargo_id;
     public $poa_id;
@@ -140,9 +147,12 @@ class Login extends ActiveRecord
         return self::consultarPreparado($query, 's', [$email]);
     }
 
+    // Guarda el token (ya hasheado por quien llama) y fija su expiración.
+    // RECUP_TOKEN_TTL es constante del código → se interpola como int (no SQLi).
     public function guardarToken()
     {
-        $query = "UPDATE usuario SET reset_token = ? WHERE id = ?";
+        $ttl = (int) self::RECUP_TOKEN_TTL;
+        $query = "UPDATE usuario SET reset_token = ?, reset_token_expira = (NOW() + INTERVAL {$ttl} SECOND) WHERE id = ?";
         return self::ejecutarPreparado($query, 'si', [$this->reset_token, $this->id]);
     }
 
@@ -159,11 +169,69 @@ class Login extends ActiveRecord
         return self::ejecutarPreparado($query, 'ss', [$password, $email]);
     }
 
-    public function generarCodigoAleatorioSimple($longitud = 8)
+    // ------------------------------------------------------------------------
+    // Rate-limit de recuperación de contraseña (bug A3). Tabla recuperacion_intentos
+    // con `tipo` = 'solicitud' (/chgpsswd) | 'verificacion' (/token_verify).
+    // ------------------------------------------------------------------------
+
+    // Registra un evento de recuperación (solicitud de token o verificación de código).
+    public static function registrarIntentoRecuperacion(string $ip, ?string $email, string $tipo): bool
     {
-        // Token criptográficamente seguro (reemplaza str_shuffle).
-        $bytes = random_bytes((int) ceil($longitud / 2));
-        return substr(bin2hex($bytes), 0, $longitud);
+        return self::ejecutarPreparado(
+            "INSERT INTO recuperacion_intentos (ip, email, tipo, fecha) VALUES (?, ?, ?, NOW())",
+            'sss',
+            [$ip, $email, $tipo]
+        );
+    }
+
+    // ¿La IP superó el máximo de SOLICITUDES de token en la ventana?
+    public static function excedidoSolicitudesIp(string $ip): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE ip = ? AND tipo = 'solicitud' AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        return count($filas) >= self::RECUP_MAX_IP;
+    }
+
+    // ¿Se solicitó un token para este email hace menos del cooldown? (anti-reenvío)
+    public static function enCooldownReenvio(string $email): bool
+    {
+        if ($email === '') {
+            return false;
+        }
+        $cooldown = (int) self::RECUP_COOLDOWN;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE email = ? AND tipo = 'solicitud' AND fecha > (NOW() - INTERVAL {$cooldown} SECOND)",
+            's',
+            [$email]
+        );
+        return count($filas) > 0;
+    }
+
+    // ¿La IP superó el máximo de VERIFICACIONES de código en la ventana? (anti-fuerza bruta)
+    public static function excedidoVerificacionesIp(string $ip): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE ip = ? AND tipo = 'verificacion' AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        return count($filas) >= self::RECUP_MAX_VERIFY;
+    }
+
+    // Limpieza oportunista de registros más antiguos que la ventana.
+    public static function purgarIntentosRecuperacion(): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        return self::ejecutarPreparado(
+            "DELETE FROM recuperacion_intentos WHERE fecha < (NOW() - INTERVAL {$ventana} SECOND)",
+            '',
+            []
+        );
     }
 
     public function devolverPersona()
@@ -182,20 +250,23 @@ class Login extends ActiveRecord
 
     public function tknvrfy()
     {
-        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token = ?";
-        $resultado = self::consultarPreparado($query, 's', [$this->reset_token]);
+        // El usuario ingresa el código en claro; en BD se guarda su hash sha256.
+        // Solo es válido si no ha expirado (reset_token_expira > NOW()).
+        $hash = hash('sha256', (string) $this->reset_token);
+        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token = ? AND reset_token_expira > NOW()";
+        $resultado = self::consultarPreparado($query, 's', [$hash]);
         $obj = array_shift($resultado);
         if ($obj) {
             return $obj;
         }
-        self::$errores[] = 'El código de verificación ingresado no es correcto';
+        self::$errores[] = 'El código de verificación ingresado no es correcto o ha expirado';
     }
 
     public function updatePsswrdUser(string $newpssw): bool
     {
-        // Al cambiar la contraseña invalidamos el token (un solo uso).
+        // Al cambiar la contraseña invalidamos el token y su expiración (un solo uso).
         $hash = password_hash($newpssw, PASSWORD_DEFAULT);
-        $query = "UPDATE usuario SET password = ?, reset_token = NULL WHERE id = ?";
+        $query = "UPDATE usuario SET password = ?, reset_token = NULL, reset_token_expira = NULL WHERE id = ?";
         return self::ejecutarPreparado($query, 'si', [$hash, $this->id]);
     }
 

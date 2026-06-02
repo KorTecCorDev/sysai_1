@@ -66,7 +66,8 @@ CREATE TABLE `usuario` (
   `descripcion` varchar(8) NOT NULL,
   `email` varchar(500) NOT NULL,
   `password` char(60) NOT NULL,
-  `reset_token` varchar(20) DEFAULT NULL,
+  `reset_token` varchar(64) DEFAULT NULL,
+  `reset_token_expira` datetime DEFAULT NULL,
   `fecha` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `persona_id_UNIQUE` (`persona_id`),
@@ -476,6 +477,22 @@ CREATE TABLE IF NOT EXISTS `login_intentos` (
   PRIMARY KEY (`id`),
   KEY `idx_ip_fecha` (`ip`, `fecha`),
   KEY `idx_email_fecha` (`email`, `fecha`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+-- ----------------------------------------------------------------------------
+-- Rate-limit de recuperación de contraseña (bug A3). Registra solicitudes de
+-- token (/chgpsswd) y verificaciones de código (/token_verify) por IP/email,
+-- diferenciadas por `tipo`. Frena spam de correos y fuerza bruta del código.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `recuperacion_intentos` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `ip` varchar(45) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `tipo` varchar(20) NOT NULL,
+  `fecha` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ip_tipo_fecha` (`ip`, `tipo`, `fecha`),
+  KEY `idx_email_tipo_fecha` (`email`, `tipo`, `fecha`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 -- ----------------------------------------------------------------------------

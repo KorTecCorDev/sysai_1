@@ -286,9 +286,10 @@ function validarORedireccionarconTabla(string $url, string $tb)
 
 function generarCodigoAleatorioSimple($longitud = 8)
 {
-    $caracteres = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $codigo = substr(str_shuffle($caracteres), 0, $longitud);
-    return $codigo;
+    // Token criptográficamente seguro (reemplaza str_shuffle, que NO es CSPRNG).
+    // Devuelve $longitud caracteres hexadecimales.
+    $bytes = random_bytes((int) ceil($longitud / 2));
+    return substr(bin2hex($bytes), 0, $longitud);
 }
 
 function redireccionar(string $url)
