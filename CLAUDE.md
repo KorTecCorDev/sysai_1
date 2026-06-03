@@ -7,12 +7,13 @@
 >
 > Diseñado para merge con otras instancias: cada sección es independiente y está etiquetada.
 >
-> ⚠️ **Nota de reconciliación (importante):** las dos líneas describen **momentos/ramas distintos**.
-> El **estado de código vigente** es el de la rama de negocio. El **sprint de seguridad** descrito en
-> *[SECCION: SEGURIDAD]* se realizó en la rama **`seguridad/hardening-y-despliegue-local`** y **NO está
-> mergeado** en la línea actual: a la fecha, esta rama **aún tiene el SMTP hardcodeado en `LoginController`**.
-> Trata esa sección como referencia/objetivo, no como hecho consumado en la rama actual. Verifica antes de
-> confiar en cualquier ítem marcado "RESUELTO" ahí.
+> ✅ **Nota de integración (actualizada):** el **sprint de seguridad** descrito en *[SECCION: SEGURIDAD]*
+> —originalmente en la rama `seguridad/hardening-y-despliegue-local`— ya fue **integrado mediante merge
+> curado** en la rama `integ/seguridad` (commit `4c4e6eb`), sobre las migraciones de negocio. En esa
+> integración: el SMTP pasó a `.env` (ya **no** está hardcodeado en `LoginController`), las 3 migraciones de
+> seguridad se portaron al runner (`database/migrations/010-012`), y se descartó el sistema de migraciones
+> viejo (`db/`). **Pendiente de despliegue** (no de código): aplicar migraciones a la BD reimportada y a
+> Hostinger, QA visual de CSP, y mergear `integ/seguridad` a la línea principal.
 
 ---
 
@@ -358,6 +359,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 007 | `oie_desvincular_poa.sql` | `otros_ingresos_egresos`: `poa_id` → `programa_id`. |
 | 008 | `crear_fuente_presupuesto_anual.sql` | Tabla `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). |
 | 009 | `eliminar_cantidad_fuentes_rendicion.sql` | Elimina la vista `cantidad_fuentes_rendicion`. |
+| 010 | `vistas_saldos_contables.sql` *(seguridad B1)* | Crea las 4 vistas de saldos (`vista_total_ingresos/egresos`, `vista_saldo_contable`, `vista_saldo_fuente_financiamiento`). |
+| 011 | `login_intentos_rate_limit.sql` *(seguridad C2)* | Tabla `login_intentos` (rate-limit de login por IP/email). |
+| 012 | `recuperacion_password_segura.sql` *(seguridad A3)* | `usuario.reset_token`→varchar(64) sha256 + `reset_token_expira`; tabla `recuperacion_intentos`. |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -483,12 +487,13 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 ## [SECCION: SEGURIDAD — SPRINT DE HARDENING]
 
-> ⚠️ **ESTADO Y ALCANCE:** este sprint se ejecutó y verificó en local en la rama
-> **`seguridad/hardening-y-despliegue-local`** (6 commits: `49bad85`, `b2d318e`, `69e4ba3`, `da91e7a`,
-> `847315c`, `2b23f01`). **NO está mergeado** en la línea de negocio actual. En la rama actual hay evidencia
-> de que algunos ítems **no están aplicados** (p. ej. el SMTP sigue hardcodeado en `LoginController`).
-> Trata los "RESUELTO" de abajo como estado de **esa rama** — verificar/mergear antes de confiar.
-> Es **PRIORITARIO** porque el sistema está en **producción real**.
+> ✅ **ESTADO:** este sprint (originalmente rama `seguridad/hardening-y-despliegue-local`) ya fue
+> **integrado por merge curado** en `integ/seguridad` (commit `4c4e6eb`) sobre las migraciones de negocio.
+> El código de hardening de abajo está ahora en esta línea; el SMTP se externalizó a `.env` y las 3
+> migraciones de seguridad viven en `database/migrations/010-012`.
+> **Pendiente de DESPLIEGUE** (no de código): aplicar las migraciones a la BD local reimportada y a
+> Hostinger (`u612374195_sysai`), QA visual de CSP/confirmaciones, y mergear `integ/seguridad` a la
+> línea principal. Es **PRIORITARIO** porque el sistema está en **producción real**.
 
 ### Resumen (en la rama de seguridad)
 - **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
@@ -556,7 +561,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 ## [SECCION: FOLLOW-UPS TECNICOS]
 
-- [ ] **Mover credenciales SMTP hardcodeadas de `LoginController` al `.env`** (en esta rama siguen en el código, ~líneas 140-148). Coincide con VULN-1 del sprint de seguridad.
+- [x] ✅ **SMTP externalizado al `.env`** (integrado en `integ/seguridad`). `LoginController` ya no tiene credenciales; el envío usa el helper `enviarTokenRecuperacion()` y `includes/config/mail.php` lee las claves `MAIL_*` del `.env`. Sin credenciales hardcodeadas en código trackeado.
 - [ ] `usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia (bloqueo por intentos) → confirmar si es código muerto o falta migración antes de confiar en el bloqueo. *(Resuelto en la rama de seguridad con `login_intentos`; verificar en la actual.)*
 - [ ] Retirar/limpiar modelo `RendicionFuentesCantidadVista` (su vista `cantidad_fuentes_rendicion` fue eliminada en migración 009).
 - [ ] **Seed data** para despliegue desde cero: catálogos (`cargo`, `tipo_rubro`, `tipo_comprobante`, `oie_tipo`, `oie_tipo_comprobante`, `tipo_programa`) + usuario admin inicial. (No incluido en migraciones.)
