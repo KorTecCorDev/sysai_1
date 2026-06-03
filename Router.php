@@ -18,47 +18,78 @@ class Router
         $this->rutasPOST[$url] = $fn;
     }
 
-    public function comprobarRutas()
-{
-    // Iniciar sesión si no está activa
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    // Rutas públicas: únicas accesibles sin sesión iniciada.
+    public $rutas_publicas = ['/', '/login', '/logout', '/chgpsswd', '/token_verify', '/updtepsswd', '/error'];
+
+    // ¿La ruta POST exige token CSRF? (todas las acciones que mutan datos, incluidos
+    // los formularios públicos de autenticación — M5: login-CSRF y cambio de contraseña).
+    private function requiereCsrf(string $url): bool
+    {
+        return str_ends_with($url, '/crear')
+            || str_ends_with($url, '/actualizar')
+            || str_ends_with($url, '/eliminar')
+            || in_array($url, [
+                '/reporte/modificarpoa', '/reporte/guardarpoa',
+                '/login', '/chgpsswd', '/token_verify', '/updtepsswd',
+            ], true);
     }
 
-    // Obtener URL actual
-    $urlActual = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    $urlActual = $urlActual === '/' ? $urlActual : rtrim($urlActual, '/');
+    public function comprobarRutas()
+    {
+        // Iniciar sesión si no está activa
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-    // Rutas protegidas
-    //Falta las rutas de todas la vistas, a excepción de login todas deben estar protegidas.
-    $rutas_protegidas = ['/programa/admin', '/programa/crear', '/programa/actualizar', '/actividad/admin','/actividad/actualizar','/actividad/crear', '/actividad/eliminar','/categoria_rubro/admin','/categoria_rubro/actualizar','/categoria_rubro/crear','/categoria_rubro/eliminar','/dfinanciamiento/admin','/dfinanciamiento/actualizar','/dfinanciamiento/crear','/dfinanciamiento/eliminar','/fuente_financiamiento/admin','/fuente_financiamiento/actualizar','/fuente_financiamiento/crear','/fuente_financiamiento/eliminar','/ingreso_egreso/admin','/ingreso_egreso/actualizar','/ingreso_egreso/crear','/ingreso_egreso/eliminar','/poa/admin','/poa/actualizar','/poa/crear','/poa/eliminar','/producto/admin','/producto/actualizar','/producto/crear','/producto/eliminar','/rendicion/admin','/rendicion/actualizar','/rendicion/crear','/rendicion/eliminar','/rendicionff/admin','/rendicionff/actualizar','/rendicionff/crear','/rendicionff/eliminar','/reporte/guardarpoa','/reporte/ingresos','/reporte/ingresosdesc','/reporte/modificarpoa','/reporte/poa','/reporte/poarendicion','/reporte/poarubros','/reporte/rendiciones','/reporte/rendicionesdesc','/resultado/admin','/resultado/actualizar','/resultado/crear','/resultado/eliminar','/resultado/admin','/resultado/actualizar','/resultado/crear','/resultado/eliminar'];
-    
-    // Verificar rutas protegidas
-    if (in_array($urlActual, $rutas_protegidas)) {
-        if (!isset($_SESSION['login'])) {
+        // Obtener URL actual
+        $urlActual = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $urlActual = $urlActual === '/' ? $urlActual : rtrim($urlActual, '/');
+        $metodo = $_SERVER['REQUEST_METHOD'];
+
+        $logueado = isset($_SESSION['login']) && $_SESSION['login'] === true;
+
+        // M2 — Timeout de sesión por inactividad (30 min). Si se supera, se cierra la
+        // sesión y se redirige al login; en cada petición autenticada se renueva la marca.
+        $inactividadMax = 1800;
+        if ($logueado) {
+            if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $inactividadMax) {
+                $_SESSION = [];
+                session_destroy();
+                header('Location: /login?expirado=1');
+                exit;
+            }
+            $_SESSION['last_activity'] = time();
+        }
+
+        // Por defecto TODO requiere sesión, salvo la lista blanca de rutas públicas.
+        if (!in_array($urlActual, $this->rutas_publicas, true) && !$logueado) {
             header('Location: /login');
             exit;
         }
-    }
 
-    // Evitar bucle en /login si ya está autenticado
-    if ($urlActual === '/login' && isset($_SESSION['login'])) {
-        header('Location: /');
-        exit;
-    }
+        // Evitar bucle en /login si ya está autenticado
+        if ($urlActual === '/login' && $logueado) {
+            header('Location: /');
+            exit;
+        }
 
-    // Resto de la lógica del router...
-    $metodo = $_SERVER['REQUEST_METHOD'];
-    $fn = ($metodo === 'GET') ? ($this->rutasGET[$urlActual] ?? null) : ($this->rutasPOST[$urlActual] ?? null);
+        // Protección CSRF en acciones POST sensibles (eliminaciones y cambio de estado del POA)
+        if ($metodo === 'POST' && $this->requiereCsrf($urlActual) && !verificar_csrf()) {
+            http_response_code(419);
+            exit('Token de seguridad inválido o expirado. Recargue la página e intente de nuevo.');
+        }
 
-    if ($fn) {
-        call_user_func($fn, $this);
-    } else {
-        //Redireccionar a error 404
-        header('Location: /error');
-        exit;
+        // Despacho de la ruta
+        $fn = ($metodo === 'GET') ? ($this->rutasGET[$urlActual] ?? null) : ($this->rutasPOST[$urlActual] ?? null);
+
+        if ($fn) {
+            call_user_func($fn, $this);
+        } else {
+            //Redireccionar a error 404
+            header('Location: /error');
+            exit;
+        }
     }
-}
 
     //Muestra una vista
     public function render($view, $datos = [])

@@ -7,16 +7,24 @@ class Login extends ActiveRecord
     //Base de datos
     protected static $tabla = 'login_session_vista';
     protected static $tbstring = "id, cargo_id, poa_id, email, password, reset_token, datos, cargo, programa_id";
-    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'intentos', 'estado', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
-    //Contador de intentos para ingresar la contraseña en el login
+    protected static $columnas = ['id', 'cargo_id', 'poa_id', 'email', 'password', 'reset_token', 'datos', 'cargo', 'programa_id', 'autenticado'];
+
+    // Parámetros del rate-limit de login (bug C2). Se aplican por IP y por email.
+    const RL_MAX_INTENTOS = 5;
+    const RL_VENTANA = 300; // 5 minutos en segundos
+
+    // Parámetros de la recuperación de contraseña (bug A3).
+    const RECUP_TOKEN_TTL    = 1800; // vigencia del código de recuperación: 30 min
+    const RECUP_VENTANA      = 900;  // ventana del rate-limit de recuperación: 15 min
+    const RECUP_MAX_IP       = 5;    // máx. solicitudes de token por IP en la ventana
+    const RECUP_COOLDOWN     = 120;  // no reenviar token al mismo email antes de 2 min
+    const RECUP_MAX_VERIFY   = 5;    // máx. verificaciones de código por IP en la ventana
 
     public $id;
     public $cargo_id;
     public $poa_id;
     public $email;
     public $password;
-    public $intentos;
-    public $estado;
     public $reset_token;
     public $datos;
     public $cargo;
@@ -30,8 +38,6 @@ class Login extends ActiveRecord
         $this->poa_id = $args['poa_id'] ?? null;
         $this->email = $args['email'] ?? '';
         $this->password = $args['password'] ?? '';
-        $this->intentos = $args['intentos'] ?? 0;
-        $this->estado = $args['estado'] ?? 0;
         $this->reset_token = $args['reset_token'] ?? null;
         $this->datos = $args['datos'] ?? '';
         $this->cargo = $args['cargo'] ?? '';
@@ -54,12 +60,6 @@ class Login extends ActiveRecord
         if (strlen($this->password) < 6) {
             self::$errores[] = "El Password debe tener al menos 6 caracteres";
         }
-        //Si el número de intentos es 3, entonces el usuario no podrá ingresar
-        // if ($this->intentos = 3) {
-        //     self::$errores[] = "Ha superado el número de intentos permitidos, por favor contacte con el administrador del sistema porfis";
-        //     //Bloqueando al usuario
-        //     $this->bloquearUsuario();
-        // }
         return self::$errores;
     }
     public function validarErroresCambioPswd()
@@ -85,18 +85,24 @@ class Login extends ActiveRecord
     }
     public function existeUsuario()
     {
-        //Revisar si existe el usuario
-        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email='" . $this->email . "' LIMIT 1";
-        $resultado = self::$db->query($query);
-        if (!$resultado->num_rows) {
+        // Consulta preparada: el email es entrada del usuario (evita SQLi pre-autenticación).
+        // self::$tbstring y self::$tabla son constantes del modelo (no entrada del usuario).
+        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email = ? LIMIT 1";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
+        if (empty($resultado)) {
             self::$errores[] = 'El usuario no existe';
             return;
         }
-        //Devolviendo solo el objeto
-        while ($registro = $resultado->fetch_assoc()) {
-            $devolver = static::crearObjeto($registro);
-        }
-        return $devolver;
+        return array_shift($resultado);
+    }
+    // Búsqueda para el flujo de recuperación de contraseña. A diferencia de
+    // existeUsuario(), NO agrega 'El usuario no existe' a $errores: así el
+    // controlador puede responder de forma neutra y no permitir enumeración (A5).
+    public function buscarPorEmailParaRecuperacion()
+    {
+        $query = "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE email = ? LIMIT 1";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
+        return array_shift($resultado); // null si no existe (sin tocar $errores)
     }
     public function comprobarPassword($resultado)
     {
@@ -137,114 +143,205 @@ class Login extends ActiveRecord
 
     public function buscarporEmail($email)
     {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE email='" . $email . "'";
-        $resultado = self::consultarSql($query);
-        return $resultado;
+        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE email = ?";
+        return self::consultarPreparado($query, 's', [$email]);
     }
 
+    // Guarda el token (ya hasheado por quien llama) y fija su expiración.
+    // RECUP_TOKEN_TTL es constante del código → se interpola como int (no SQLi).
     public function guardarToken()
     {
-        $query = "UPDATE usuario SET reset_token = '" . $this->reset_token . "' WHERE id=" . $this->id;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        $ttl = (int) self::RECUP_TOKEN_TTL;
+        $query = "UPDATE usuario SET reset_token = ?, reset_token_expira = (NOW() + INTERVAL {$ttl} SECOND) WHERE id = ?";
+        return self::ejecutarPreparado($query, 'si', [$this->reset_token, $this->id]);
     }
 
     public function validarToken($token)
     {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE reset_token=" . $token;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE reset_token = ?";
+        return self::consultarPreparado($query, 's', [$token]);
     }
 
     public function actualizarPassword($email, $password)
     {
-        $query = 'UPDATE usuario SET password =' . $password . ', reset_token = NULL WHERE email=' . $email;
-        $resultado = self::$db->query($query);
-        return $resultado;
+        // El password recibido debe venir ya hasheado por quien llama.
+        $query = "UPDATE usuario SET password = ?, reset_token = NULL WHERE email = ?";
+        return self::ejecutarPreparado($query, 'ss', [$password, $email]);
     }
 
-    public function generarCodigoAleatorioSimple($longitud = 8)
+    // ------------------------------------------------------------------------
+    // Rate-limit de recuperación de contraseña (bug A3). Tabla recuperacion_intentos
+    // con `tipo` = 'solicitud' (/chgpsswd) | 'verificacion' (/token_verify).
+    // ------------------------------------------------------------------------
+
+    // Registra un evento de recuperación (solicitud de token o verificación de código).
+    public static function registrarIntentoRecuperacion(string $ip, ?string $email, string $tipo): bool
     {
-        $caracteres = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $codigo = substr(str_shuffle($caracteres), 0, $longitud);
-        return $codigo;
+        return self::ejecutarPreparado(
+            "INSERT INTO recuperacion_intentos (ip, email, tipo, fecha) VALUES (?, ?, ?, NOW())",
+            'sss',
+            [$ip, $email, $tipo]
+        );
+    }
+
+    // ¿La IP superó el máximo de SOLICITUDES de token en la ventana?
+    public static function excedidoSolicitudesIp(string $ip): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE ip = ? AND tipo = 'solicitud' AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        return count($filas) >= self::RECUP_MAX_IP;
+    }
+
+    // ¿Se solicitó un token para este email hace menos del cooldown? (anti-reenvío)
+    public static function enCooldownReenvio(string $email): bool
+    {
+        if ($email === '') {
+            return false;
+        }
+        $cooldown = (int) self::RECUP_COOLDOWN;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE email = ? AND tipo = 'solicitud' AND fecha > (NOW() - INTERVAL {$cooldown} SECOND)",
+            's',
+            [$email]
+        );
+        return count($filas) > 0;
+    }
+
+    // ¿La IP superó el máximo de VERIFICACIONES de código en la ventana? (anti-fuerza bruta)
+    public static function excedidoVerificacionesIp(string $ip): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        $filas = self::consultarPreparado(
+            "SELECT id FROM recuperacion_intentos WHERE ip = ? AND tipo = 'verificacion' AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        return count($filas) >= self::RECUP_MAX_VERIFY;
+    }
+
+    // Limpieza oportunista de registros más antiguos que la ventana.
+    public static function purgarIntentosRecuperacion(): bool
+    {
+        $ventana = (int) self::RECUP_VENTANA;
+        return self::ejecutarPreparado(
+            "DELETE FROM recuperacion_intentos WHERE fecha < (NOW() - INTERVAL {$ventana} SECOND)",
+            '',
+            []
+        );
     }
 
     public function devolverPersona()
     {
-        $id = $this->persona_id;
-        $query = "SELECT * FROM persona WHERE id='" . $id . "'";
-        $resultado = $this->consultarSql($query);
+        $query = "SELECT * FROM persona WHERE id = ?";
+        $resultado = self::consultarPreparado($query, 'i', [$this->persona_id]);
         return array_shift($resultado);
     }
 
     public function findUserxEmail(): object
     {
-        $query = "SELECT persona_id FROM usuario WHERE email='" . $this->email . "'";
-        $resultado = $this->consultarSql($query);
+        $query = "SELECT persona_id FROM usuario WHERE email = ?";
+        $resultado = self::consultarPreparado($query, 's', [$this->email]);
         return array_shift($resultado);
     }
 
     public function tknvrfy()
     {
-        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token='" . $this->reset_token . "'";
-        $resultado = $this->consultarSqldvolveruno($query);
-        if ($resultado) {
-            return $resultado;
+        // El usuario ingresa el código en claro; en BD se guarda su hash sha256.
+        // Solo es válido si no ha expirado (reset_token_expira > NOW()).
+        $hash = hash('sha256', (string) $this->reset_token);
+        $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token = ? AND reset_token_expira > NOW()";
+        $resultado = self::consultarPreparado($query, 's', [$hash]);
+        $obj = array_shift($resultado);
+        if ($obj) {
+            return $obj;
         }
-        self::$errores[] = 'El código de verificación ingresado no es correcto';
+        self::$errores[] = 'El código de verificación ingresado no es correcto o ha expirado';
     }
 
     public function updatePsswrdUser(string $newpssw): bool
     {
-        $query = "UPDATE usuario SET password='" . password_hash($newpssw, PASSWORD_DEFAULT) . "' where id = " . $this->id;
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
+        // Al cambiar la contraseña invalidamos el token y su expiración (un solo uso).
+        $hash = password_hash($newpssw, PASSWORD_DEFAULT);
+        $query = "UPDATE usuario SET password = ?, reset_token = NULL, reset_token_expira = NULL WHERE id = ?";
+        return self::ejecutarPreparado($query, 'si', [$hash, $this->id]);
     }
 
-    //Funciones para cambiar estados de los usuarios por intentos fallidos en el login
-    public function restablecerIntentos()
+    // ------------------------------------------------------------------------
+    // Rate-limit de login persistente en BD (bug C2). Cuenta intentos fallidos
+    // por IP y por email en una ventana deslizante (RL_VENTANA). Complementa el
+    // contador en $_SESSION, que es evadible si el atacante no envía cookies.
+    // ------------------------------------------------------------------------
+
+    // IP de origen de la petición. En hosting compartido sin CDN, REMOTE_ADDR es
+    // la IP real del cliente. No se usa X-Forwarded-For por ser falsificable.
+    public static function obtenerIp(): string
     {
-        $query = "UPDATE usuario SET intentos = 0 WHERE id = " . $this->id;
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
-    public function bloquearUsuario()
+    // ¿La IP o el email superaron el máximo de intentos fallidos en la ventana?
+    // La ventana se evalúa con la hora de MySQL (NOW()) para no depender de que
+    // el reloj/zona horaria de PHP coincida con el del servidor de BD.
+    // RL_VENTANA es una constante entera del código → se interpola como int (no SQLi).
+    public static function estaBloqueadoPorIntentos(string $ip, string $email): bool
     {
-        //Verificamos si el usuario existe
-        $usu = $this->existeUsuario();
-        //Si el usuario existe, entonces se puede bloquear
-        if ($usu) {
-            //El estado 1 significa que el usuario está bloqueado
-            $query = "UPDATE usuario SET estado = 1 WHERE email = '" . $this->email . "'";
-            $resultado = self::ejecutarSql($query);
-            return $resultado;
+        $ventana = (int) self::RL_VENTANA;
+
+        $porIp = self::consultarPreparado(
+            "SELECT id FROM login_intentos WHERE ip = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+            's',
+            [$ip]
+        );
+        if (count($porIp) >= self::RL_MAX_INTENTOS) {
+            return true;
         }
-        //Si el usuario no existe, entonces no se puede bloquear
-        self::$errores[] = 'El usuario no existe';
-        return;
-    }
-    public function aumentarIntentos()
-    {
-        //Actualizamos el contador de intentos en la base de datos
-        $query = "UPDATE usuario SET intentos = " . $this->intentos . " WHERE email = '" . $this->email . "'";
-        $resultado = self::ejecutarSql($query);
-        return $resultado;
-    }
-    public function actualizarIntentos()
-    {
-        //Consultamos a la base de datos el número de intentos del usuario según su email si exisitiera
-        $query = "SELECT intentos FROM usuario WHERE email = '" . $this->email . "'";
-        $resultado = self::$db->query($query);
-        if ($resultado->num_rows) {
-            $usuario = $resultado->fetch_object();
-            //Si el usuario existe, entonces se puede actualizar el número de intentos
-            $this->intentos = intval($usuario->intentos) + 1;
-            return $this->aumentarIntentos();
+
+        if ($email !== '') {
+            $porEmail = self::consultarPreparado(
+                "SELECT id FROM login_intentos WHERE email = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+                's',
+                [$email]
+            );
+            if (count($porEmail) >= self::RL_MAX_INTENTOS) {
+                return true;
+            }
         }
+
+        return false;
     }
 
+    // Registra un intento fallido (IP + email intentado).
+    public static function registrarIntentoFallido(string $ip, string $email): bool
+    {
+        return self::ejecutarPreparado(
+            "INSERT INTO login_intentos (ip, email, fecha) VALUES (?, ?, NOW())",
+            'ss',
+            [$ip, $email]
+        );
+    }
 
-    //Funciones para la validación de intentos
+    // Al autenticar con éxito se borran los intentos de esa IP y ese email.
+    public static function limpiarIntentos(string $ip, string $email): bool
+    {
+        return self::ejecutarPreparado(
+            "DELETE FROM login_intentos WHERE ip = ? OR email = ?",
+            'ss',
+            [$ip, $email]
+        );
+    }
+
+    // Limpieza oportunista de registros más antiguos que la ventana.
+    public static function purgarIntentosAntiguos(): bool
+    {
+        $ventana = (int) self::RL_VENTANA;
+        return self::ejecutarPreparado(
+            "DELETE FROM login_intentos WHERE fecha < (NOW() - INTERVAL {$ventana} SECOND)",
+            '',
+            []
+        );
+    }
 }

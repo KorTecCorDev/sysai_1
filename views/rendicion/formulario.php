@@ -5,8 +5,8 @@
         <select class="form-select shadow-sm w-auto" id="tipo_comprobante_combo" name="tipo_comprobante_id">
             <option value="0" disabled selected>-- Seleccione --</option>
             <?php foreach ($tipocomprobantes as $tipocomprobante): ?>
-                <option <?php echo $rendicion->tipo_comprobante_id === $tipocomprobante->id ? 'selected' : ''; ?> value="<?php echo $tipocomprobante->id; ?>">
-                    <?php echo $tipocomprobante->descripcion; ?>
+                <option <?php echo $rendicion->tipo_comprobante_id === $tipocomprobante->id ? 'selected' : ''; ?> value="<?php echo s($tipocomprobante->id); ?>">
+                    <?php echo s($tipocomprobante->descripcion); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -18,8 +18,8 @@
         <select class="form-select shadow-sm w-auto" id="fuente_financiamiento_combo" name="ff_id">
             <option value="0" disabled selected>-- Seleccione --</option>
             <?php foreach ($fuentesfinanciamiento as $fuentefinanciamiento): ?>
-                <option <?php echo $rendicion->ff_id === $fuentefinanciamiento->fuente_id ? 'selected' : ''; ?> value="<?php echo $fuentefinanciamiento->fuente_id; ?>">
-                    <?php echo $fuentefinanciamiento->fuente_nombre . ' - ' . $fuentefinanciamiento->fuente_presupuesto; ?>
+                <option <?php echo $rendicion->ff_id === $fuentefinanciamiento->fuente_id ? 'selected' : ''; ?> value="<?php echo s($fuentefinanciamiento->fuente_id); ?>">
+                    <?php echo s($fuentefinanciamiento->fuente_nombre . ' - ' . $fuentefinanciamiento->fuente_presupuesto); ?>
                 </option>
             <?php endforeach; ?>
         </select>

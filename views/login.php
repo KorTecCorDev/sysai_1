@@ -10,7 +10,7 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
                                         <div class="modal-body">
-                                                <p><?php echo $error; ?></p>
+                                                <p><?php echo s($error); ?></p>
                                         </div>
                                         <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -32,7 +32,7 @@
                                         <h2>Bienvenido a SySAI</h2>
                                         <p>Inicia sesión para continuar</p>
                                 </div>
-                                <form method="POST" class="form" action="/login">
+                                <form method="POST" class="form" action="/login"><?php echo csrf_input(); ?>
                                         <!-- Campo de usuario -->
                                         <div class="mb-3">
                                                 <label class="form-label" for="email">E-mail</label>
@@ -60,6 +60,6 @@
         <footer class="text-center py-3 footer">
                 <div>
                         <?php $fecha = date('Y'); ?>
-                        <h6> Desarrollado por Cronos Soluciones - Todos los derechos reservados - <?php echo $fecha; ?></h6>
+                        <h6> Desarrollado por Cronos Soluciones - Todos los derechos reservados - <?php echo s($fecha); ?></h6>
                 </div>
         </footer>

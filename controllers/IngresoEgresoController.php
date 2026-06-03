@@ -62,6 +62,9 @@ class IngresoEgresoController
         $oieid = intval($_GET['id']);
         //Encontramos el objeto
         $oie = OtrosIngresosEgresos::find($oieid);
+        if (!$oie) { header('Location: /ingreso_egreso/admin'); exit(); }
+        // A1: el coordinador solo puede operar sobre OIE de su propio POA
+        exigirPoaPropio($oie->poa_id);
         //Encontramos el poa_id
         $poaid = $oie->poa_id;
         //Creando el array con objetos de fuentes de financiamiento según el poa_id
@@ -161,6 +164,11 @@ class IngresoEgresoController
 
             //SECCIÓN OIE
             $oingresosegresos = new OtrosIngresosEgresos($_POST['oie']);
+            // A2: el coordinador SOLO registra EGRESOS y dentro de SU POA (no confiar en el POST)
+            if (esCoordinador()) {
+                $oingresosegresos->oie_tipo_id = 2;              // 2 = Egreso
+                $oingresosegresos->poa_id = poaIdCoordinador();
+            }
             //Seleccionamos el id del comprobante previamente registrado
             $oiecomprobantelast = OieComprobante::findlast();
             $oiecomprobanteid = $oiecomprobantelast->id;
@@ -205,6 +213,9 @@ class IngresoEgresoController
         $oie_id = $_GET['id'];
         // Encontramos el registro oie a actualizar
         $oie = OtrosIngresosEgresos::find($oie_id);
+        if (!$oie) { header('Location: /ingreso_egreso/admin'); exit(); }
+        // A1: el coordinador solo puede actualizar OIE de su propio POA
+        exigirPoaPropio($oie->poa_id);
 
         //Encontramos el registro oie_comprobante a actualizar (usamos el oie_comprobante_id del registros oie)
         $oie_comprobante = OieComprobante::find($oie->oie_comprobante_id);
@@ -233,6 +244,11 @@ class IngresoEgresoController
             //Seguimos con el OIE
             $argsoie = $_POST['oie'];
             $oie->sincronizar($argsoie);
+            // A2: impedir que el coordinador cambie el tipo (Egreso) o el POA vía el POST
+            if (esCoordinador()) {
+                $oie->oie_tipo_id = 2;
+                $oie->poa_id = poaIdCoordinador();
+            }
 
             //Verificamos errores
             $errores = $oie_comprobante->validar();
@@ -342,6 +358,8 @@ class IngresoEgresoController
                 if (validarTipoContenido($tipo)) {
                     $oie = OtrosIngresosEgresos::find($oieid);
                     if ($oie) {
+                        // A1: el coordinador solo puede eliminar OIE de su propio POA
+                        exigirPoaPropio($oie->poa_id);
                         //Insertando la accion de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos
                         $vali = OieComprobante::setUsuarioActual();

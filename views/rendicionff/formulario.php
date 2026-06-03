@@ -7,8 +7,8 @@
                 <option value="" disabled selected>-- Seleccione --</option>
                 <?php foreach ($resultados as $resultado): ?>
                     <?php foreach ($fuentesf as $fuentef): ?>
-                    <option <?php echo $fuentef->id === $resultado->fuente_financiamiento_id ? 'selected' : ''; ?> value="<?php echo "{$fuentef->nombre}/{$fuentef->presupuesto}"; ?>">
-                        <?php echo $fuentef->nombre; ?>
+                    <option <?php echo $fuentef->id === $resultado->fuente_financiamiento_id ? 'selected' : ''; ?> value="<?php echo s("{$fuentef->nombre}/{$fuentef->presupuesto}"); ?>">
+                        <?php echo s($fuentef->nombre); ?>
                     </option>
                 <?php endforeach; ?>
                 <?php endforeach; ?>

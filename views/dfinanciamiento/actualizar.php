@@ -16,7 +16,7 @@
     <?php
     foreach ($errores as $error) : ?>
         <div class="alert alert-danger">
-            <?php echo $error; ?>
+            <?php echo s($error); ?>
         </div>
     <?php
     endforeach;
@@ -33,15 +33,15 @@
             <div class="row align-items-center"> <?php $cont = 0; ?>
                 <?php foreach ($fuentesfinanciamiento as $fuentefinanciamiento) { ?>
                     <!-- Cards -->
-                    <div class="tarjeta col-2 card container-fluid <?php echo $fuentefinanciamiento->id; ?>">
+                    <div class="tarjeta col-2 card container-fluid <?php echo s($fuentefinanciamiento->id); ?>">
                         <div class="card-body">
-                            <form method="POST">
-                                <h5 class="card-title"><?php echo $fuentefinanciamiento->nombre; ?></h5>
+                            <form method="POST"><?php echo csrf_input(); ?>
+                                <h5 class="card-title"><?php echo s($fuentefinanciamiento->nombre); ?></h5>
                                 <p class="card-text"><?php echo 'S./ ' . $fuentefinanciamiento->presupuesto; ?></p>
-                                <input class="dfpgid" type="hidden" name="detalle_financiamiento[fuente_financiamiento_id]" value="<?php echo $fuentefinanciamiento->id; ?>">
-                                <input class="idprogram" type="hidden" name="detalle_financiamiento[programa_id]" value="<?php echo $programa->id; ?>">
+                                <input class="dfpgid" type="hidden" name="detalle_financiamiento[fuente_financiamiento_id]" value="<?php echo s($fuentefinanciamiento->id); ?>">
+                                <input class="idprogram" type="hidden" name="detalle_financiamiento[programa_id]" value="<?php echo s($programa->id); ?>">
                                 <?php foreach ($resuls as $resul) { ?>
-                                    <input class="idquery" type="hidden" value="<?php echo $resul->fuente_financiamiento_id; ?>">
+                                    <input class="idquery" type="hidden" value="<?php echo s($resul->fuente_financiamiento_id); ?>">
                                 <?php } ?>
                                 <input class="btn btn-primary addff" type="submit" value="Agregar">
                                 <?php ?>
@@ -54,6 +54,6 @@
             </div>
         </div>
         <div class="form-text">Seleccione la fuentes de financiamiento a relacionar</div>
-        <input type="hidden" name="cantidad" value="<?php echo $cont; ?>">
+        <input type="hidden" name="cantidad" value="<?php echo s($cont); ?>">
     </fieldset>
 </main>

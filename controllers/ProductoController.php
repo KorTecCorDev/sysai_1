@@ -41,6 +41,8 @@ class ProductoController
     {
         $errores = Producto::getErrores();
         $resultadoid = validarId('resultado');
+        // A1: el coordinador solo puede crear productos bajo un resultado de SU programa.
+        exigirProgramaPropioPorResultado($resultadoid);
         $producto = new Producto();
         $resultado = $_GET['resultado'] ?? null;
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
@@ -82,11 +84,17 @@ class ProductoController
         if (is_array($id)) {
             $resultado = Resultado::find($id[1]);
             $producto = Producto::find($id[0]);
+            if (!$producto) { header('Location: /resultado/admin'); exit(); }
+            // A1: el producto debe colgar de un resultado de SU programa.
+            exigirProgramaPropioPorResultado($producto->resultado_id);
             $errores = Producto::getErrores();
         }
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $resultadoOriginal = $producto->resultado_id;
             $argsproducto = $_POST;
             $producto->sincronizar($argsproducto);
+            // A2: el resultado padre no se reasigna vía POST.
+            $producto->resultado_id = $resultadoOriginal;
             $errores = $producto->validar();
             if (empty($errores)) {
                 //Insertando la acción de audi para el usuario actual
@@ -114,6 +122,9 @@ class ProductoController
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $id = validarORedireccionarPost("resultado/admin");
             $producto = Producto::find($id);
+            if (!$producto) { header('Location: /resultado/admin'); exit(); }
+            // A1: solo puede eliminar productos de un resultado de SU programa.
+            exigirProgramaPropioPorResultado($producto->resultado_id);
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Producto::setUsuarioActual();

@@ -19,11 +19,10 @@ class RendicionController
     {
         $resultado = validarORedireccionarDosParametros("rendicion/admin", "actividad_id", "resultado");
         $actividad_id = intval($_GET['actividad_id']);
+        // A1: el coordinador solo ve/gestiona rendiciones de actividades de SU programa
+        exigirProgramaPropioPorActividad($actividad_id);
 
         //Tomamos el producto_id por resultado de consultar a la DB por medio de la clase Producto.
-        //debuguear($actividad_id);
-        //debuguear((int) RendicionAdminVista::find($actividad_id));
-
         $totalrendis = RendicionAdminVista::findxatributo('actividad_id', $actividad_id);
 
         //Si no hay rendiciones
@@ -61,6 +60,8 @@ class RendicionController
         $rendicion = new Rendicion;
         $errores = Rendicion::getErrores();
         $actividad_id = (int) $_GET['actividad_id'];
+        // A1: el coordinador solo puede crear rendiciones en actividades de SU programa
+        exigirProgramaPropioPorActividad($actividad_id);
         $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id', $actividad_id);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -102,6 +103,9 @@ class RendicionController
         if (is_array($id)) {
             //Encontramos el registro rendicion según el id pasado por GET
             $rendicion = Rendicion::find($id[0]);
+            if (!$rendicion) { header('Location: /rendicion/admin?actividad_id=' . (int) $id[1]); exit(); }
+            // A1: la rendición debe pertenecer a una actividad de SU programa
+            exigirProgramaPropioPorActividad($rendicion->actividad_id);
             //Encontramos el registro actividad según el id pasado por GET
             $actividad = Actividad::find($id[1]);
             //Asignamos el id de la actividad según el key id del objeto actividad
@@ -111,6 +115,8 @@ class RendicionController
             if ($_SERVER["REQUEST_METHOD"] === 'POST') {
                 $argsrendicion = $_POST;
                 $rendicion->sincronizar($argsrendicion);
+                // A2: re-verificar que la actividad (posible cambio vía POST) siga siendo de su programa
+                exigirProgramaPropioPorActividad($rendicion->actividad_id);
                 $errores = $rendicion->validar();
                 if (empty($errores)) {
                     //Insertando la acción de audi para el usuario actual
@@ -144,6 +150,9 @@ class RendicionController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = validarORedireccionarPost("resultado/admin");
             $rendicion = Rendicion::find($id);
+            if (!$rendicion) { header('Location: /rendicion/admin'); exit(); }
+            // A1: solo puede eliminar rendiciones de actividades de SU programa
+            exigirProgramaPropioPorActividad($rendicion->actividad_id);
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Rendicion::setUsuarioActual();

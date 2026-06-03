@@ -39,6 +39,11 @@ class ResultadoController
 
         $errores = Resultado::getErrores();
         $idprograma = validarId('programa');
+        // A1/A2: el coordinador solo puede crear resultados en SU programa (ignora el GET).
+        if (esCoordinador()) {
+            $idprograma = programaIdCoordinador();
+        }
+        exigirProgramaPropio($idprograma);
         $res = new Resultado();
         $programas = Programa::all();
         $resultado = $_GET['resultado'] ?? null;
@@ -79,12 +84,18 @@ class ResultadoController
         if (is_array($id)) {
             $programaid = $id[0];
             $res = Resultado::find($id[1]);
+            if (!$res) { header('Location: /resultado/admin'); exit(); }
+            // A1: el resultado debe pertenecer al programa del coordinador.
+            exigirProgramaPropio($res->programa_id);
             $errores = Resultado::getErrores();
         }
         $resultado = $_GET['resultado'] ?? null;
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $programaOriginal = $res->programa_id;
             $argsresultado = $_POST;
             $res->sincronizar($argsresultado);
+            // A2: el programa padre no se reasigna vía POST (evita mover el registro a otro programa).
+            $res->programa_id = $programaOriginal;
             $errores = $res->validar();
             if (empty($errores)) {
                 //Insertando la acción de audi para el usuario actual
@@ -121,6 +132,8 @@ class ResultadoController
                 if (validarTipoContenido($tipo)) {
                     $res = Resultado::find($id);
                     if ($res) {
+                        // A1: solo puede eliminar resultados de SU programa.
+                        exigirProgramaPropio($res->programa_id);
                         //Insertando la acción de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos
                         $vali = Resultado::setUsuarioActual();

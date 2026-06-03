@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
         <h1>Administrador de Rubros de la Actividad
-            <?php echo $objactividad->codigo; ?></h1>
+            <?php echo s($objactividad->codigo); ?></h1>
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
@@ -18,9 +18,9 @@
             <h2>Rubros</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rubro/crear?actividad_id=<?php echo $actividadid; ?>" class="btn btn-primary rounded-pill shadow-sm">
+            <a href="/rubro/crear?actividad_id=<?php echo s($actividadid); ?>" class="btn btn-primary rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Agregar</a>
-            <a href="/actividad/admin?producto_id=<?php echo $productoid; ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+            <a href="/actividad/admin?producto_id=<?php echo s($productoid); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
         </div>
@@ -46,28 +46,28 @@
 
                     <?php foreach ($rubros as $rubro) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $rubro->codigo; ?> </td>
-                            <td> <?php echo $rubro->categoria_rubro; ?> </td>
-                            <td> <?php echo $rubro->subcategoria_rubro; ?> </td>
-                            <td> <?php echo $rubro->tipo_rubro; ?> </td>
-                            <td> <?php echo $rubro->nombre; ?> </td>
-                            <td> <?php echo $rubro->descripcion; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($rubro->codigo); ?> </td>
+                            <td> <?php echo s($rubro->categoria_rubro); ?> </td>
+                            <td> <?php echo s($rubro->subcategoria_rubro); ?> </td>
+                            <td> <?php echo s($rubro->tipo_rubro); ?> </td>
+                            <td> <?php echo s($rubro->nombre); ?> </td>
+                            <td> <?php echo s($rubro->descripcion); ?> </td>
                             <td><?php echo 'S./ ' . number_format($rubro->monto, 2, '.', ','); ?></td>
                             <td class="td-acciones">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/rubro/actualizar?id=<?php echo $rubro->id; ?>&actividad_id=<?php echo $actividadid ?>"
+                                    <a href="/rubro/actualizar?id=<?php echo s($rubro->id); ?>&actividad_id=<?php echo $actividadid ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar rubro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/rubro/eliminar" class="d-inline">
+                                    <form method="POST" action="/rubro/eliminar" class="d-inline"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($rubro->id); ?>">
                                         <input type="hidden" name="tipo" value="rubro">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar rubro"
-                                            onclick="return confirm('¿Estás seguro de eliminar este rubro?');">
+                                            data-confirm="¿Estás seguro de eliminar este rubro?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

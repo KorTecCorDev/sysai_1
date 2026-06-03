@@ -36,25 +36,25 @@
                 <tbody>
                     <?php foreach ($fuente_financiamiento as $fuente_financiamiento) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"><?php echo $fuente_financiamiento->codigo; ?></td>
-                            <td><?php echo $fuente_financiamiento->nombre; ?></td>
-                            <td><?php echo $fuente_financiamiento->descripcion; ?></td>
+                            <td class="text-center fw-semibold"><?php echo s($fuente_financiamiento->codigo); ?></td>
+                            <td><?php echo s($fuente_financiamiento->nombre); ?></td>
+                            <td><?php echo s($fuente_financiamiento->descripcion); ?></td>
                             <td class="text-end fw-bold text-success"><?php echo 'S./ ' . number_format($fuente_financiamiento->presupuesto, 2, '.', ','); ?></td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/fuente_financiamiento/actualizar?id=<?php echo $fuente_financiamiento->id; ?>"
+                                    <a href="/fuente_financiamiento/actualizar?id=<?php echo s($fuente_financiamiento->id); ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar registro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/fuente_financiamiento/eliminar" class="d-inline">
-                                        <input type="hidden" name="id" value="<?php echo $fuente_financiamiento->id; ?>">
+                                    <form method="POST" action="/fuente_financiamiento/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($fuente_financiamiento->id); ?>">
                                         <input type="hidden" name="tipo" value="fuente_financiamiento">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar registro"
-                                            onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                            data-confirm="¿Estás seguro de eliminar este registro?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

@@ -1,5 +1,26 @@
 <?php
-header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'");
+// M1 — script-src sin 'unsafe-inline'/'unsafe-eval' (no quedan scripts ni handlers inline ni eval).
+// style-src conserva 'unsafe-inline' por necesidad (atributos style= y estilos que inyectan Bootstrap/AOS).
+header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'");
+
+// M2 — Endurecimiento de sesión y transporte (defensa en profundidad, además del .htaccess).
+$esHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['SERVER_PORT'] ?? null) == 443)
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+// Cookie de sesión: httponly + SameSite=Lax siempre; secure solo bajo HTTPS (en dev http no rompe).
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'httponly' => true,
+    'secure'   => $esHttps,
+    'samesite' => 'Lax',
+]);
+
+// HSTS: forzar HTTPS en navegadores (solo tiene efecto y se emite si ya vamos por HTTPS).
+if ($esHttps) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
 
 session_start();
 

@@ -27,6 +27,7 @@
 
 <script src="/build/js/bootstrap.bundle.min.js"></script>
 <script src="/build/js/bundle.min.js"></script>
+<script src="/build/js/seguridad.js"></script>
 </body>
 <!-- Fin del Body -->
 

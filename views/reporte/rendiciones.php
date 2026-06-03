@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
         <h1>Elija las fechas para el Reporte</h1>
-        <form method="POST" action="" class="p-4 bg-light rounded shadow-sm" style="max-width: 350px;">
+        <form method="POST" action="" class="p-4 bg-light rounded shadow-sm" style="max-width: 350px;"><?php echo csrf_input(); ?>
             <h5 class="fw-bold mb-3">Filtrar Reportes</h5>
 
             <div class="mb-3">

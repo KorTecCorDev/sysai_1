@@ -42,36 +42,36 @@
                 <?php foreach ($oies as $oe) : ?>
                     <tr>
 
-                        <td> <?php echo $oe->codigo; ?> </td>
-                        <td> <?php echo $oe->comprobante_fecha; ?> </td>
-                        <td> <?php echo $oe->tipo; ?> </td>
+                        <td> <?php echo s($oe->codigo); ?> </td>
+                        <td> <?php echo s($oe->comprobante_fecha); ?> </td>
+                        <td> <?php echo s($oe->tipo); ?> </td>
                         <?php // Tooltip que aparece en el código de tipo de comprobante 
                         ?>
                         <td title="<?php
                                     foreach ($tipocomprobantes as $tipocomprobante) {
-                                        echo $tipocomprobante->codigo == $oe->tipo_comprobante_codigo ? $tipocomprobante->nombre : '';
+                                        echo s($tipocomprobante->codigo == $oe->tipo_comprobante_codigo ? $tipocomprobante->nombre : '');
                                     }
                                     ?>">
-                            <?php echo $oe->tipo_comprobante_codigo; ?> </td>
+                            <?php echo s($oe->tipo_comprobante_codigo); ?> </td>
                         <?php // Fin de aplicación del Tooltip 
                         ?>
-                        <td> <?php echo $oe->comprobante_monto; ?> </td>
+                        <td> <?php echo s($oe->comprobante_monto); ?> </td>
 
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="/ingreso_egreso/actualizar?id=<?php echo $oe->id; ?>"
+                                <a href="/ingreso_egreso/actualizar?id=<?php echo s($oe->id); ?>"
                                     class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                     title="Editar registro">
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
 
-                                <form method="POST" action="/ingreso_egreso/eliminar" class="d-inline">
-                                    <input type="hidden" name="id" value="<?php echo $oe->id; ?>">
+                                <form method="POST" action="/ingreso_egreso/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                    <input type="hidden" name="id" value="<?php echo s($oe->id); ?>">
                                     <input type="hidden" name="tipo" value="ingreso_egreso">
                                     <button type="submit"
                                         class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                         title="Eliminar registro"
-                                        onclick="return confirm('¿Estás seguro de eliminar este registro?');">
+                                        data-confirm="¿Estás seguro de eliminar este registro?">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </form>

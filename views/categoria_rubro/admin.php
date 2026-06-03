@@ -36,25 +36,25 @@
                     <!-- Muestra todos los registros -->
                     <?php foreach ($categoria_rubro as $categoria_rubro) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo $categoria_rubro->codigo; ?> </td>
-                            <td> <?php echo $categoria_rubro->nombre; ?> </td>
-                            <td> <?php echo $categoria_rubro->descripcion; ?> </td>
+                            <td class="text-center fw-semibold"> <?php echo s($categoria_rubro->codigo); ?> </td>
+                            <td> <?php echo s($categoria_rubro->nombre); ?> </td>
+                            <td> <?php echo s($categoria_rubro->descripcion); ?> </td>
                             <td class="text-center">
                                 <!-- Div de Acciones     -->
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/categoria_rubro/actualizar?id=<?php echo $categoria_rubro->id; ?>"
+                                    <a href="/categoria_rubro/actualizar?id=<?php echo s($categoria_rubro->id); ?>"
                                         class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                         title="Editar categoría">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
-                                    <form method="POST" action="/categoria_rubro/eliminar" class="d-inline">
-                                        <input type="hidden" name="id" value="<?php echo $categoria_rubro->id; ?>">
+                                    <form method="POST" action="/categoria_rubro/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($categoria_rubro->id); ?>">
                                         <input type="hidden" name="tipo" value="fuente_financiamiento">
                                         <button type="submit"
                                             class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                             title="Eliminar categoría"
-                                            onclick="return confirm('¿Estás seguro de eliminar esta categoría?');">
+                                            data-confirm="¿Estás seguro de eliminar esta categoría?">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>

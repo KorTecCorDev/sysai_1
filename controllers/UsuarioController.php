@@ -16,6 +16,7 @@ class UsuarioController
 {
     public static function index(Router $router)
     {
+        exigirRol([1]); // Solo administradores gestionan usuarios
         $usuarios = UsuarioVista::all();
         //Mostrando el mensaje condicional
         $resultado = $_GET['resultado'] ?? null;
@@ -27,6 +28,7 @@ class UsuarioController
 
     public static function crear(Router $router)
     {
+        exigirRol([1]); // Solo administradores
         //Creamos las nuevas instancias para los objetos a usar posteriormente
         $persona = new Persona();
         $usuario = new Usuario();
@@ -111,6 +113,7 @@ class UsuarioController
 
     public static function actualizar(Router $router)
     {
+        exigirRol([1]); // Solo administradores
         //Captamos el id del usuario contenido en el GET
         $id = validarORedireccionar('/usuario/admin');
         //Capatamos el objeto según el id de usuario
@@ -274,6 +277,7 @@ class UsuarioController
     }
     public static function eliminar(Router $router)
     {
+        exigirRol([1]); // Solo administradores
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
             //Las validaciones de datos nos permitirán ejecutar la instrucción, solamente con el dato requerido

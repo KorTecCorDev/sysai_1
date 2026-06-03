@@ -1,7 +1,10 @@
 vendor/
 node_modules/
-includes/config/database.php
 .env
 !.env.example
 *.log
 *.cache
+# Reportes generados en runtime (PhpSpreadsheet)
+views/reporte/storage/
+# Volcado de BD con datos reales (solo schema/seed de prueba se versionan)
+*sysai_schema_*.sql

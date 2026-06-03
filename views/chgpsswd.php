@@ -8,7 +8,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <p><?php echo $error; ?></p>
+                        <p><?php echo s($error); ?></p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -24,7 +24,7 @@
                 <p class="texto-login text-center">
                     Ingrese su email y recibirá un correo electrónico con un código de verificación.
                 </p>
-                <form method="POST" class="form" action="/chgpsswd">
+                <form method="POST" class="form" action="/chgpsswd"><?php echo csrf_input(); ?>
                     <div class="mb-3">
                         <label for="email" class="form-label">Correo Electrónico</label>
                         <input type="email" class="form-control" name="email" id="email" placeholder="Tu correo aquí" require>
@@ -42,6 +42,6 @@
     <footer class="text-center py-3 footer">
         <div>
             <?php $fecha = date('Y'); ?>
-            <h6>Desarrollado por Cronos Soluciones - Todos los derechos reservados - <?php echo $fecha; ?></h6>
+            <h6>Desarrollado por Cronos Soluciones - Todos los derechos reservados - <?php echo s($fecha); ?></h6>
         </div>
     </footer>
