@@ -229,7 +229,7 @@ intencional es `echo $contenido` en los layouts (HTML ya renderizado).
 - Las elaboran: Coordinador y Contador.
 - Siempre vinculadas a un rubro (bien o servicio).
 - Una rendición usa **una sola fuente** vinculada al programa.
-- Documentos de sustento válidos: factura, boleta, recibo de viaje, declaración jurada, recibo de pago de servicios, recibo general.
+- Documentos de sustento válidos (catálogo `tipo_comprobante`): factura, **boleta de venta**, **boleta de viaje**, **recibo de caja**, **recibo de servicio básico**, recibo de viaje, declaración jurada, recibo de pago de servicios, recibo general. La "boleta" genérica se desdobla en *Boleta de venta* y *Boleta de viaje* (decisión 2026-06-03).
 - Datos obligatorios: **RUC** y **razón social / nombre**. El RUC identifica a cualquier proveedor (empresa o persona natural). No se usa DNI.
 - El monto de rendiciones comprometidas se muestra como "presupuesto comprometido" en la fuente.
 - El descuento real del saldo contable ocurre al aprobar el POA_Rendición.
