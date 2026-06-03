@@ -324,6 +324,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
   `programa_poa_vista`, `programas_sin_coordinador_vista`, `usuarios_coordinador_vista`,
   `usuario_id_disponible_programa_vista`, `tipo_rubro_vista`, `vista_dolar`, `vista_euro`,
   `total_monto_rendiciones_por_actividad`.
+  - ⚠️ `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` fueron **reescritas**
+    (migración 014, Fase 1) para derivar de `coordinador_programa` (vínculo activo) en vez de `poa.usuario_id`.
 - **Eliminada** (migración 009): `cantidad_fuentes_rendicion` (era VISTA, no tabla) — una rendición usa una sola fuente.
 
 ### ⚠️ Discrepancias esquema ↔ código / deuda de datos
