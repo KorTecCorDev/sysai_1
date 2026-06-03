@@ -13,8 +13,9 @@
 > (ya **no** está hardcodeado en `LoginController`), las 3 migraciones de seguridad se portaron al runner
 > (`database/migrations/010-012`), y se descartó el sistema de migraciones viejo (`db/`). Probado end-to-end
 > por HTTP en local (CSRF 419, auth redirect, login 3 roles, saldos, errores neutros) — todo OK.
-> **Pendiente de despliegue** (no de código): aplicar las migraciones de negocio 001-009 a la BD local
-> (ya reconciliada — ver *[SECCION: ESTADO DE LA BD]*) y al entorno Hostinger; QA visual de CSP.
+> **BD local:** ✅ migraciones de negocio 001-009 (+ la 013 de catálogo) **ya aplicadas** sobre la base
+> reconciliada — ver *[SECCION: ESTADO DE LA BD]*. **Pendiente de despliegue:** replicar el flujo en Hostinger;
+> QA visual de CSP.
 
 ---
 
@@ -67,8 +68,9 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
-"C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado
-php database/migrate.php                                                       # aplica migrations/001-009
+"C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
+php database/migrate.php                                                       # aplica migrations/001-013
+"C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
 local3000                             # php -S localhost:3000  → http://localhost:3000
@@ -347,16 +349,16 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > `schema_migrations`. **Este es el enfoque vigente** — sustituye al antiguo `db/schema.sql` +
 > `db/seed.sql` + `db/migracion_*.sql` (la carpeta `db/` ya no existe).
 >
-> ⚠️ **Estado real de la BD local (`sysai`) al 2026-06-03 — RECONCILIADO:** la BD reimportada proviene del
-> dump de la rama de seguridad, por lo que tiene aplicadas **solo las migraciones de seguridad (010-012)**
-> y **NO las de negocio (001-009)**. Verificado columna por columna: `poa.presupuesto` sigue `decimal(7,2)`,
-> `otros_ingresos_egresos` con `poa_id`, `rendicion` sin `estado`/`poa_rendicion_id`, `login_session_vista`
-> basada en `poa`, sin `coordinador_programa`; y existen `login_intentos`, `recuperacion_intentos`,
-> `reset_token varchar(64)`+`reset_token_expira`, vistas `vista_total_*`/`vista_saldo_*`.
-> Se reconcilió `schema_migrations` insertando `010, 011, 012` como aplicadas. **`migrate.php --status`
-> muestra 001-009 pendientes y 010-012 aplicadas** (coherente con la BD). Aplicar las 001-009 (reestructura
-> tablas) es el siguiente paso para dejar la BD lista para el backlog de negocio — recomendado con
-> `mysqldump` previo. En Hostinger (`u612374195_sysai`) la reconciliación deberá repetirse según su estado real.
+> ✅ **Estado real de la BD local (`sysai`) al 2026-06-03 — TODAS LAS MIGRACIONES APLICADAS (001-013):**
+> tras la Fase 0 de la transformación, las migraciones de negocio **001-009** se aplicaron sobre la base
+> reconciliada (que ya tenía las de seguridad 010-012), más la nueva **013** (catálogo `tipo_comprobante`).
+> `migrate.php --status` muestra **001-013 todas aplicadas**. Verificado: `coordinador_programa` creada,
+> `poa.presupuesto`→`decimal(14,2)`, `rendicion` con `estado`+`poa_rendicion_id`, `otros_ingresos_egresos`
+> con `programa_id` (backfill OK, `poa_id` eliminada), `poa_indicadores`/`poa_rendicion`/`fuente_presupuesto_anual`
+> creadas, vista `cantidad_fuentes_rendicion` eliminada, `tipo_comprobante` con 10 filas. Se hizo `mysqldump`
+> previo (`database/sysai_schema_backup_pre001_*.sql`, gitignored). La BD queda lista para el backlog de negocio.
+> **Despliegue desde cero validado end-to-end** (baseline + 001-013 + `seed.sql`) en BD limpia.
+> En Hostinger (`u612374195_sysai`) replicar el flujo según su estado real (reconciliar `schema_migrations` si difiere).
 
 **Migraciones `database/migrations/`:**
 
@@ -374,6 +376,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 010 | `vistas_saldos_contables.sql` *(seguridad B1)* | Crea las 4 vistas de saldos (`vista_total_ingresos/egresos`, `vista_saldo_contable`, `vista_saldo_fuente_financiamiento`). |
 | 011 | `login_intentos_rate_limit.sql` *(seguridad C2)* | Tabla `login_intentos` (rate-limit de login por IP/email). |
 | 012 | `recuperacion_password_segura.sql` *(seguridad A3)* | `usuario.reset_token`→varchar(64) sha256 + `reset_token_expira`; tabla `recuperacion_intentos`. |
+| 013 | `ampliar_tipo_comprobante.sql` | Catálogo `tipo_comprobante`: `TCM002 Boleta`→`Boleta de venta` + nuevos TCM005-010 (Boleta de viaje, Recibo de caja/servicio básico/viaje/pago de servicios/general). Decisión 2026-06-03. |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -504,9 +507,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > El código de hardening de abajo está en `main`; el SMTP se externalizó a `.env` y las 3 migraciones de
 > seguridad viven en `database/migrations/010-012` (ya aplicadas en la BD local y registradas en
 > `schema_migrations`). Probado end-to-end por HTTP (CSRF 419, auth, login 3 roles, saldos, errores neutros).
-> **Pendiente de DESPLIEGUE** (no de código): aplicar las migraciones de negocio 001-009 a la BD local
-> y replicar todo (código + migraciones) en Hostinger (`u612374195_sysai`); QA visual de CSP/confirmaciones.
-> Es **PRIORITARIO** porque el sistema está en **producción real**.
+> **BD local:** ✅ migraciones de negocio 001-009 ya aplicadas (Fase 0). **Pendiente de DESPLIEGUE** (no de
+> código): replicar todo (código + migraciones 001-013 + `seed.sql`) en Hostinger (`u612374195_sysai`);
+> QA visual de CSP/confirmaciones. Es **PRIORITARIO** porque el sistema está en **producción real**.
 
 ### Resumen (en la rama de seguridad)
 - **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
@@ -577,7 +580,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [x] ✅ **SMTP externalizado al `.env`** (integrado en `integ/seguridad`). `LoginController` ya no tiene credenciales; el envío usa el helper `enviarTokenRecuperacion()` y `includes/config/mail.php` lee las claves `MAIL_*` del `.env`. Sin credenciales hardcodeadas en código trackeado.
 - [ ] `usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia (bloqueo por intentos) → confirmar si es código muerto o falta migración antes de confiar en el bloqueo. *(Resuelto en la rama de seguridad con `login_intentos`; verificar en la actual.)*
 - [ ] Retirar/limpiar modelo `RendicionFuentesCantidadVista` (su vista `cantidad_fuentes_rendicion` fue eliminada en migración 009).
-- [ ] **Seed data** para despliegue desde cero: catálogos (`cargo`, `tipo_rubro`, `tipo_comprobante`, `oie_tipo`, `oie_tipo_comprobante`, `tipo_programa`) + usuario admin inicial. (No incluido en migraciones.)
+- [x] ✅ **Seed data** para despliegue desde cero: `database/seed.sql` (idempotente, `INSERT IGNORE`) con catálogos (`cargo`, `tipo_programa`, `tipo_rubro`, `oie_tipo`, `oie_tipo_comprobante`, `tipo_comprobante`, `categoria_rubro`, `subcategoria_rubro`) + usuario admin inicial (`admin@arcoiris.pe` / `Arcoiris2026*`, temporal). Validado en BD limpia. Documentado en `database/README.md`.
 - [ ] Validar relación rendición↔rubro (ver ítem 5 del backlog de implementación).
 - [ ] **B2 — Reportes POA inflados en producción** (fan-out por fuentes) — corregido en la rama de seguridad, falta portar/migrar.
 - [ ] **B3 — Esquema desalineado** (overflow de montos en `rubro`/`rendicion`/`oie_comprobante`; `avance decimal(2,2)`; `rendicion.fecha_original varchar`; `email` no UNIQUE; auditoría sin triggers/AUTO_INCREMENT) — revisar qué cubren las migraciones actuales vs. lo corregido en la rama de seguridad.
