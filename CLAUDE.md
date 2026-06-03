@@ -27,8 +27,10 @@
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
 - **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai_1`.
-- **Producción:** **PRODUCCIÓN real** desplegada en **Hostinger** (hosting compartido, Apache + `.htaccess`).
-  - BD de producción: `u612374195_sysai`. BD local: `sysai`.
+- **Producción:** ⚠️ **DADA DE BAJA (2026-06-03).** El sistema estuvo desplegado en **Hostinger** (hosting
+  compartido, Apache + `.htaccess`, BD `u612374195_sysai`) pero esa producción **ya fue decomisionada**. El
+  próximo despliegue será **greenfield**: proyecto y BD **nuevos desde cero** (sin datos productivos que
+  preservar ni reconciliar). BD local: `sysai`.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
 - **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` ignorado en git (lee `.env` y conecta MySQL).
 - **Moneda base:** Sol peruano (PEN / S/). Conversiones a USD/EUR solo para reportes.
@@ -358,7 +360,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > creadas, vista `cantidad_fuentes_rendicion` eliminada, `tipo_comprobante` con 10 filas. Se hizo `mysqldump`
 > previo (`database/sysai_schema_backup_pre001_*.sql`, gitignored). La BD queda lista para el backlog de negocio.
 > **Despliegue desde cero validado end-to-end** (baseline + 001-013 + `seed.sql`) en BD limpia.
-> En Hostinger (`u612374195_sysai`) replicar el flujo según su estado real (reconciliar `schema_migrations` si difiere).
+> El próximo despliegue a Hostinger es **greenfield** (la producción previa fue dada de baja): se importa el
+> flujo en una BD nueva y vacía — **ya no hay que reconciliar** `schema_migrations` contra un estado previo.
 
 **Migraciones `database/migrations/`:**
 
@@ -507,9 +510,10 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > El código de hardening de abajo está en `main`; el SMTP se externalizó a `.env` y las 3 migraciones de
 > seguridad viven en `database/migrations/010-012` (ya aplicadas en la BD local y registradas en
 > `schema_migrations`). Probado end-to-end por HTTP (CSRF 419, auth, login 3 roles, saldos, errores neutros).
-> **BD local:** ✅ migraciones de negocio 001-009 ya aplicadas (Fase 0). **Pendiente de DESPLIEGUE** (no de
-> código): replicar todo (código + migraciones 001-013 + `seed.sql`) en Hostinger (`u612374195_sysai`);
-> QA visual de CSP/confirmaciones. Es **PRIORITARIO** porque el sistema está en **producción real**.
+> **BD local:** ✅ migraciones de negocio 001-009 ya aplicadas (Fase 0). **Despliegue greenfield** (la
+> producción de Hostinger fue dada de baja): cuando toque, importar `schema_baseline.sql` + migraciones
+> 001-013 + `seed.sql` en una BD nueva y vacía; QA visual de CSP/confirmaciones. Ya **no es urgente** (no
+> hay sistema en vivo expuesto).
 
 ### Resumen (en la rama de seguridad)
 - **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
@@ -610,6 +614,6 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ## [SECCION: PRIORIDADES ACORDADAS]
 
 1. Implementar el backlog de negocio (Grupos 8-13) sobre la BD ya migrada.
-2. **Mergear/portar el sprint de seguridad** a la línea actual (empezando por externalizar el SMTP) — es producción real.
+2. **Sprint de seguridad** ya integrado en `main` (ver *[SECCION: SEGURIDAD]*). Su urgencia **bajó**: la producción de Hostinger fue dada de baja, ya no hay sistema en vivo expuesto. Se aplica en el despliegue greenfield.
 3. Documentar/entender la lógica de negocio (reportes POA y rendiciones, conversión de moneda).
 4. Refactorizar la capa de datos hacia consultas preparadas y validaciones consistentes (parcialmente hecho en la rama de seguridad).
