@@ -57,12 +57,12 @@
     <!-- Sección del combo select para usuarios coordinadores (TODOS LOS USUARIOS) -->
     <div class="mb-3">
         <label for="programas_coordinador" id="programas_coordinador_label" class="form-label <?php echo !$cmbstatus ? 'oculto':'' ?>">Seleccionar Programa</label>
-        <select name="poa[programa_id]" id="programas_coordinador" class="form-select shadow-sm <?php echo !$cmbstatus ? 'oculto':'' ?>" aria-describedby="usuarioHelp">
+        <select name="coordinador_programa[programa_id]" id="programas_coordinador" class="form-select shadow-sm <?php echo !$cmbstatus ? 'oculto':'' ?>" aria-describedby="usuarioHelp">
             <option value="0" selected>--Seleccione--</option>
             <?php
             if (!empty($programas)) {
                 foreach ($programas as $programa) { ?>
-                    <option value="<?php echo s($programa->id); ?>" <?php echo $objpoa->programa_id === $programa->id ? 'selected' : ''; ?>>
+                    <option value="<?php echo s($programa->id); ?>" <?php echo (int) $programa_actual_id === (int) $programa->id ? 'selected' : ''; ?>>
                         <?php echo "{$programa->codigo} - {$programa->nombre}"; ?>
                     </option>
                 <?php } ?>

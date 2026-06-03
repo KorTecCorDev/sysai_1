@@ -380,6 +380,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 011 | `login_intentos_rate_limit.sql` *(seguridad C2)* | Tabla `login_intentos` (rate-limit de login por IP/email). |
 | 012 | `recuperacion_password_segura.sql` *(seguridad A3)* | `usuario.reset_token`→varchar(64) sha256 + `reset_token_expira`; tabla `recuperacion_intentos`. |
 | 013 | `ampliar_tipo_comprobante.sql` | Catálogo `tipo_comprobante`: `TCM002 Boleta`→`Boleta de venta` + nuevos TCM005-010 (Boleta de viaje, Recibo de caja/servicio básico/viaje/pago de servicios/general). Decisión 2026-06-03. |
+| 014 | `coordinador_programa_backfill_vistas.sql` *(Fase 1)* | Backfill de `coordinador_programa` desde `poa` (cargo 3) + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar del vínculo activo. |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -441,8 +442,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 ## [SECCION: ORDEN DE IMPLEMENTACION]
 
-1. **Migración de BD** — ✅ **COMPLETADO** (`database/migrations/001`-`009`)
-2. Vínculo Coordinador-Programa
+1. **Migración de BD** — ✅ **COMPLETADO** (`database/migrations/001`-`009`, + `013` catálogo, + `014` vínculo)
+2. Vínculo Coordinador-Programa — ✅ **COMPLETADO** (Fase 1)
 3. POA Indicadores
 4. POA Presupuestal
 5. Rendiciones
@@ -459,12 +460,13 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
 
-### 2 — Vínculo Coordinador-Programa  *(linchpin: va primero)*
-- [ ] Modelo `CoordinadorPrograma` (tabla `coordinador_programa`).
-- [ ] CRUD de asignación: al asignar, desactivar (`activo=0`) el vínculo previo del coordinador y crear el nuevo (`activo=1`). Validar regla "un coordinador = un programa activo".
-- [ ] Ajustar alta de usuario coordinador para crear su vínculo de programa.
-- [ ] Verificar que el login ya consuma `programa_id` desde la vista reescrita (`login_session_vista`) — la vista ya fue migrada (002).
-- [ ] Revisar vistas que aún deducen programa desde POA: `programas_sin_coordinador_vista`, `usuario_id_disponible_programa_vista` (basadas en `poa.usuario_id` → migrar a `coordinador_programa`).
+### 2 — Vínculo Coordinador-Programa  *(linchpin: va primero)* ✅ COMPLETADO (Fase 1)
+- [x] Modelo `CoordinadorPrograma` (tabla `coordinador_programa`) con helpers `asignarPrograma()`, `vinculoActivoPorUsuario()`, `desactivarPorUsuario()`, `desactivarPorPrograma()`, `eliminarPorUsuario()`.
+- [x] CRUD de asignación en `UsuarioController` (crear/actualizar/eliminar): `asignarPrograma()` desactiva el vínculo previo del coordinador **y** el del programa (ambas invariantes) y crea el nuevo (`activo=1`). El form envía `coordinador_programa[programa_id]` (antes `poa[programa_id]`).
+- [x] Alta de usuario coordinador crea su vínculo; se eliminó el viejo mecanismo de "poa-como-vínculo" en altas/ediciones (los `poa` reales se siguen usando para el documento POA).
+- [x] Login consume `programa_id` desde `login_session_vista` (verificado: coordinador recupera `programa_id`/`poa_id`).
+- [x] Migración **014**: backfill de `coordinador_programa` desde los `poa` de cargo 3 + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar de `coordinador_programa` (activo).
+- Probado por HTTP (login admin, crear coordinador→vínculo, quitar programa→vínculo `activo=0`) y a nivel de datos.
 
 ### 3 — POA Indicadores (documento + flujo)
 - [ ] Modelo `PoaIndicadores` (tabla `poa_indicadores`).
