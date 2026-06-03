@@ -9,11 +9,12 @@
 >
 > ✅ **Nota de integración (actualizada):** el **sprint de seguridad** descrito en *[SECCION: SEGURIDAD]*
 > —originalmente en la rama `seguridad/hardening-y-despliegue-local`— ya fue **integrado mediante merge
-> curado** en la rama `integ/seguridad` (commit `4c4e6eb`), sobre las migraciones de negocio. En esa
-> integración: el SMTP pasó a `.env` (ya **no** está hardcodeado en `LoginController`), las 3 migraciones de
-> seguridad se portaron al runner (`database/migrations/010-012`), y se descartó el sistema de migraciones
-> viejo (`db/`). **Pendiente de despliegue** (no de código): aplicar migraciones a la BD reimportada y a
-> Hostinger, QA visual de CSP, y mergear `integ/seguridad` a la línea principal.
+> curado** y **mergeado a `main`** (fast-forward, tip `5e24398`). En esa integración: el SMTP pasó a `.env`
+> (ya **no** está hardcodeado en `LoginController`), las 3 migraciones de seguridad se portaron al runner
+> (`database/migrations/010-012`), y se descartó el sistema de migraciones viejo (`db/`). Probado end-to-end
+> por HTTP en local (CSRF 419, auth redirect, login 3 roles, saldos, errores neutros) — todo OK.
+> **Pendiente de despliegue** (no de código): aplicar las migraciones de negocio 001-009 a la BD local
+> (ya reconciliada — ver *[SECCION: ESTADO DE LA BD]*) y al entorno Hostinger; QA visual de CSP.
 
 ---
 
@@ -342,9 +343,20 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
-> **Estado migraciones BD: APLICADAS.** Runner `database/migrate.php`, baseline `database/schema_baseline.sql`,
-> tabla de control `schema_migrations`. **Este es el enfoque vigente** — sustituye al antiguo `db/schema.sql` +
-> `db/seed.sql` + `db/migracion_*.sql` (la carpeta `db/` ya no existe en esta rama).
+> **Runner** `database/migrate.php`, baseline `database/schema_baseline.sql`, tabla de control
+> `schema_migrations`. **Este es el enfoque vigente** — sustituye al antiguo `db/schema.sql` +
+> `db/seed.sql` + `db/migracion_*.sql` (la carpeta `db/` ya no existe).
+>
+> ⚠️ **Estado real de la BD local (`sysai`) al 2026-06-03 — RECONCILIADO:** la BD reimportada proviene del
+> dump de la rama de seguridad, por lo que tiene aplicadas **solo las migraciones de seguridad (010-012)**
+> y **NO las de negocio (001-009)**. Verificado columna por columna: `poa.presupuesto` sigue `decimal(7,2)`,
+> `otros_ingresos_egresos` con `poa_id`, `rendicion` sin `estado`/`poa_rendicion_id`, `login_session_vista`
+> basada en `poa`, sin `coordinador_programa`; y existen `login_intentos`, `recuperacion_intentos`,
+> `reset_token varchar(64)`+`reset_token_expira`, vistas `vista_total_*`/`vista_saldo_*`.
+> Se reconcilió `schema_migrations` insertando `010, 011, 012` como aplicadas. **`migrate.php --status`
+> muestra 001-009 pendientes y 010-012 aplicadas** (coherente con la BD). Aplicar las 001-009 (reestructura
+> tablas) es el siguiente paso para dejar la BD lista para el backlog de negocio — recomendado con
+> `mysqldump` previo. En Hostinger (`u612374195_sysai`) la reconciliación deberá repetirse según su estado real.
 
 **Migraciones `database/migrations/`:**
 
@@ -488,12 +500,13 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ## [SECCION: SEGURIDAD — SPRINT DE HARDENING]
 
 > ✅ **ESTADO:** este sprint (originalmente rama `seguridad/hardening-y-despliegue-local`) ya fue
-> **integrado por merge curado** en `integ/seguridad` (commit `4c4e6eb`) sobre las migraciones de negocio.
-> El código de hardening de abajo está ahora en esta línea; el SMTP se externalizó a `.env` y las 3
-> migraciones de seguridad viven en `database/migrations/010-012`.
-> **Pendiente de DESPLIEGUE** (no de código): aplicar las migraciones a la BD local reimportada y a
-> Hostinger (`u612374195_sysai`), QA visual de CSP/confirmaciones, y mergear `integ/seguridad` a la
-> línea principal. Es **PRIORITARIO** porque el sistema está en **producción real**.
+> **integrado por merge curado** (`4c4e6eb`) y **mergeado a `main`** (fast-forward, tip `5e24398`).
+> El código de hardening de abajo está en `main`; el SMTP se externalizó a `.env` y las 3 migraciones de
+> seguridad viven en `database/migrations/010-012` (ya aplicadas en la BD local y registradas en
+> `schema_migrations`). Probado end-to-end por HTTP (CSRF 419, auth, login 3 roles, saldos, errores neutros).
+> **Pendiente de DESPLIEGUE** (no de código): aplicar las migraciones de negocio 001-009 a la BD local
+> y replicar todo (código + migraciones) en Hostinger (`u612374195_sysai`); QA visual de CSP/confirmaciones.
+> Es **PRIORITARIO** porque el sistema está en **producción real**.
 
 ### Resumen (en la rama de seguridad)
 - **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
