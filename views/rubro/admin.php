@@ -67,6 +67,11 @@ $bloqueado = esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad(
                             <td><?php echo 'S./ ' . number_format($rubro->monto, 2, '.', ','); ?></td>
                             <td class="td-acciones">
                                 <div class="d-flex justify-content-center gap-2">
+                                    <a href="/rendicion/admin?rubro_id=<?php echo s($rubro->id); ?>"
+                                        class="btn btn-sm btn-success rounded-pill px-3"
+                                        title="Rendiciones de este rubro">
+                                        <i class="bi bi-receipt"></i>
+                                    </a>
                                     <?php if ($bloqueado) : ?>
                                         <span class="text-muted small"><i class="bi bi-lock"></i></span>
                                     <?php else : ?>

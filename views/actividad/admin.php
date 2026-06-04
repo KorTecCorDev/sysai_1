@@ -60,15 +60,8 @@
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="/rubro/admin?actividad_id=<?php echo s($actividad->id); ?>"
                                         class="btn btn-sm btn-success rounded-pill px-3"
-                                        title="Agregar rubro">
+                                        title="Rubros y rendiciones de la actividad">
                                         <i class="bi bi-plus-lg"></i>
-                                    </a>
-
-
-                                    <a href="/rendicion/admin?actividad_id=<?php echo s($actividad->id); ?>"
-                                        class="btn btn-sm btn-success rounded-pill px-3"
-                                        title="Agregar comprobante">
-                                        <i class="bi bi-receipt"></i>
                                     </a>
 
                                     <?php if (!$bloqueado) : ?>

@@ -295,9 +295,10 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > (solo esquema; uso futuro — ver *[SECCION: DIFERIDO A v1.1]*).
 
 ### Tablas de movimientos contables
-- **`rendicion`** — gasto rendido por actividad: `actividad_id`, `tipo_comprobante_id`, `ff_id` (fuente),
-  comprobante (serie, numero, **ruc**, **razon_social**, monto, fecha_original). Sin DNI. Tras migración:
-  añade `estado` y `poa_rendicion_id`.
+- **`rendicion`** — gasto rendido imputado a un **rubro**: `rubro_id` (FK, migr. 017 — reemplaza al viejo
+  `actividad_id`; la actividad se deriva por `rubro → actividad`), `tipo_comprobante_id`, `ff_id` (fuente),
+  comprobante (serie, numero, **ruc**, **razon_social**, monto, fecha_original). Sin DNI. Tiene también
+  `estado` y `poa_rendicion_id` (migr. 006; gestionados por el flujo del POA Rendición, item 6).
 - **`otros_ingresos_egresos` (OIE)** — ingresos/egresos sueltos: tras migración vinculado a `programa_id`
   (antes `poa_id`), `oie_comprobante_id`, `oie_tipo_id` (1=Ingreso, 2=Egreso), `ff_id`. El **monto vive en
   `oie_comprobante.monto`** (no falta un campo monto). Comprobante con `oie_tipo_comprobante_id`.
@@ -385,6 +386,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 014 | `coordinador_programa_backfill_vistas.sql` *(Fase 1)* | Backfill de `coordinador_programa` desde `poa` (cargo 3) + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar del vínculo activo. |
 | 015 | `poa_indicadores_observacion.sql` *(Fase 2)* | `poa_indicadores` += `observacion` varchar(500). El Contador, al **Observar** (devolver) el documento, registra el motivo para que el Coordinador sepa qué subsanar (cambia la regla "retorno sin comentario" del Grupo 11). |
 | 016 | `poa_observacion.sql` *(Item 4)* | `poa` += `observacion` varchar(500). Mismo patrón que la 015, para el flujo del POA Presupuestal. |
+| 017 | `rendicion_rubro.sql` *(Item 5)* | `rendicion`: += `rubro_id` (FK), **se elimina `actividad_id`**, se limpia la tabla. Reescribe las 5 vistas que dependían de `rendicion.actividad_id` para derivar la actividad vía rubro (conservan columnas de salida + agregan `rubro_id`). |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -450,7 +452,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 2. Vínculo Coordinador-Programa — ✅ **COMPLETADO** (Fase 1)
 3. POA Indicadores — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
 4. POA Presupuestal — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
-5. Rendiciones
+5. Rendiciones — ✅ **COMPLETADO** (rendición↔rubro, QA HTTP 10/10, 2026-06-04)
 6. POA Rendición
 7. Otros Ingresos/Egresos
 8. Saldos
@@ -520,10 +522,13 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 > **QA:** arnés `database/qa_poa_presupuestal.ps1` (18/18) — login, CSRF 419, autorización por rol, cross-tenant 403, flujo 0→1→2→1→3 en BD, presupuesto calculado (28000) y congelado, bloqueo de rubros en Enviado **y** Aprobado, observar sin/con comentario, transición inválida, rechazo de GET. **Hallazgo corregido:** `consultarPreparado()` pasa filas por `crearObjeto()` que descarta columnas fuera de `$columnasDB` (alias de agregación) → `presupuestoCalculado` ahora lee el escalar con mysqli directo.
 
-### 5 — Rendiciones
-- [ ] Vincular rendición a `poa_rendicion_id` y manejar `estado` (columnas ya creadas).
-- [ ] Límite por rubro: Σ rendiciones contra el rubro ≤ monto del rubro. **OJO:** `rendicion` se vincula a `actividad_id`, no a `rubro_id` — definir cómo se imputa una rendición al rubro (¿agregar `rubro_id` a `rendicion`?). *(decisión técnica pendiente)*
-- [ ] Identificación de emisor solo con RUC + razón social (ya en esquema).
+### 5 — Rendiciones  ✅ COMPLETADO (QA HTTP automatizado 10/10, 2026-06-04)
+- [x] **Decisión técnica (2026-06-04):** la rendición se imputa **directo a un rubro**. Migración **017**: `rendicion` += `rubro_id` (FK), **se elimina `actividad_id`**, y se **limpia** la tabla (datos de prueba). La actividad se deriva por `rubro → actividad`. Las **5 vistas SQL** que dependían de `rendicion.actividad_id` (`rendicion_admin`, `total_monto_rendiciones_por_actividad`, `reporte_rendiciones`, `reporte_poa_rendicion`, `reporte_fuentes_programa`) se reescribieron para derivar la actividad desde el rubro, **conservando sus columnas de salida** (incl. `actividad_id`) + agregando `rubro_id` → reportes intactos.
+- [x] **Límite por rubro:** `Rendicion::totalImputadoAlRubro()` + `validarLimiteRubro($rubroMonto)` → Σ rendiciones (incluida la actual, excluyéndose a sí misma en edición) ≤ `rubro.monto`; error con saldo disponible. Validado en `crear` y `actualizar`.
+- [x] Emisor solo **RUC + razón social** (ya en esquema; sin DNI). `Rendicion` model: `rubro_id` en `columnasDB`, `validar` exige rubro. `estado`/`poa_rendicion_id` se omiten del model a propósito (DEFAULT 0 / NULL; su gestión es del item 6).
+- [x] **Navegación reorganizada a por-rubro:** `rubro/admin` tiene botón "Rendiciones" por rubro → `/rendicion/admin?rubro_id=`; el panel muestra monto del rubro / total rendido / disponible. Se quitó el enlace de comprobantes de `actividad/admin`. `RendicionController` (index/crear/actualizar/eliminar) reescrito a `rubro_id`; nuevos helpers `programaIdPorRubro` / `exigirProgramaPropioPorRubro`. `RendicionAdminVista` += `rubro_id`.
+
+> **QA:** arnés `database/qa_rendicion.ps1` (10/10) — login, CSRF 419, cross-tenant 403 (rubro ajeno), creación imputada al rubro (verifica `rubro_id`/`estado=0`/`poa_rendicion_id=NULL`), límite por rubro (rechaza 4000>3500 con mensaje, acepta el tope exacto 3500), rechazo de GET en eliminar. Sin regresión en items 3/4 (18/18 c/u).
 
 ### 6 — POA Rendición (documento + flujo + saldos)
 - [ ] Modelo `PoaRendicion` (tabla `poa_rendicion`).
@@ -626,7 +631,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [ ] `usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia (bloqueo por intentos) → confirmar si es código muerto o falta migración antes de confiar en el bloqueo. *(Resuelto en la rama de seguridad con `login_intentos`; verificar en la actual.)*
 - [ ] Retirar/limpiar modelo `RendicionFuentesCantidadVista` (su vista `cantidad_fuentes_rendicion` fue eliminada en migración 009).
 - [x] ✅ **Seed data** para despliegue desde cero: `database/seed.sql` (idempotente, `INSERT IGNORE`) con catálogos (`cargo`, `tipo_programa`, `tipo_rubro`, `oie_tipo`, `oie_tipo_comprobante`, `tipo_comprobante`, `categoria_rubro`, `subcategoria_rubro`) + usuario admin inicial (`admin@arcoiris.pe` / `Arcoiris2026*`, temporal). Validado en BD limpia. Documentado en `database/README.md`.
-- [ ] Validar relación rendición↔rubro (ver ítem 5 del backlog de implementación).
+- [x] ✅ Relación rendición↔rubro resuelta (migr. 017): `rendicion.rubro_id` reemplaza a `actividad_id`; límite Σ rendiciones ≤ monto del rubro. Ver item 5 del backlog.
 - [ ] **B2 — Reportes POA inflados en producción** (fan-out por fuentes) — corregido en la rama de seguridad, falta portar/migrar.
 - [ ] **B3 — Esquema desalineado** (overflow de montos en `rubro`/`rendicion`/`oie_comprobante`; `avance decimal(2,2)`; `rendicion.fecha_original varchar`; `email` no UNIQUE; auditoría sin triggers/AUTO_INCREMENT) — revisar qué cubren las migraciones actuales vs. lo corregido en la rama de seguridad.
 - [ ] **B4 — MAYÚSCULAS forzadas** indiscriminadas (degrada calidad de datos; origen del bug C1).

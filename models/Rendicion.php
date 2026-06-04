@@ -5,11 +5,14 @@ namespace Model;
 class Rendicion extends ActiveRecord
 {
     // Declarando variables
+    // Nota: `estado` y `poa_rendicion_id` existen en la tabla (migr. 006) pero se omiten
+    // aquí a propósito: en INSERT toman su DEFAULT (estado=0, poa_rendicion_id=NULL) y su
+    // gestión es parte del flujo del POA Rendición (item 6).
     protected static $tabla = 'rendicion';
-    protected static $columnasDB = ['id', 'actividad_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'fecha'];
+    protected static $columnasDB = ['id', 'rubro_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'fecha'];
 
     public $id;
-    public $actividad_id;
+    public $rubro_id;
     public $tipo_comprobante_id;
     public $ff_id;
     public $codigo;
@@ -26,7 +29,7 @@ class Rendicion extends ActiveRecord
     public function __construct($args = [])
     {
         $this->id = $args['id'] ?? null;
-        $this->actividad_id = $args['actividad_id'] ?? 0;
+        $this->rubro_id = $args['rubro_id'] ?? 0;
         $this->tipo_comprobante_id = $args['tipo_comprobante_id'] ?? 0;
         $this->ff_id = $args['ff_id'] ?? 0;
         $this->codigo = $args['codigo'] ?? '';
@@ -43,8 +46,8 @@ class Rendicion extends ActiveRecord
 
     public function validar()
     {
-        if (!$this->actividad_id) {
-            self::$errores[] = 'Debes de seleccionar una actividad válida';
+        if (!$this->rubro_id) {
+            self::$errores[] = 'Debes de seleccionar un rubro válido';
         }
         if (!$this->tipo_comprobante_id) {
             self::$errores[] = 'Debes seleccionar un tipo de comprobante válido';
@@ -79,5 +82,46 @@ class Rendicion extends ActiveRecord
             self::$errores[] = 'Debes de ingresar una fecha de emisión de comprobante válida';
         }
         return self::$errores;
+    }
+
+    // Σ de los montos de las rendiciones imputadas a un rubro. Permite excluir una
+    // rendición (en edición) para no contarla dos veces. Lectura escalar directa
+    // (consultarPreparado descarta columnas fuera de $columnasDB vía crearObjeto).
+    public static function totalImputadoAlRubro($rubroId, $excluirId = null): float
+    {
+        $query = "SELECT COALESCE(SUM(monto), 0) AS total FROM " . static::$tabla
+               . " WHERE rubro_id = ?" . ($excluirId ? " AND id <> ?" : "");
+        $stmt = self::$db->prepare($query);
+        if ($stmt === false) {
+            return 0.0;
+        }
+        $rid = (int) $rubroId;
+        if ($excluirId) {
+            $eid = (int) $excluirId;
+            $stmt->bind_param('ii', $rid, $eid);
+        } else {
+            $stmt->bind_param('i', $rid);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $fila = ($res instanceof \mysqli_result) ? $res->fetch_assoc() : null;
+        $stmt->close();
+        return (float) ($fila['total'] ?? 0);
+    }
+
+    // Valida el límite del rubro: Σ rendiciones (incluida la actual) ≤ monto del rubro.
+    // Agrega el error a self::$errores si se excede. Devuelve true si está dentro del límite.
+    public function validarLimiteRubro($rubroMonto): bool
+    {
+        $acumulado = self::totalImputadoAlRubro($this->rubro_id, $this->id);
+        $nuevoTotal = $acumulado + (float) $this->monto;
+        if ($nuevoTotal > (float) $rubroMonto + 0.001) {
+            $disponible = max(0, (float) $rubroMonto - $acumulado);
+            self::$errores[] = 'El monto excede el saldo del rubro. Disponible: S/. '
+                . number_format($disponible, 2, '.', ',')
+                . ' (monto del rubro S/. ' . number_format((float) $rubroMonto, 2, '.', ',') . ').';
+            return false;
+        }
+        return true;
     }
 }

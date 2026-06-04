@@ -1,7 +1,7 @@
 <main>
     <div class="header-admin">
-        <h1>Administrador de Rendiciones de la Actividad
-            <?php echo s($actividad->codigo); ?></h1>
+        <h1>Rendiciones del Rubro <?php echo s($rubro->codigo); ?></h1>
+        <h4><?php echo s($rubro->nombre); ?></h4>
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
@@ -13,19 +13,41 @@
         ?>
     </div>
 
+    <!-- Panel de saldo del rubro: regla Σ rendiciones ≤ monto del rubro -->
+    <div class="container mb-3">
+        <div class="row g-2 text-center">
+            <div class="col-md-4">
+                <div class="border rounded-3 p-2 bg-light"><small>Monto del rubro</small><br>
+                    <span class="fw-bold">S/. <?php echo number_format($rubro->monto, 2, '.', ','); ?></span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-2 bg-light"><small>Total rendido</small><br>
+                    <span class="fw-bold">S/. <?php echo number_format($totalRendido, 2, '.', ','); ?></span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-2 <?php echo $disponible > 0 ? 'bg-success-subtle' : 'bg-danger-subtle'; ?>">
+                    <small>Disponible</small><br>
+                    <span class="fw-bold">S/. <?php echo number_format($disponible, 2, '.', ','); ?></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col">
             <h2>Comprobantes</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rendicion/crear?actividad_id=<?php echo s($actividad_id); ?>" class="btn btn-primary rounded-pill shadow-sm">
+            <a href="/rendicion/crear?rubro_id=<?php echo s($rubro_id); ?>" class="btn btn-primary rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Agregar</a>
-            <a href="/actividad/admin?producto_id=<?php echo s($producto_id); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
+            <a href="/rubro/admin?actividad_id=<?php echo s($rubro->actividad_id); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
         </div>
     </div>
-    <!-- Tabla que muestra los registros dentro de la tabla usuario -->
+    <!-- Tabla de comprobantes de rendición -->
     <div class="container text-center p-0">
         <table class="table table-bordered">
             <thead>
@@ -44,14 +66,13 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- MostrarLosRegistrosDeRendiciones -->
-
+                <?php if (empty($rendiciones)) : ?>
+                    <tr><td colspan="11" class="text-muted py-3">No hay rendiciones para este rubro.</td></tr>
+                <?php endif; ?>
                 <?php foreach ($rendiciones as $rendicion) : ?>
                     <tr>
-                        <!-- Personalizamos el formato de fecha para mostrarlo en el formato correcto. -->
                         <?php $fechacmte = strtotime($rendicion->fecha_comprobante);
-                        $fechafmt = date('d/m/Y', $fechacmte);
-                        ?>
+                        $fechafmt = date('d/m/Y', $fechacmte); ?>
                         <td> <?php echo s($rendicion->codigo); ?> </td>
                         <td> <?php echo s($fechafmt); ?> </td>
                         <td> <?php echo s($rendicion->tipo_comprobante); ?> </td>
@@ -63,9 +84,8 @@
                         <td> <?php echo s($rendicion->fuente_financiamiento); ?> </td>
                         <td><?php echo 'S./ ' . number_format($rendicion->monto, 2, '.', ','); ?></td>
                         <td class="td-acciones">
-                            <!-- Div de Acciones     -->
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="/rendicion/actualizar?id=<?php echo s($rendicion->id); ?>&actividad_id=<?php echo $actividad_id ?>"
+                                <a href="/rendicion/actualizar?id=<?php echo s($rendicion->id); ?>&rubro_id=<?php echo s($rubro_id); ?>"
                                     class="btn btn-sm btn-outline-warning rounded-pill px-3"
                                     title="Editar rendición">
                                     <i class="bi bi-pencil-fill"></i>
@@ -82,7 +102,6 @@
                                     </button>
                                 </form>
                             </div>
-                            <!-- Div de Acciones     -->
                         </td>
                     </tr>
                 <?php endforeach; ?>

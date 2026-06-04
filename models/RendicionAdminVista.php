@@ -6,9 +6,10 @@ class RendicionAdminVista extends ActiveRecord
 {
     // Declarando variables
     protected static $tabla = 'rendicion_admin';
-    protected static $columnasDB = ['id', 'producto_id', 'actividad_id', 'codigo', 'tipo_comprobante', 'serie', 'numero', 'detalle', 'ruc', 'razon_social', 'monto', 'fuente_financiamiento_id', 'fuente_financiamiento', 'fecha_comprobante'];
+    protected static $columnasDB = ['id', 'rubro_id', 'producto_id', 'actividad_id', 'codigo', 'tipo_comprobante', 'serie', 'numero', 'detalle', 'ruc', 'razon_social', 'monto', 'fuente_financiamiento_id', 'fuente_financiamiento', 'fecha_comprobante'];
 
     public $id;
+    public $rubro_id;
     public $producto_id;
     public $actividad_id;
     public $codigo;
@@ -26,6 +27,7 @@ class RendicionAdminVista extends ActiveRecord
     public function __construct($args = [])
     {
         $this->id = $args['id'] ?? null;
+        $this->rubro_id = $args['rubro_id'] ?? null;
         $this->producto_id = $args['producto_id'] ?? null;
         $this->actividad_id = $args['actividad_id'] ?? null;
         $this->codigo = $args['codigo'] ?? '';

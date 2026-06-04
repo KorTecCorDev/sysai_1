@@ -142,6 +142,32 @@ function exigirProgramaPropioPorActividad($actividadId): void
     }
 }
 
+/** programa_id de un rubro (rubro → actividad → … → programa). null si no se resuelve. */
+function programaIdPorRubro($rubroId): ?int
+{
+    $rubro = \Model\Rubro::find((int) $rubroId);
+    if (!$rubro || !isset($rubro->actividad_id)) {
+        return null;
+    }
+    return programaIdPorActividad($rubro->actividad_id);
+}
+
+/**
+ * Para coordinadores: exige que el rubro (y el recurso ligado: rendición) pertenezca
+ * a SU programa. Admin/Contador pasan. Corta con 403 si es de otro programa.
+ */
+function exigirProgramaPropioPorRubro($rubroId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    $programaRecurso = programaIdPorRubro($rubroId);
+    if ($programaRecurso === null || $programaRecurso !== programaIdCoordinador()) {
+        http_response_code(403);
+        exit('Acceso denegado: el registro no pertenece a su programa.');
+    }
+}
+
 /**
  * Para coordinadores: exige que el programa indicado sea EL SUYO (resultado, que
  * cuelga directo de programa). Admin/Contador pasan. Corta con 403 si no coincide.
