@@ -266,8 +266,10 @@ function mostrarProgramasCoordinador(e) {
 
 //Función para desaparecer las alertas del CRUD en los admin
 function eliminarAlertas() {
-  // Seleccionar todas las alertas
-  const alerts = document.querySelectorAll(".alert");
+  // Seleccionar las alertas transitorias (flash). Las marcadas como
+  // .alert-persistente son banners de contenido (p. ej. la observación del
+  // POA de Indicadores) y deben permanecer visibles hasta cambiar de vista.
+  const alerts = document.querySelectorAll(".alert:not(.alert-persistente)");
 
   // Configurar el timeout para cada alerta encontrada
   alerts.forEach((alert) => {

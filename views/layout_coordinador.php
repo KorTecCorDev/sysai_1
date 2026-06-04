@@ -61,6 +61,12 @@ $cargo = $_SESSION['cargo'] ?? false;
                                         <span>Plan operativo anual POA</span>
                                     </a>
                                 </li>
+                                <li class="sidebar-item">
+                                    <a href="/poa_indicadores/admin" class="sidebar-link">
+                                        <i class="bi bi-graph-up"></i>
+                                        <span>POA de Indicadores</span>
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 

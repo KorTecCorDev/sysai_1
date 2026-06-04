@@ -44,6 +44,8 @@ class ResultadoController
             $idprograma = programaIdCoordinador();
         }
         exigirProgramaPropio($idprograma);
+        // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+        exigirPoaIndicadoresEditable($idprograma);
         $res = new Resultado();
         $programas = Programa::all();
         $resultado = $_GET['resultado'] ?? null;
@@ -87,6 +89,8 @@ class ResultadoController
             if (!$res) { header('Location: /resultado/admin'); exit(); }
             // A1: el resultado debe pertenecer al programa del coordinador.
             exigirProgramaPropio($res->programa_id);
+            // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+            exigirPoaIndicadoresEditable($res->programa_id);
             $errores = Resultado::getErrores();
         }
         $resultado = $_GET['resultado'] ?? null;
@@ -134,6 +138,8 @@ class ResultadoController
                     if ($res) {
                         // A1: solo puede eliminar resultados de SU programa.
                         exigirProgramaPropio($res->programa_id);
+                        // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+                        exigirPoaIndicadoresEditable($res->programa_id);
                         //Insertando la acción de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos
                         $vali = Resultado::setUsuarioActual();

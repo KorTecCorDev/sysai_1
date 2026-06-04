@@ -43,6 +43,8 @@ class ProductoController
         $resultadoid = validarId('resultado');
         // A1: el coordinador solo puede crear productos bajo un resultado de SU programa.
         exigirProgramaPropioPorResultado($resultadoid);
+        // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+        exigirPoaIndicadoresEditable(programaIdPorResultado($resultadoid));
         $producto = new Producto();
         $resultado = $_GET['resultado'] ?? null;
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
@@ -87,6 +89,8 @@ class ProductoController
             if (!$producto) { header('Location: /resultado/admin'); exit(); }
             // A1: el producto debe colgar de un resultado de SU programa.
             exigirProgramaPropioPorResultado($producto->resultado_id);
+            // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+            exigirPoaIndicadoresEditable(programaIdPorResultado($producto->resultado_id));
             $errores = Producto::getErrores();
         }
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
@@ -125,6 +129,8 @@ class ProductoController
             if (!$producto) { header('Location: /resultado/admin'); exit(); }
             // A1: solo puede eliminar productos de un resultado de SU programa.
             exigirProgramaPropioPorResultado($producto->resultado_id);
+            // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+            exigirPoaIndicadoresEditable(programaIdPorResultado($producto->resultado_id));
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Producto::setUsuarioActual();

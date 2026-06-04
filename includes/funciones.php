@@ -197,6 +197,35 @@ function exigirProgramaPropioPorProducto($productoId): void
     }
 }
 
+/**
+ * ¿El POA Indicadores del programa (año vigente) admite edición de su jerarquía?
+ * Editable en Borrador(0) u Observado(2); bloqueado en Enviado(1) o Aprobado(3).
+ * Si aún no existe el documento, se considera editable (todavía en elaboración).
+ */
+function poaIndicadoresEditable($programaId): bool
+{
+    $doc = \Model\PoaIndicadores::porProgramaAnio((int) $programaId, date('Y'));
+    return !$doc || (in_array((int) $doc->estado, [0, 2], true));
+}
+
+/**
+ * Para coordinadores: bloquea la edición de la jerarquía cuando su POA Indicadores
+ * está Enviado o Aprobado. Admin/Contador pasan (el Contador modifica como adenda).
+ * En vez de un 403 crudo, redirige al listado con un flash (?resultado=14) que la
+ * app traduce a un alert. La prevención principal son los botones deshabilitados en
+ * la UI; esto es defensa en profundidad ante navegación/URL directa.
+ */
+function exigirPoaIndicadoresEditable($programaId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    if (!poaIndicadoresEditable($programaId)) {
+        header('Location: /resultado/admin?resultado=14');
+        exit();
+    }
+}
+
 //Validar tipo de Contenido
 function validarTipoContenido($tipo)
 {
@@ -232,6 +261,22 @@ function mostrarNotificacion($codigo)
         //ERROR USUARIO ENCONTRADO - LOGIN
         case 6:
             $mensaje = 'Se modificó el estado el POA del programa correctamente';
+            break;
+        //POA INDICADORES — DOCUMENTO YA EXISTENTE
+        case 11:
+            $mensaje = 'Ya existe un POA de Indicadores para este programa y año';
+            break;
+        //POA INDICADORES — TRANSICIÓN NO VÁLIDA PARA EL ESTADO ACTUAL
+        case 13:
+            $mensaje = 'La operación no es válida para el estado actual del documento';
+            break;
+        //POA INDICADORES — JERARQUÍA BLOQUEADA (DOCUMENTO ENVIADO/APROBADO)
+        case 14:
+            $mensaje = 'El POA de Indicadores está enviado o aprobado y no admite cambios';
+            break;
+        //POA INDICADORES — OBSERVACIÓN OBLIGATORIA AL DEVOLVER
+        case 15:
+            $mensaje = 'Debe escribir el motivo de la observación para devolver el documento';
             break;
         default:
             $mensaje = false;

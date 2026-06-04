@@ -15,6 +15,8 @@ use Controllers\CategoriaRubroController;
 use Controllers\ReportePoaRubrosController;
 use Controllers\DetalleFinanciamientoController;
 use Controllers\Fuente_FinanciamientoController;
+use Controllers\PoaIndicadoresController;
+use Controllers\DetalleActividadController;
 //Ruta de Categoría Rubros
 //RUTA PROHIBIDA PARA EL COORDINADOR
 
@@ -72,6 +74,16 @@ $router->post('/rubro/crear', [RubroController::class, 'crear']);
 $router->get('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/eliminar', [RubroController::class, 'eliminar']);
+
+//Rutas para el POA de Indicadores (el Coordinador elabora: crea / envía)
+$router->get('/poa_indicadores/admin', [PoaIndicadoresController::class, 'index']);
+$router->get('/poa_indicadores/revisar', [PoaIndicadoresController::class, 'revisar']);
+$router->post('/poa_indicadores/crear', [PoaIndicadoresController::class, 'crear']);
+$router->post('/poa_indicadores/enviar', [PoaIndicadoresController::class, 'enviar']);
+
+//Rutas para los indicadores por actividad (detalle_actividad)
+$router->get('/detalle_actividad/editar', [DetalleActividadController::class, 'editar']);
+$router->post('/detalle_actividad/guardar', [DetalleActividadController::class, 'guardar']);
 
 
 //Rutas para los REPORTES

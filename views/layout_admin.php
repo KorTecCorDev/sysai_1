@@ -82,6 +82,12 @@ $cargo = $_SESSION['cargo'] ?? false;
                   </a>
                 </li>
                 <li class="sidebar-item">
+                  <a href="/poa_indicadores/admin" class="sidebar-link">
+                    <i class="bi bi-graph-up"></i>
+                    <span>POA de Indicadores</span>
+                  </a>
+                </li>
+                <li class="sidebar-item">
                   <a href="/categoria_rubro/admin" class="sidebar-link">
                     <i class="bi bi-tags"></i>
                     <span>Categoría de Rubros</span>

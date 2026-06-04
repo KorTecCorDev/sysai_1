@@ -17,6 +17,8 @@ use Controllers\ReportePoaRubrosController;
 use Controllers\DetalleFinanciamientoController;
 use Controllers\Fuente_FinanciamientoController;
 use Controllers\SaldoContableController;
+use Controllers\PoaIndicadoresController;
+use Controllers\DetalleActividadController;
 
 //Ruta de Categoría Rubros
 $router->get('/categoria_rubro/admin', [CategoriaRubroController::class, 'index']);
@@ -87,6 +89,16 @@ $router->post('/rubro/crear', [RubroController::class, 'crear']);
 $router->get('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/eliminar', [RubroController::class, 'eliminar']);
+
+//Rutas para el POA de Indicadores (el Contador revisa: observa / aprueba)
+$router->get('/poa_indicadores/admin', [PoaIndicadoresController::class, 'index']);
+$router->get('/poa_indicadores/revisar', [PoaIndicadoresController::class, 'revisar']);
+$router->post('/poa_indicadores/observar', [PoaIndicadoresController::class, 'observar']);
+$router->post('/poa_indicadores/aprobar', [PoaIndicadoresController::class, 'aprobar']);
+
+//Rutas para los indicadores por actividad (detalle_actividad)
+$router->get('/detalle_actividad/editar', [DetalleActividadController::class, 'editar']);
+$router->post('/detalle_actividad/guardar', [DetalleActividadController::class, 'guardar']);
 
 
 //Rutas para los REPORTES

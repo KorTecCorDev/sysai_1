@@ -383,6 +383,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 012 | `recuperacion_password_segura.sql` *(seguridad A3)* | `usuario.reset_token`→varchar(64) sha256 + `reset_token_expira`; tabla `recuperacion_intentos`. |
 | 013 | `ampliar_tipo_comprobante.sql` | Catálogo `tipo_comprobante`: `TCM002 Boleta`→`Boleta de venta` + nuevos TCM005-010 (Boleta de viaje, Recibo de caja/servicio básico/viaje/pago de servicios/general). Decisión 2026-06-03. |
 | 014 | `coordinador_programa_backfill_vistas.sql` *(Fase 1)* | Backfill de `coordinador_programa` desde `poa` (cargo 3) + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar del vínculo activo. |
+| 015 | `poa_indicadores_observacion.sql` *(Fase 2)* | `poa_indicadores` += `observacion` varchar(500). El Contador, al **Observar** (devolver) el documento, registra el motivo para que el Coordinador sepa qué subsanar (cambia la regla "retorno sin comentario" del Grupo 11). |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -470,11 +471,31 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [x] Migración **014**: backfill de `coordinador_programa` desde los `poa` de cargo 3 + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar de `coordinador_programa` (activo).
 - Probado por HTTP (login admin, crear coordinador→vínculo, quitar programa→vínculo `activo=0`) y a nivel de datos.
 
-### 3 — POA Indicadores (documento + flujo)
-- [ ] Modelo `PoaIndicadores` (tabla `poa_indicadores`).
-- [ ] Flujo de estados 0→1→2→3 (Borrador/Enviado/Observado/Aprobado).
-- [ ] Coordinador elabora; Contador aprueba/observa.
-- [ ] Reutiliza jerarquía compartida Resultado→Producto→Actividad (no duplicar).
+### 3 — POA Indicadores (documento + flujo)  🔨 CONSTRUIDO (pendiente QA HTTP final)
+- [x] Modelo `PoaIndicadores` (tabla `poa_indicadores`) con estados y `observacion`. Modelo `DetalleActividad` (captura de indicadores por actividad, 1:1, upsert).
+- [x] Flujo de estados 0→1→2→3 (Borrador/Enviado/Observado/Aprobado) en `PoaIndicadoresController` (index/crear/enviar/observar/aprobar/revisar).
+- [x] Coordinador elabora (crea/captura indicadores/envía); Contador aprueba/observa **con comentario obligatorio** (migración 015) desde la **vista de revisión consolidada read-only** (`poa_indicadores/revisar`).
+- [x] Reutiliza jerarquía compartida Resultado→Producto→Actividad (no duplica); captura indicadores en `detalle_actividad`.
+- [x] **Bloqueo de jerarquía** al Enviar/Aprobar: helper `exigirPoaIndicadoresEditable` (redirect+flash, no 403 crudo) en Resultado/Producto/Actividad + DetalleActividad; **banner + botones deshabilitados** en las vistas admin de la jerarquía (prevención en UI).
+- [x] **Visualización de la observación**: banner visible para coordinador (tarjeta) y contador (fila-banner en la tabla de `poa_indicadores/admin`) y en `revisar`. Decisión 2026-06-04: la observación **solo persiste mientras el documento está en estado Observado** (se limpia al reenviar/aprobar en `transicionar()`).
+- [x] **Banner persistente**: `eliminarAlertas()` (`src/js/app.js`) auto-oculta los `.alert` flash a los 3 s, pero ahora respeta `.alert-persistente`; los banners de observación llevan esa clase para no desaparecer hasta cambiar de vista. ⚠️ recompilar bundle (`npx gulp js`) si se vuelve a tocar el JS.
+- Decisión 2026-06-04: el **comentario de observación** reemplaza la regla "retorno sin comentario" del Grupo 11 (para POA Indicadores). El Presupuestal podría adoptarlo después (no cambiado aún).
+
+> **⏳ PRUEBAS PENDIENTES (QA HTTP) — para cerrar el item 3 como COMPLETADO.** Servidor `local3000`; 3 sesiones (admin/contador/coordinador). ⚠️ admin local = `robertokar97@gmail.com` (no entra con `Test1234*`). Recargar con Ctrl+F5 para tomar el `bundle.min.js` nuevo.
+>
+> **Prerrequisitos:** migr. 015 aplicada (✅); programa con coordinador vinculado (`coordinador_programa.activo=1`); jerarquía mínima Resultado→Producto→Actividad.
+>
+> 1. **Creación (Coordinador):** sin doc ve "Iniciar"; crear → Borrador + `resultado=1`; reintentar no duplica (`resultado=11`); `programa_id` lo fija la sesión (ignora POST ajeno).
+> 2. **Indicadores (detalle_actividad):** botón Indicadores por actividad; guardar con meta+responsable → upsert (1 sola fila); reeditar precarga; validación sin meta/responsable falla.
+> 3. **Flujo feliz:** Enviar (Borrador→Enviado, queda bloqueado); Aprobar (contador, Enviado→Aprobado); Observar (con comentario → coordinador ve banner); reenviar (Observado→Enviado, `observacion`=NULL en BD).
+> 4. **Caminos negativos:** Observar sin comentario → `revisar?...&resultado=15`, sin cambio; transición desde estado inválido → `resultado=13`; sin `id`/`id` inexistente → redirige sin 500; acciones rechazan GET (solo POST).
+> 5. **Bloqueo de jerarquía (Enviado y Aprobado):** banner + botones ocultos en resultado/producto/actividad admin; URL directa a crear/actualizar/eliminar y `detalle_actividad/guardar` → `resultado=14`, no persiste; en Borrador/Observado sí funciona.
+> 6. **Autorización:** coordinador solo su doc (`revisar?id=` ajeno rechazado); coordinador sin rutas observar/aprobar; contador sin rutas crear/enviar; admin todo; sin sesión → login.
+> 7. **Vista `revisar`:** árbol read-only completo; actividad sin indicador → fila roja; sin resultados → alert; panel de decisión solo contador/admin y solo si Enviado; coordinador (Previsualizar) ve árbol sin panel.
+> 8. **Banner de observación (visualización):** contador en `admin` ve la fila-banner solo en docs Observado (no en Borrador/Enviado/Aprobado); el banner **no** desaparece a los 3 s (`.alert-persistente`); los flash de CRUD **sí** desaparecen; texto escapado con `s()` (probar inyección `<script>`); tras reenviar el coordinador, la fila-banner desaparece de la tabla del contador.
+> 9. **UI / regresión:** entrada de menú en los 3 layouts; `data-confirm` pide confirmación sin violar CSP; CSRF en POST sin token → 419; con doc en Borrador el CRUD normal de jerarquía sigue OK.
+>
+> Al pasar las 9 secciones: marcar item 3 como **COMPLETADO** aquí y en la memoria `estado-implementacion-mvp.md`.
 
 ### 4 — POA Presupuestal (estados + flujo)
 - [ ] Estados completos 0-3 en `poa` (campo ya soporta el rango).

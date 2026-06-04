@@ -1,3 +1,4 @@
+<?php $bloqueado = esCoordinador() && $idprograma && !poaIndicadoresEditable($idprograma); ?>
 <main>
     <div class="header-admin">
         <h1>Administrador de Resultados del Programa
@@ -13,6 +14,13 @@
             }
         }
         ?>
+        <?php if ($bloqueado) : ?>
+            <p class="alert alert-warning">
+                <i class="bi bi-lock-fill me-2"></i>
+                Tu POA de Indicadores está enviado o aprobado y en revisión: no puedes modificar la
+                estructura hasta que el Contador lo observe.
+            </p>
+        <?php endif; ?>
     </div>
     <div class="row justify-content-between align-items-center header-admin">
         <div class="">
@@ -29,8 +37,10 @@
             </select>
         </div>
         <div class="d-flex justify-content-end mb-4"> <!-- Contenedor flexible alineado a la derecha -->
-            <a href="/resultado/crear?programa_id=<?php echo s($idprograma); ?>" class="btn btn-primary rounded-pill shadow-sm">
-                <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php if (!$bloqueado) : ?>
+                <a href="/resultado/crear?programa_id=<?php echo s($idprograma); ?>" class="btn btn-primary rounded-pill shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php endif; ?>
         </div>
     </div>
     <!-- Tabla que muestra los registros dentro de la tabla usuario -->
@@ -62,22 +72,24 @@
                                         <i class="bi bi-plus-lg"></i>
                                     </a>
 
-                                    <a href="/resultado/actualizar?id=<?php echo s($resul->id); ?>&programa_id=<?php echo s($idprograma); ?>"
-                                        class="btn btn-sm btn-outline-warning rounded-pill px-3"
-                                        title="Editar resultado">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </a>
+                                    <?php if (!$bloqueado) : ?>
+                                        <a href="/resultado/actualizar?id=<?php echo s($resul->id); ?>&programa_id=<?php echo s($idprograma); ?>"
+                                            class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                            title="Editar resultado">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </a>
 
-                                    <form method="POST" action="/resultado/eliminar" class="d-inline"><?php echo csrf_input(); ?>
-                                        <input type="hidden" name="id" value="<?php echo s($resul->id); ?>">
-                                        <input type="hidden" name="tipo" value="resultado">
-                                        <button type="submit"
-                                            class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                            title="Eliminar resultado"
-                                            data-confirm="¿Estás seguro de eliminar este registro?">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                        <form method="POST" action="/resultado/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                            <input type="hidden" name="id" value="<?php echo s($resul->id); ?>">
+                                            <input type="hidden" name="tipo" value="resultado">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                                title="Eliminar resultado"
+                                                data-confirm="¿Estás seguro de eliminar este registro?">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                                 <!-- Div de Acciones     -->
                             </td>
