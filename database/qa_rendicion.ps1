@@ -1,11 +1,17 @@
 # QA HTTP automatizado — Rendiciones imputadas al rubro (item 5)
 # Login, CSRF 419, autorizacion por rol/cross-tenant, creacion imputada a rubro,
 # limite por rubro (Σ rendiciones ≤ monto del rubro). Verificacion en BD.
+param(
+    [string]$BaseUrl   = 'http://localhost:3000',          # URL del servidor de desarrollo
+    [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',   # ruta a mysql.exe de XAMPP
+    [string]$PassCoord = 'Test1234*',                      # password de coordinador@sysai.test
+    [string]$PassConta = 'admin1234'                       # password de contador@sysai.test (= admin)
+)
 $ErrorActionPreference = 'Stop'
-$base = 'http://localhost:3000'
-$passCoord = 'Test1234*'
-$passConta = 'admin1234'
-$mysql = 'C:/xampp/mysql/bin/mysql.exe'
+$base = $BaseUrl
+$passCoord = $PassCoord
+$passConta = $PassConta
+$mysql = $MysqlExe
 $global:ok = 0; $global:fail = 0
 
 function Assert($cond, $msg) {

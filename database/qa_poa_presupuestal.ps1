@@ -1,11 +1,17 @@
 # QA HTTP automatizado — POA Presupuestal (item 4)
 # Login, CSRF 419, autorizacion por rol, cross-tenant, flujo de estados 0-1-2-3,
 # congelado del presupuesto, bloqueo de rubros (Enviado/Aprobado). Verificacion en BD.
+param(
+    [string]$BaseUrl   = 'http://localhost:3000',          # URL del servidor de desarrollo
+    [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',   # ruta a mysql.exe de XAMPP
+    [string]$PassCoord = 'Test1234*',                      # password de coordinador@sysai.test
+    [string]$PassConta = 'admin1234'                       # password de contador@sysai.test (= admin)
+)
 $ErrorActionPreference = 'Stop'
-$base = 'http://localhost:3000'
-$passCoord = 'Test1234*'
-$passConta = 'admin1234'
-$mysql = 'C:/xampp/mysql/bin/mysql.exe'
+$base = $BaseUrl
+$passCoord = $PassCoord
+$passConta = $PassConta
+$mysql = $MysqlExe
 $anio = (Get-Date).Year
 $global:ok = 0; $global:fail = 0
 
