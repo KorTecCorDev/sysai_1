@@ -73,6 +73,12 @@ $cargo = $_SESSION['cargo'] ?? false;
                     <span>POA de Indicadores</span>
                   </a>
                 </li>
+                <li class="sidebar-item">
+                  <a href="/poa/admin" class="sidebar-link">
+                    <i class="bi bi-cash-coin"></i>
+                    <span>POA Presupuestal</span>
+                  </a>
+                </li>
               </ul>
             </li>
             <!-- Rendicion de cuentas -->

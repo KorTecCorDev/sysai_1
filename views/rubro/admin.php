@@ -1,3 +1,7 @@
+<?php
+// Bloqueo de rubros: si el coordinador ya envió/aprobó su POA Presupuestal, no edita.
+$bloqueado = esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad($actividadid));
+?>
 <main>
     <div class="header-admin">
         <h1>Administrador de Rubros de la Actividad
@@ -11,6 +15,12 @@
             }
         }
         ?>
+        <?php if ($bloqueado) : ?>
+            <div class="alert alert-warning alert-persistente">
+                <i class="bi bi-lock-fill me-2"></i>
+                El POA Presupuestal está enviado o aprobado: los rubros quedaron bloqueados.
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="row">
@@ -18,8 +28,10 @@
             <h2>Rubros</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rubro/crear?actividad_id=<?php echo s($actividadid); ?>" class="btn btn-primary rounded-pill shadow-sm">
-                <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php if (!$bloqueado) : ?>
+                <a href="/rubro/crear?actividad_id=<?php echo s($actividadid); ?>" class="btn btn-primary rounded-pill shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php endif; ?>
             <a href="/actividad/admin?producto_id=<?php echo s($productoid); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
@@ -55,22 +67,26 @@
                             <td><?php echo 'S./ ' . number_format($rubro->monto, 2, '.', ','); ?></td>
                             <td class="td-acciones">
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="/rubro/actualizar?id=<?php echo s($rubro->id); ?>&actividad_id=<?php echo $actividadid ?>"
-                                        class="btn btn-sm btn-outline-warning rounded-pill px-3"
-                                        title="Editar rubro">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </a>
+                                    <?php if ($bloqueado) : ?>
+                                        <span class="text-muted small"><i class="bi bi-lock"></i></span>
+                                    <?php else : ?>
+                                        <a href="/rubro/actualizar?id=<?php echo s($rubro->id); ?>&actividad_id=<?php echo $actividadid ?>"
+                                            class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                            title="Editar rubro">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </a>
 
-                                    <form method="POST" action="/rubro/eliminar" class="d-inline"><?php echo csrf_input(); ?>
-                                        <input type="hidden" name="id" value="<?php echo s($rubro->id); ?>">
-                                        <input type="hidden" name="tipo" value="rubro">
-                                        <button type="submit"
-                                            class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                            title="Eliminar rubro"
-                                            data-confirm="¿Estás seguro de eliminar este rubro?">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                        <form method="POST" action="/rubro/eliminar" class="d-inline"><?php echo csrf_input(); ?>
+                                            <input type="hidden" name="id" value="<?php echo s($rubro->id); ?>">
+                                            <input type="hidden" name="tipo" value="rubro">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                                title="Eliminar rubro"
+                                                data-confirm="¿Estás seguro de eliminar este rubro?">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>

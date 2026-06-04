@@ -56,8 +56,13 @@ $router->post('/usuario/eliminar', [UsuarioController::class, 'eliminar']);
 $router->get('/dfinanciamiento/crear', [DetalleFinanciamientoController::class, 'crear']);
 $router->post('/dfinanciamiento/crear', [DetalleFinanciamientoController::class, 'crear']);
 
-//Rutas para POA
+//Rutas para POA Presupuestal (documento + flujo de aprobación)
 $router->get('/poa/admin', [PoaController::class, 'index']);
+$router->get('/poa/revisar', [PoaController::class, 'revisar']);
+$router->post('/poa/crear', [PoaController::class, 'crear']);
+$router->post('/poa/enviar', [PoaController::class, 'enviar']);
+$router->post('/poa/observar', [PoaController::class, 'observar']);
+$router->post('/poa/aprobar', [PoaController::class, 'aprobar']);
 
 
 

@@ -226,6 +226,46 @@ function exigirPoaIndicadoresEditable($programaId): void
     }
 }
 
+/**
+ * ¿El POA Presupuestal del programa (año vigente) admite edición de sus rubros?
+ * Editable en Borrador(0) u Observado(2); bloqueado en Enviado(1) o Aprobado(3).
+ * Si aún no existe el documento, se considera editable (todavía en elaboración).
+ */
+function poaPresupuestalEditable($programaId): bool
+{
+    $doc = \Model\Poa::porProgramaAnio((int) $programaId, date('Y'));
+    return !$doc || (in_array((int) $doc->estado, [0, 2], true));
+}
+
+/**
+ * Para coordinadores: bloquea la edición de rubros cuando su POA Presupuestal está
+ * Enviado o Aprobado. Admin/Contador pasan (el Contador modifica como adenda).
+ * Redirige al listado del POA con un flash (?resultado=16) en vez de un 403 crudo.
+ */
+function exigirPoaPresupuestalEditable($programaId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    if (!poaPresupuestalEditable($programaId)) {
+        header('Location: /poa/admin?resultado=16');
+        exit();
+    }
+}
+
+/** Igual que exigirPoaPresupuestalEditable pero resolviendo el programa desde la actividad. */
+function exigirPoaPresupuestalEditablePorActividad($actividadId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    $programaId = programaIdPorActividad($actividadId);
+    if ($programaId === null || !poaPresupuestalEditable($programaId)) {
+        header('Location: /poa/admin?resultado=16');
+        exit();
+    }
+}
+
 //Validar tipo de Contenido
 function validarTipoContenido($tipo)
 {
@@ -277,6 +317,14 @@ function mostrarNotificacion($codigo)
         //POA INDICADORES — OBSERVACIÓN OBLIGATORIA AL DEVOLVER
         case 15:
             $mensaje = 'Debe escribir el motivo de la observación para devolver el documento';
+            break;
+        //POA PRESUPUESTAL — RUBROS BLOQUEADOS (DOCUMENTO ENVIADO/APROBADO)
+        case 16:
+            $mensaje = 'El POA Presupuestal está enviado o aprobado y no admite cambios en los rubros';
+            break;
+        //POA PRESUPUESTAL — DOCUMENTO YA EXISTENTE
+        case 17:
+            $mensaje = 'Ya existe un POA Presupuestal para este programa y año';
             break;
         default:
             $mensaje = false;

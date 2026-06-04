@@ -249,85 +249,57 @@ class ReportePoaRubrosController
         }
     }
 
+    // Guardar el presupuesto calculado en el documento POA Presupuestal del programa.
+    // Upsert por programa/año en estado Borrador: NO cambia el estado del documento
+    // (las transiciones van por el flujo /poa/enviar|observar|aprobar) ni duplica.
+    // Respeta el bloqueo: si el POA ya está Enviado/Aprobado, el coordinador no edita.
     public static function indexguardarpoa(Router $router)
     {
-        //Comenzamos por validar el id recibido mediante GET y verificamos que sea un id que exista
-        if (isset($_GET['id'])) {
-            $id = validarORedireccionar('resultado/admin');
-        }
-        //Capatamos el monto de presupuesto calculado para el POA, se encuentra en el POST
-        $monto = $_POST['monto'];
-        $poa = new Poa();
-        //Creamos una variable de argumentos momentáneos del poa y le asignamos el monto
-        //Debe de tener el key "presupuesto" para poder sincronizarlo con el objeto poa correctamente
-        $argspoa['presupuesto'] = $monto;
-        //Asignamos como argumento el id del registro de la tabla poa
-        $argspoa['id'] = $id;
-        //Cambiamos el estado de 0  a 1 para que el poa quede como "Completado"
-        $argspoa['estado'] = 1;
-        //Captamos los datos restantes necesarios para la modificación del registro poa
-        $argspoa['programa_id'] = $_SESSION['programa_id'];
-        $argspoa['usuario_id'] = $_SESSION['id'];
-        //Sincronizamos los argspoa con el objeto poa creado previamente
-        $poa->sincronizar($argspoa);
-
-        //Validamos errores
-        $poa->validar();
-        $errores = Poa::getErrores();
-        //Si no hay errores, procedemos a guardar el registro
-        if (empty($errores)) {
-            //Guardamos el registro en la base de datos
-            $poa->guardarsinRedireccion();
-            //Redireccionamos a la vista de resultados
-            header('Location: /resultado/admin?resultado=6');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /poa/admin');
             exit;
         }
-        //Si hay errores, los mostramos en la vista de guardar poa
-        $router->render('reporte/guardarpoa', [
-            'errores' => $errores,
-            'poa' => $poa
-        ]);
+        $programaId = $_SESSION['programa_id'] ?? null;
+        if (!$programaId) {
+            header('Location: /poa/admin');
+            exit;
+        }
+        // Bloqueo si el POA Presupuestal ya fue enviado/aprobado (solo coordinador).
+        exigirPoaPresupuestalEditable($programaId);
+
+        $anio  = date('Y');
+        $monto = (float) ($_POST['monto'] ?? 0);
+
+        $poa = Poa::porProgramaAnio($programaId, $anio);
+        if (!$poa) {
+            $poa = new Poa([
+                'programa_id' => $programaId,
+                'usuario_id'  => $_SESSION['id'],
+                'anio'        => $anio,
+                'presupuesto' => $monto,
+                'estado'      => Poa::BORRADOR
+            ]);
+        } else {
+            $poa->presupuesto = $monto;
+        }
+
+        $poa->validar();
+        $errores = Poa::getErrores();
+        if (empty($errores)) {
+            Poa::setUsuarioActual();
+            $poa->guardarsinRedireccion();
+            header('Location: /poa/admin?resultado=2');
+            exit;
+        }
+        header('Location: /poa/admin?resultado=12');
+        exit;
     }
+
+    // Deprecado: el cambio de estado del POA Presupuestal ahora se realiza por el flujo
+    // documental (/poa/enviar, /poa/observar, /poa/aprobar) con validación de estados.
     public static function updateguardarpoa(Router $router)
     {
-        //Comenzamos por validar el id recibido mediante GET y verificamos que sea un id que exista
-        if (isset($_GET['id'])) {
-            $id = validarORedireccionar('resultado/admin');
-        }
-        //Si es un POST
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            //Creamos los argumentos momentáneos del poa antes de registrarlo
-            $argspoa['id'] = $_GET['id'];
-            //Captamos el cambio de estado del poa
-            $argspoa['estado'] = $_POST['estado'];
-            //Captamos el objeto poa a modificar
-            $poa = Poa::find($argspoa['id']);
-            //Sincronizamos los argspoa con el objeto poa creado previamente
-            $poa->sincronizar($argspoa);
-            //Validamos errores
-            $poa->validar();
-            $errores = Poa::getErrores();
-            //Si no hay errores, procedemos a guardar el registro
-            if (empty($errores)) {
-                //Insertando la acción de audi para el usuario actual
-                //Enviamos el codigo de usuario a la base de datos
-                $vali = ReportePoaRubros::setUsuarioActual();
-                //Si es true...
-                if ($vali) {
-                    //Guardamos el registro en la base de datos
-                    $poa->guardarsinRedireccion();
-                } else {
-                    $errores[] = "Error al asignar el usuario actual.";
-                }
-                //Redireccionamos a la vista de resultados
-                header('Location: /resultado/admin?resultado=6');
-                exit;
-            }
-        }
-        //Si hay errores, los mostramos en la vista de guardar poa
-        $router->render('reporte/modificarpoa', [
-            'errores' => $errores,
-            'poa' => $poa
-        ]);
+        header('Location: /poa/admin');
+        exit;
     }
 }

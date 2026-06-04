@@ -51,8 +51,11 @@ $router->post('/fuente_financiamiento/eliminar', [Fuente_FinanciamientoControlle
 $router->get('/dfinanciamiento/crear', [DetalleFinanciamientoController::class, 'crear']);
 $router->post('/dfinanciamiento/crear', [DetalleFinanciamientoController::class, 'crear']);
 
-//Rutas para POA
+//Rutas para POA Presupuestal (el Contador revisa: aprueba / observa)
 $router->get('/poa/admin', [PoaController::class, 'index']);
+$router->get('/poa/revisar', [PoaController::class, 'revisar']);
+$router->post('/poa/observar', [PoaController::class, 'observar']);
+$router->post('/poa/aprobar', [PoaController::class, 'aprobar']);
 
 
 

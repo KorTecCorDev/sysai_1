@@ -75,6 +75,12 @@ $router->get('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/actualizar', [RubroController::class, 'actualizar']);
 $router->post('/rubro/eliminar', [RubroController::class, 'eliminar']);
 
+//Rutas para POA Presupuestal (el Coordinador elabora: inicia / envía)
+$router->get('/poa/admin', [PoaController::class, 'index']);
+$router->get('/poa/revisar', [PoaController::class, 'revisar']);
+$router->post('/poa/crear', [PoaController::class, 'crear']);
+$router->post('/poa/enviar', [PoaController::class, 'enviar']);
+
 //Rutas para el POA de Indicadores (el Coordinador elabora: crea / envía)
 $router->get('/poa_indicadores/admin', [PoaIndicadoresController::class, 'index']);
 $router->get('/poa_indicadores/revisar', [PoaIndicadoresController::class, 'revisar']);

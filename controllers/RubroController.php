@@ -47,6 +47,8 @@ class RubroController
         $idactividad = validarId('actividad');
         // A1: el coordinador solo puede crear rubros en una actividad de SU programa.
         exigirProgramaPropioPorActividad($idactividad);
+        // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
+        exigirPoaPresupuestalEditablePorActividad($idactividad);
         $categoriarubros = CategoriaRubro::all();
         $tiporubros = TipoRubro::all();
         $rubro = new Rubro();
@@ -91,6 +93,8 @@ class RubroController
             if (!$rubro) { header('Location: /resultado/admin'); exit(); }
             // A1: el rubro debe colgar de una actividad de SU programa.
             exigirProgramaPropioPorActividad($rubro->actividad_id);
+            // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
+            exigirPoaPresupuestalEditablePorActividad($rubro->actividad_id);
             $actividad = Actividad::find($id[1]);
             $categoriarubros = CategoriaRubro::all();
             $tiporubros = TipoRubro::all();
@@ -137,6 +141,8 @@ class RubroController
             if (!$rubro) { header('Location: /resultado/admin'); exit(); }
             // A1: solo puede eliminar rubros de una actividad de SU programa.
             exigirProgramaPropioPorActividad($rubro->actividad_id);
+            // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
+            exigirPoaPresupuestalEditablePorActividad($rubro->actividad_id);
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Rubro::setUsuarioActual();

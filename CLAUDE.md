@@ -384,6 +384,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 013 | `ampliar_tipo_comprobante.sql` | Catálogo `tipo_comprobante`: `TCM002 Boleta`→`Boleta de venta` + nuevos TCM005-010 (Boleta de viaje, Recibo de caja/servicio básico/viaje/pago de servicios/general). Decisión 2026-06-03. |
 | 014 | `coordinador_programa_backfill_vistas.sql` *(Fase 1)* | Backfill de `coordinador_programa` desde `poa` (cargo 3) + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar del vínculo activo. |
 | 015 | `poa_indicadores_observacion.sql` *(Fase 2)* | `poa_indicadores` += `observacion` varchar(500). El Contador, al **Observar** (devolver) el documento, registra el motivo para que el Coordinador sepa qué subsanar (cambia la regla "retorno sin comentario" del Grupo 11). |
+| 016 | `poa_observacion.sql` *(Item 4)* | `poa` += `observacion` varchar(500). Mismo patrón que la 015, para el flujo del POA Presupuestal. |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -448,7 +449,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 1. **Migración de BD** — ✅ **COMPLETADO** (`database/migrations/001`-`009`, + `013` catálogo, + `014` vínculo)
 2. Vínculo Coordinador-Programa — ✅ **COMPLETADO** (Fase 1)
 3. POA Indicadores — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
-4. POA Presupuestal
+4. POA Presupuestal — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
 5. Rendiciones
 6. POA Rendición
 7. Otros Ingresos/Egresos
@@ -507,12 +508,17 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > (e) upsert de indicadores en `detalle_actividad` (1 fila, precarga al reeditar). Recargar con Ctrl+F5 para
 > tomar el `bundle.min.js`. ⚠️ admin local = `robertokar97@gmail.com`.
 
-### 4 — POA Presupuestal (estados + flujo)
-- [ ] Estados completos 0-3 en `poa` (campo ya soporta el rango).
-- [ ] Flujo aprobación Coordinador↔Contador (observación sin comentario retorna a Borrador editable).
-- [ ] Al aprobar: calcular y persistir `presupuesto_comprometido` por fuente = Σ POAs Presupuestales aprobados que usan la fuente.
-- [ ] Tras aprobado: solo visible al Coordinador; solo Contador modifica (adenda).
-- [ ] Máximo un POA Presupuestal activo por programa por año.
+### 4 — POA Presupuestal (estados + flujo)  ✅ COMPLETADO (QA HTTP automatizado 18/18, 2026-06-04)
+- [x] Estados 0-3 en `poa` (Borrador/Enviado/Observado/Aprobado) — reemplaza la semántica vieja del modal (En espera/Completado/Verificado). Constantes + helpers en `models/Poa.php` (`porProgramaAnio`, `esEditable`, `etiquetaEstado`, `presupuestoCalculado`). Migración **016**: `poa.observacion` varchar(500).
+- [x] Flujo Coordinador↔Contador en `PoaController` (index/crear/enviar/observar/aprobar/revisar) **igual al Item 3**: vista `poa/revisar` read-only (árbol Resultado→Producto→Actividad→**Rubros** + total) y **comentario obligatorio** al observar (decisión 2026-06-04, no "sin comentario"). `enviar`/`aprobar` limpian la observación.
+- [x] **Presupuesto** del documento = Σ `rubro.monto` del programa (`presupuestoCalculado`, S/ base); se calcula al iniciar y **se congela al enviar**. El legado `/reporte/guardarpoa` ahora hace upsert en **Borrador** (sin forzar estado) respetando el bloqueo; `/reporte/modificarpoa` quedó **deprecado** (redirige).
+- [x] **Decisión confirmada (2026-06-04):** el `presupuesto_comprometido` **NO** se calcula al aprobar; se acumula desde **rendiciones + otros egresos** por fuente (`ff_id`) — corresponde a los items 5/6/8. El POA Presupuestal es solo planificación.
+- [x] **Bloqueo de rubros** al Enviar/Aprobar: helper `exigirPoaPresupuestalEditable` / `...PorActividad` (redirect+flash `resultado=16`) en `RubroController` (crear/actualizar/eliminar) + **banner y botones ocultos** en `rubro/admin` (prevención UI). Admin/Contador pasan (adenda).
+- [x] Máximo un POA Presupuestal por programa/año (`crear` valida `porProgramaAnio` → `resultado=17`). Tras aprobado: el coordinador no edita (solo Contador como adenda, vía el helper que solo restringe a coordinadores).
+- [x] Rutas `/poa/{admin,revisar,crear,enviar,observar,aprobar}` por rol (iadmin todas; iconta admin/revisar/observar/aprobar; icoordi admin/revisar/crear/enviar). Entrada de menú "POA Presupuestal" en los 3 layouts. Códigos notif. 16/17.
+- [x] CSRF: las rutas de flujo (`/enviar|/observar|/aprobar`) ya quedaron protegidas en el fix del Item 3.
+
+> **QA:** arnés `database/qa_poa_presupuestal.ps1` (18/18) — login, CSRF 419, autorización por rol, cross-tenant 403, flujo 0→1→2→1→3 en BD, presupuesto calculado (28000) y congelado, bloqueo de rubros en Enviado **y** Aprobado, observar sin/con comentario, transición inválida, rechazo de GET. **Hallazgo corregido:** `consultarPreparado()` pasa filas por `crearObjeto()` que descarta columnas fuera de `$columnasDB` (alias de agregación) → `presupuestoCalculado` ahora lee el escalar con mysqli directo.
 
 ### 5 — Rendiciones
 - [ ] Vincular rendición a `poa_rendicion_id` y manejar `estado` (columnas ya creadas).

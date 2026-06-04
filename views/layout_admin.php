@@ -88,6 +88,12 @@ $cargo = $_SESSION['cargo'] ?? false;
                   </a>
                 </li>
                 <li class="sidebar-item">
+                  <a href="/poa/admin" class="sidebar-link">
+                    <i class="bi bi-cash-coin"></i>
+                    <span>POA Presupuestal</span>
+                  </a>
+                </li>
+                <li class="sidebar-item">
                   <a href="/categoria_rubro/admin" class="sidebar-link">
                     <i class="bi bi-tags"></i>
                     <span>Categoría de Rubros</span>
