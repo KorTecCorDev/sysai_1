@@ -447,7 +447,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 1. **Migración de BD** — ✅ **COMPLETADO** (`database/migrations/001`-`009`, + `013` catálogo, + `014` vínculo)
 2. Vínculo Coordinador-Programa — ✅ **COMPLETADO** (Fase 1)
-3. POA Indicadores
+3. POA Indicadores — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
 4. POA Presupuestal
 5. Rendiciones
 6. POA Rendición
@@ -471,7 +471,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [x] Migración **014**: backfill de `coordinador_programa` desde los `poa` de cargo 3 + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar de `coordinador_programa` (activo).
 - Probado por HTTP (login admin, crear coordinador→vínculo, quitar programa→vínculo `activo=0`) y a nivel de datos.
 
-### 3 — POA Indicadores (documento + flujo)  🔨 CONSTRUIDO (pendiente QA HTTP final)
+### 3 — POA Indicadores (documento + flujo)  ✅ COMPLETADO (QA HTTP automatizado, 2026-06-04)
 - [x] Modelo `PoaIndicadores` (tabla `poa_indicadores`) con estados y `observacion`. Modelo `DetalleActividad` (captura de indicadores por actividad, 1:1, upsert).
 - [x] Flujo de estados 0→1→2→3 (Borrador/Enviado/Observado/Aprobado) en `PoaIndicadoresController` (index/crear/enviar/observar/aprobar/revisar).
 - [x] Coordinador elabora (crea/captura indicadores/envía); Contador aprueba/observa **con comentario obligatorio** (migración 015) desde la **vista de revisión consolidada read-only** (`poa_indicadores/revisar`).
@@ -481,21 +481,31 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [x] **Banner persistente**: `eliminarAlertas()` (`src/js/app.js`) auto-oculta los `.alert` flash a los 3 s, pero ahora respeta `.alert-persistente`; los banners de observación llevan esa clase para no desaparecer hasta cambiar de vista. ⚠️ recompilar bundle (`npx gulp js`) si se vuelve a tocar el JS.
 - Decisión 2026-06-04: el **comentario de observación** reemplaza la regla "retorno sin comentario" del Grupo 11 (para POA Indicadores). El Presupuestal podría adoptarlo después (no cambiado aún).
 
-> **⏳ PRUEBAS PENDIENTES (QA HTTP) — para cerrar el item 3 como COMPLETADO.** Servidor `local3000`; 3 sesiones (admin/contador/coordinador). ⚠️ admin local = `robertokar97@gmail.com` (no entra con `Test1234*`). Recargar con Ctrl+F5 para tomar el `bundle.min.js` nuevo.
+> **✅ QA HTTP AUTOMATIZADO (2026-06-04) — 18/18 OK.** Arnés `database/qa_poa_indicadores.ps1`
+> (PowerShell + `Invoke-WebRequest`, 3 sesiones reales por cookie + verificación en BD). Credenciales
+> locales: coordinador `coordinador@sysai.test`/`Test1234*` (prog. 1); contador `contador@sysai.test`/`admin1234`
+> (= admin). Cubre: login 3 vías (incl. password incorrecto), **CSRF 419** en `/crear` sin token,
+> **autorización por rol** (coordinador sin `/aprobar`, contador sin `/crear` → `/error`), **cross-tenant**
+> (coordinador no revisa doc ajeno → 403), **flujo de estados completo** Borrador→Enviado→Observado→Enviado→Aprobado
+> con verificación en BD, **observar sin comentario** → `resultado=15` sin cambio, **transición inválida** →
+> `resultado=13`, **bloqueo de jerarquía** con doc Enviado (`/resultado/crear` → `resultado=14`, no inserta),
+> y **acciones rechazan GET**. Re-ejecutable; crea y limpia su propio doc de prueba (programa 1).
 >
-> **Prerrequisitos:** migr. 015 aplicada (✅); programa con coordinador vinculado (`coordinador_programa.activo=1`); jerarquía mínima Resultado→Producto→Actividad.
+> **Hallazgo corregido (CSRF):** `Router::requiereCsrf()` solo protegía sufijos `/crear|/actualizar|/eliminar`
+> → las acciones de flujo `/enviar`, `/observar`, `/aprobar` y `/detalle_actividad/guardar` **mutaban estado
+> sin token CSRF**. Se añadieron esos sufijos (`/enviar|/observar|/aprobar|/guardar`) a la protección. Los
+> formularios ya emitían `csrf_input()`, así que no rompió nada.
 >
-> 1. **Creación (Coordinador):** sin doc ve "Iniciar"; crear → Borrador + `resultado=1`; reintentar no duplica (`resultado=11`); `programa_id` lo fija la sesión (ignora POST ajeno).
-> 2. **Indicadores (detalle_actividad):** botón Indicadores por actividad; guardar con meta+responsable → upsert (1 sola fila); reeditar precarga; validación sin meta/responsable falla.
-> 3. **Flujo feliz:** Enviar (Borrador→Enviado, queda bloqueado); Aprobar (contador, Enviado→Aprobado); Observar (con comentario → coordinador ve banner); reenviar (Observado→Enviado, `observacion`=NULL en BD).
-> 4. **Caminos negativos:** Observar sin comentario → `revisar?...&resultado=15`, sin cambio; transición desde estado inválido → `resultado=13`; sin `id`/`id` inexistente → redirige sin 500; acciones rechazan GET (solo POST).
-> 5. **Bloqueo de jerarquía (Enviado y Aprobado):** banner + botones ocultos en resultado/producto/actividad admin; URL directa a crear/actualizar/eliminar y `detalle_actividad/guardar` → `resultado=14`, no persiste; en Borrador/Observado sí funciona.
-> 6. **Autorización:** coordinador solo su doc (`revisar?id=` ajeno rechazado); coordinador sin rutas observar/aprobar; contador sin rutas crear/enviar; admin todo; sin sesión → login.
-> 7. **Vista `revisar`:** árbol read-only completo; actividad sin indicador → fila roja; sin resultados → alert; panel de decisión solo contador/admin y solo si Enviado; coordinador (Previsualizar) ve árbol sin panel.
-> 8. **Banner de observación (visualización):** contador en `admin` ve la fila-banner solo en docs Observado (no en Borrador/Enviado/Aprobado); el banner **no** desaparece a los 3 s (`.alert-persistente`); los flash de CRUD **sí** desaparecen; texto escapado con `s()` (probar inyección `<script>`); tras reenviar el coordinador, la fila-banner desaparece de la tabla del contador.
-> 9. **UI / regresión:** entrada de menú en los 3 layouts; `data-confirm` pide confirmación sin violar CSP; CSRF en POST sin token → 419; con doc en Borrador el CRUD normal de jerarquía sigue OK.
+> **Nota (observación al reenviar/aprobar):** el controlador hace `observacion = null`, pero `ActiveRecord`
+> normaliza `null → ''` en todo `UPDATE` (intencional). Por tanto "limpiar" = cadena vacía, no `NULL` literal;
+> el banner usa `!empty()` así que `''` lo oculta igual. (Ajustado en CLAUDE.md respecto a la redacción previa "NULL".)
 >
-> Al pasar las 9 secciones: marcar item 3 como **COMPLETADO** aquí y en la memoria `estado-implementacion-mvp.md`.
+> **Residual — solo QA visual en navegador (no automatizable por HTTP):** (a) banner de observación con
+> `.alert-persistente` **no** desaparece a los 3 s mientras los flash de CRUD sí; (b) consola sin violaciones
+> de CSP y `data-confirm` pide confirmación; (c) entrada de menú presente en los 3 layouts; (d) árbol de
+> `revisar` read-only (actividad sin indicador en rojo, panel de decisión solo contador/admin si Enviado);
+> (e) upsert de indicadores en `detalle_actividad` (1 fila, precarga al reeditar). Recargar con Ctrl+F5 para
+> tomar el `bundle.min.js`. ⚠️ admin local = `robertokar97@gmail.com`.
 
 ### 4 — POA Presupuestal (estados + flujo)
 - [ ] Estados completos 0-3 en `poa` (campo ya soporta el rango).

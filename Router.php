@@ -28,6 +28,12 @@ class Router
         return str_ends_with($url, '/crear')
             || str_ends_with($url, '/actualizar')
             || str_ends_with($url, '/eliminar')
+            // Acciones de flujo documental (POA Indicadores/Presupuestal/Rendición) y
+            // captura de indicadores: mutan estado y por tanto también exigen token.
+            || str_ends_with($url, '/enviar')
+            || str_ends_with($url, '/observar')
+            || str_ends_with($url, '/aprobar')
+            || str_ends_with($url, '/guardar')
             || in_array($url, [
                 '/reporte/modificarpoa', '/reporte/guardarpoa',
                 '/login', '/chgpsswd', '/token_verify', '/updtepsswd',
