@@ -74,6 +74,7 @@
                     <?php elseif ((int) $doc->estado === Poa::APROBADO) : ?>
                         <div class="alert alert-success">
                             POA Presupuestal aprobado. Los rubros ya no admiten cambios (solo el Contador como adenda).
+                            Tus rendiciones quedaron <strong>aprobadas</strong> y descontadas del saldo contable.
                         </div>
                     <?php endif; ?>
 

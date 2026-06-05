@@ -9,6 +9,7 @@ use Model\Programa;
 use Model\Producto;
 use Model\Actividad;
 use Model\Resultado;
+use Model\Rendicion;
 
 class PoaController
 {
@@ -181,6 +182,9 @@ class PoaController
     // Contador/Admin: Enviado -> Aprobado.
     // (El presupuesto_comprometido NO se calcula aquí: se acumula desde rendiciones +
     //  otros egresos por fuente — ver items 5/6/8.)
+    // Item 6 ("POA Rendición" = este mismo documento): al aprobar, las rendiciones del
+    // programa se APRUEBAN (estado=1) y se congelan; recién entonces descuentan el saldo
+    // contable (las vistas de saldo filtran estado=1 — migr. 018).
     public static function aprobar(Router $router)
     {
         exigirRol([1, 2]);
@@ -210,6 +214,8 @@ class PoaController
         $doc->observacion = null;
         Poa::setUsuarioActual();
         $doc->guardarsinRedireccion();
+        // Item 6: congela y aprueba las rendiciones del programa -> descuento del saldo contable.
+        Rendicion::aprobarPorPrograma($doc->programa_id);
         header('Location: /poa/admin?resultado=2');
         exit();
     }

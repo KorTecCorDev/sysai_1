@@ -118,7 +118,7 @@
                     <form method="POST" action="/poa/aprobar"><?php echo csrf_input(); ?>
                         <input type="hidden" name="id" value="<?php echo s($doc->id); ?>">
                         <button type="submit" class="btn btn-success rounded-pill px-4"
-                            data-confirm="¿Aprobar este POA Presupuestal?">
+                            data-confirm="¿Aprobar este POA Presupuestal? Las rendiciones del programa quedarán aprobadas y se descontarán del saldo contable.">
                             <i class="bi bi-check2-circle me-2"></i> Aprobar
                         </button>
                     </form>

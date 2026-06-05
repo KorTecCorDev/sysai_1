@@ -1,6 +1,8 @@
-# QA HTTP automatizado — POA Presupuestal (item 4)
+# QA HTTP automatizado — POA Presupuestal (item 4) + POA Rendicion (item 6)
 # Login, CSRF 419, autorizacion por rol, cross-tenant, flujo de estados 0-1-2-3,
 # congelado del presupuesto, bloqueo de rubros (Enviado/Aprobado). Verificacion en BD.
+# Item 6: al aprobar el POA, las rendiciones del programa pasan a Aprobada(1) y recien
+# entonces se descuentan del saldo contable (vista_total_egresos filtra estado=1).
 param(
     [string]$BaseUrl   = 'http://localhost:3000',          # URL del servidor de desarrollo
     [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',   # ruta a mysql.exe de XAMPP
@@ -134,10 +136,26 @@ $est = Q "SELECT estado FROM poa WHERE id=$docId;"
 $obsLen = Q "SELECT LENGTH(IFNULL(observacion,'')) FROM poa WHERE id=$docId;"
 Assert ($est -eq '1' -and $obsLen -eq '0') "Reenviar -> Enviado(1) y observacion vacia (estado=$est, len=$obsLen)"
 
+# --- Item 6: rendicion PENDIENTE no afecta el saldo; al aprobar el POA se aprueba y descuenta ---
+$egresosAntes = Q "SELECT total_egresos FROM vista_total_egresos;"
+& $mysql -u root sysai -e "INSERT INTO rendicion (rubro_id,tipo_comprobante_id,ff_id,codigo,serie,numero,detalle,ruc,razon_social,monto,estado,fecha_original,fecha) VALUES (1,1,1,'QAIT6','S001','1','QA ITEM6','20123456789','QA RAZON',123.45,0,'$anio-01-01',NOW());" | Out-Null
+$rendId = Q "SELECT id FROM rendicion WHERE codigo='QAIT6' LIMIT 1;"
+$estRend = Q "SELECT estado FROM rendicion WHERE id=$rendId;"
+$egresosConPend = Q "SELECT total_egresos FROM vista_total_egresos;"
+Assert ($estRend -eq '0' -and $egresosConPend -eq $egresosAntes) "Rendicion Pendiente(0) NO afecta el saldo contable ($egresosAntes==$egresosConPend)"
+
 # Contador aprueba (Enviado->Aprobado)
 $r = Post-Raw $conta.Sess '/poa/aprobar' @{ id=$docId; csrf_token=$conta.Token }
 $est = Q "SELECT estado FROM poa WHERE id=$docId;"
 Assert ($est -eq '3') "Aprobar -> Aprobado(3) en BD (estado=$est)"
+
+# Item 6: la rendicion del programa quedo Aprobada(1) y el saldo contable la descuenta
+$estRend = Q "SELECT estado FROM rendicion WHERE id=$rendId;"
+$egresosDespues = Q "SELECT total_egresos FROM vista_total_egresos;"
+Assert ($estRend -eq '1') "Al aprobar el POA, la rendicion del programa pasa a Aprobada(1) (estado=$estRend)"
+$cmp = Q "SELECT ABS($egresosDespues - $egresosAntes - 123.45) < 0.001;"
+Assert ($cmp -eq '1') "El saldo contable descuenta la rendicion al aprobar (egresos $egresosAntes -> $egresosDespues)"
+& $mysql -u root sysai -e "DELETE FROM rendicion WHERE id=$rendId;" | Out-Null
 
 # Bloqueo de rubros tambien con doc Aprobado
 $r = Post-Raw $coord.Sess '/rubro/crear?actividad_id=1' @{ nombre='QA2'; monto='5'; categoria_rubro_id='1'; tipo_rubro_id='1'; csrf_token=$coord.Token }

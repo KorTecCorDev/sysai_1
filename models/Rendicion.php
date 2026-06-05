@@ -11,6 +11,16 @@ class Rendicion extends ActiveRecord
     protected static $tabla = 'rendicion';
     protected static $columnasDB = ['id', 'rubro_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'fecha'];
 
+    // Estado de la rendición (item 6 — "POA Rendición"). El "POA Rendición" no es un
+    // documento aparte: es el mismo POA Presupuestal. Una rendición nace PENDIENTE (0,
+    // DEFAULT de la columna) y pasa a APROBADA (1) cuando el Contador aprueba el POA
+    // Presupuestal del programa; recién entonces se descuenta del saldo contable
+    // (ver migr. 018). Por eso `estado` se mantiene FUERA de $columnasDB: el CRUD normal
+    // no lo toca (INSERT toma el DEFAULT, UPDATE no lo pisa) y la aprobación se hace con
+    // un UPDATE directo en aprobarPorPrograma().
+    const PENDIENTE = 0;
+    const APROBADA  = 1;
+
     public $id;
     public $rubro_id;
     public $tipo_comprobante_id;
@@ -107,6 +117,32 @@ class Rendicion extends ActiveRecord
         $fila = ($res instanceof \mysqli_result) ? $res->fetch_assoc() : null;
         $stmt->close();
         return (float) ($fila['total'] ?? 0);
+    }
+
+    // Aprueba (estado=APROBADA) todas las rendiciones PENDIENTES de un programa, derivando
+    // el programa por la cadena rendicion → rubro → actividad → producto → resultado.
+    // La llama PoaController::aprobar al aprobar el POA Presupuestal: congela las rendiciones
+    // y dispara su descuento del saldo contable (las vistas de saldo filtran estado=APROBADA).
+    // Idempotente: solo afecta filas que aún no están aprobadas. Devuelve el nº de filas afectadas.
+    public static function aprobarPorPrograma($programaId): int
+    {
+        $query = "UPDATE " . static::$tabla . " r
+                  JOIN rubro ru ON ru.id = r.rubro_id
+                  JOIN actividad a ON a.id = ru.actividad_id
+                  JOIN producto p ON p.id = a.producto_id
+                  JOIN resultado re ON re.id = p.resultado_id
+                  SET r.estado = " . self::APROBADA . "
+                  WHERE re.programa_id = ? AND r.estado <> " . self::APROBADA;
+        $stmt = self::$db->prepare($query);
+        if ($stmt === false) {
+            return 0;
+        }
+        $pid = (int) $programaId;
+        $stmt->bind_param('i', $pid);
+        $stmt->execute();
+        $afectadas = $stmt->affected_rows;
+        $stmt->close();
+        return (int) $afectadas;
     }
 
     // Valida el límite del rubro: Σ rendiciones (incluida la actual) ≤ monto del rubro.

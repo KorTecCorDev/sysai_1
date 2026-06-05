@@ -14,8 +14,8 @@
 > (`database/migrations/010-012`), y se descartó el sistema de migraciones viejo (`db/`). Probado end-to-end
 > por HTTP en local (CSRF 419, auth redirect, login 3 roles, saldos, errores neutros) — todo OK.
 > **BD local:** ✅ migraciones de negocio 001-009 (+ la 013 de catálogo) **ya aplicadas** sobre la base
-> reconciliada — ver *[SECCION: ESTADO DE LA BD]*. **Pendiente de despliegue:** replicar el flujo en Hostinger;
-> QA visual de CSP.
+> reconciliada — ver *[SECCION: ESTADO DE LA BD]*. **Pendiente de despliegue:** replicar el flujo en Hostinger.
+> El QA visual de CSP en local ya está **verificado** (sin violaciones en consola).
 
 ---
 
@@ -71,7 +71,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-013
+php database/migrate.php                                                       # aplica migrations/001-019
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -109,9 +109,9 @@ local3000                             # php -S localhost:3000  → http://localh
 | Script | Item | Cubre (nº de checks) |
 |---|---|---|
 | `qa_poa_indicadores.ps1` | 3 | Flujo POA Indicadores 0→1→2→3, CSRF 419, rol, cross-tenant, bloqueo de jerarquía, observación. **18** |
-| `qa_poa_presupuestal.ps1` | 4 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación. **18** |
+| `qa_poa_presupuestal.ps1` | 4 + 6 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación + **item 6** (al aprobar, la rendición pasa a Aprobada(1) y se descuenta del saldo contable). **21** |
 | `qa_rendicion.ps1` | 5 | Rendición imputada al rubro, límite Σ ≤ monto del rubro, cross-tenant, CSRF. **10** |
-| `qa_all.ps1` | — | **Runner**: corre los tres y resume (esperado: `TODOS LOS ARNESES OK`, 46 checks). |
+| `qa_all.ps1` | — | **Runner**: corre los tres y resume (esperado: `TODOS LOS ARNESES OK`, 49 checks). |
 
 **Cómo ejecutar (desde la raíz del proyecto):**
 ```powershell
@@ -130,7 +130,7 @@ pwsh -File database\qa_poa_presupuestal.ps1
 
 **Prerrequisitos:**
 - Servidor `local3000` corriendo y **MariaDB de XAMPP** arriba.
-- BD `sysai` con migraciones **001-017** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
+- BD `sysai` con migraciones **001-019** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
   jerarquía Resultado→Producto→Actividad y **rubros**; programa **5** para los tests cross-tenant).
 - Usuarios de prueba: **coordinador@sysai.test / `Test1234*`** (programa 1) y **contador@sysai.test / `admin1234`**
   (esta última también es la del admin `robertokar97@gmail.com`).
@@ -432,6 +432,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 | 015 | `poa_indicadores_observacion.sql` *(Fase 2)* | `poa_indicadores` += `observacion` varchar(500). El Contador, al **Observar** (devolver) el documento, registra el motivo para que el Coordinador sepa qué subsanar (cambia la regla "retorno sin comentario" del Grupo 11). |
 | 016 | `poa_observacion.sql` *(Item 4)* | `poa` += `observacion` varchar(500). Mismo patrón que la 015, para el flujo del POA Presupuestal. |
 | 017 | `rendicion_rubro.sql` *(Item 5)* | `rendicion`: += `rubro_id` (FK), **se elimina `actividad_id`**, se limpia la tabla. Reescribe las 5 vistas que dependían de `rendicion.actividad_id` para derivar la actividad vía rubro (conservan columnas de salida + agregan `rubro_id`). |
+| 018 | `saldo_solo_rendiciones_aprobadas.sql` *(Item 6)* | Reescribe las 2 vistas de saldo **contable** (`vista_total_egresos`, `vista_saldo_fuente_financiamiento`) para restar **solo** rendiciones `estado=1` (Aprobada). Las vistas de reporte que suman rendiciones se mantienen sin filtrar. |
+| 019 | `backfill_rendiciones_poa_aprobado.sql` *(Item 6)* | Backfill: pone `estado=1` a las rendiciones de programas cuyo POA Presupuestal ya está Aprobado (consistencia con la regla de la 018). Idempotente; sin efecto en greenfield. |
 
 **Hallazgos del esquema real (confirmados al volcar la BD):**
 - `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
@@ -498,7 +500,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 3. POA Indicadores — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
 4. POA Presupuestal — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
 5. Rendiciones — ✅ **COMPLETADO** (rendición↔rubro, QA HTTP 10/10, 2026-06-04)
-6. POA Rendición
+6. POA Rendición — ✅ **COMPLETADO** (= mismo doc que el POA Presupuestal; aprobar descuenta saldo; QA 21/21, 2026-06-05)
 7. Otros Ingresos/Egresos
 8. Saldos
 9. Reportes Excel *(diferido v1.1)*
@@ -548,12 +550,11 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > normaliza `null → ''` en todo `UPDATE` (intencional). Por tanto "limpiar" = cadena vacía, no `NULL` literal;
 > el banner usa `!empty()` así que `''` lo oculta igual. (Ajustado en CLAUDE.md respecto a la redacción previa "NULL".)
 >
-> **Residual — solo QA visual en navegador (no automatizable por HTTP):** (a) banner de observación con
-> `.alert-persistente` **no** desaparece a los 3 s mientras los flash de CRUD sí; (b) consola sin violaciones
-> de CSP y `data-confirm` pide confirmación; (c) entrada de menú presente en los 3 layouts; (d) árbol de
-> `revisar` read-only (actividad sin indicador en rojo, panel de decisión solo contador/admin si Enviado);
-> (e) upsert de indicadores en `detalle_actividad` (1 fila, precarga al reeditar). Recargar con Ctrl+F5 para
-> tomar el `bundle.min.js`. ⚠️ admin local = `robertokar97@gmail.com`.
+> **QA visual en navegador — ✅ VERIFICADO:** (a) banner de observación con `.alert-persistente` **no**
+> desaparece a los 3 s mientras los flash de CRUD sí; (b) consola sin violaciones de CSP y `data-confirm`
+> pide confirmación; (c) entrada de menú presente en los 3 layouts; (d) árbol de `revisar` read-only
+> (actividad sin indicador en rojo, panel de decisión solo contador/admin si Enviado); (e) upsert de
+> indicadores en `detalle_actividad` (1 fila, precarga al reeditar). ⚠️ admin local = `robertokar97@gmail.com`.
 
 ### 4 — POA Presupuestal (estados + flujo)  ✅ COMPLETADO (QA HTTP automatizado 18/18, 2026-06-04)
 - [x] Estados 0-3 en `poa` (Borrador/Enviado/Observado/Aprobado) — reemplaza la semántica vieja del modal (En espera/Completado/Verificado). Constantes + helpers en `models/Poa.php` (`porProgramaAnio`, `esEditable`, `etiquetaEstado`, `presupuestoCalculado`). Migración **016**: `poa.observacion` varchar(500).
@@ -576,18 +577,36 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 > **QA:** arnés `database/qa_rendicion.ps1` (10/10) — login, CSRF 419, cross-tenant 403 (rubro ajeno), creación imputada al rubro (verifica `rubro_id`/`estado=0`/`poa_rendicion_id=NULL`), límite por rubro (rechaza 4000>3500 con mensaje, acepta el tope exacto 3500), rechazo de GET en eliminar. Sin regresión en items 3/4 (18/18 c/u).
 >
-> ⏭️ **PENDIENTE (próximo a realizar):** añadir a `database/qa_rendicion.ps1` un check automatizado del
-> **bloqueo de rendiciones por estado del POA Presupuestal** (fix 2026-06-05): poner el POA del programa 1 en
-> **Enviado**, verificar que el coordinador NO puede crear/editar/eliminar rendiciones (redirect `resultado=18`,
-> sin inserción en BD), confirmar que **Contador/Admin sí pueden** (adenda), y **revertir** el estado del POA
-> al terminar (auto-limpieza, como el resto de arneses). Hoy solo está verificado de forma manual.
+> ✅ **VERIFICADO (automatizado):** `database/qa_rendicion.ps1` cubre el **bloqueo de rendiciones por estado
+> del POA Presupuestal** (fix 2026-06-05): pone el POA del programa 1 en **Enviado**, verifica que el
+> coordinador NO puede crear/editar/eliminar rendiciones (redirect `resultado=18`, sin inserción en BD),
+> confirma que **Contador/Admin sí pueden** (adenda), y **revierte** el estado del POA al terminar
+> (auto-limpieza, como el resto de arneses). Pasó exitosamente.
 
-### 6 — POA Rendición (documento + flujo + saldos)
-- [ ] Modelo `PoaRendicion` (tabla `poa_rendicion`).
-- [ ] Uno por programa por año. Flujo 0-3.
-- [ ] Al **enviar**: bloquear al Coordinador (no agrega rendiciones).
-- [ ] Al **aprobar**: bloquear rendiciones y descontar `presupuesto_contable` de cada fuente.
-- [ ] Re-apertura por Contador → *diferido v1.1*.
+### 6 — POA Rendición  ✅ COMPLETADO (QA HTTP 21/21, 2026-06-05)
+> **Decisión 2026-06-05 (reencuadre del Grupo 9):** el **"POA Rendición" NO es un documento
+> aparte**: es **el mismo POA Presupuestal** (`poa`). El "POA Rendición" que veía el usuario es el
+> **reporte Excel** de ese documento (`/reporte/poarendicion`), que **se mantiene tal cual**. Por
+> tanto **no** se construye modelo/flujo/vistas/rutas `PoaRendicion`; la tabla `poa_rendicion`
+> (migr. 005) y `rendicion.poa_rendicion_id` (migr. 006) **quedan vestigiales** (solo se usa
+> `rendicion.estado`). El ciclo de la rendición lo gobierna el flujo del POA Presupuestal (item 4).
+- [x] **Bloqueo al enviar/aprobar**: ya cubierto por el candado del item 5 (`resultado=18`): cuando el
+  POA Presupuestal está Enviado(1)/Aprobado(3) el Coordinador no agrega/edita/elimina rendiciones.
+- [x] **Al aprobar el POA Presupuestal** (`PoaController::aprobar`) → `Rendicion::aprobarPorPrograma()`
+  marca **todas** las rendiciones del programa como **Aprobada (estado=1)** y las congela. Constantes
+  `Rendicion::PENDIENTE=0` / `APROBADA=1`. `estado` se mantiene **fuera de `$columnasDB`** (el CRUD no lo
+  toca; INSERT toma DEFAULT 0); la aprobación es un `UPDATE` directo (join rubro→actividad→…→programa).
+- [x] **Descuento del saldo contable**: migración **018** reescribe las 2 vistas de saldo contable
+  (`vista_total_egresos`, `vista_saldo_fuente_financiamiento`) para restar **solo** rendiciones
+  `estado=1`. Antes de aprobar, una rendición Pendiente(0) **no** afecta el saldo; al aprobar, sí.
+  Migración **019**: backfill de rendiciones de programas con POA ya Aprobado (idempotente; no afecta greenfield).
+- [x] **Adenda**: si el Contador registra una rendición sobre un POA ya Aprobado, nace Aprobada
+  (auto-aprobación en `RendicionController::crear`) para que el saldo la refleje al instante.
+- [ ] Re-apertura por Contador → *diferido v1.1* (MVP = aprobar una vez).
+
+> **QA:** integrado en `database/qa_poa_presupuestal.ps1` (ahora **21/21**): una rendición Pendiente(0)
+> no mueve `vista_total_egresos`; al aprobar el POA pasa a Aprobada(1) y el saldo la descuenta
+> (Δ egresos = monto). Crea y limpia su propia rendición de prueba (programa 1). Suite completa OK.
 
 ### 7 — Otros Ingresos/Egresos
 - [ ] Actualizar modelo `OtrosIngresosEgresos`: `poa_id` → `programa_id` (columna ya migrada). Quitar validación de `poa_id`.
@@ -610,8 +629,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > `schema_migrations`). Probado end-to-end por HTTP (CSRF 419, auth, login 3 roles, saldos, errores neutros).
 > **BD local:** ✅ migraciones de negocio 001-009 ya aplicadas (Fase 0). **Despliegue greenfield** (la
 > producción de Hostinger fue dada de baja): cuando toque, importar `schema_baseline.sql` + migraciones
-> 001-013 + `seed.sql` en una BD nueva y vacía; QA visual de CSP/confirmaciones. Ya **no es urgente** (no
-> hay sistema en vivo expuesto).
+> 001-019 + `seed.sql` en una BD nueva y vacía. El QA visual de CSP/confirmaciones en local ya está
+> **verificado**. Ya **no es urgente** (no hay sistema en vivo expuesto).
 
 ### Resumen (en la rama de seguridad)
 - **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
@@ -636,7 +655,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > 3. `migracion_recuperacion_segura.sql` (A3 — `reset_token` sha256/64 + `reset_token_expira` + tabla `recuperacion_intentos`)
 
 ### QA / acciones manuales de ese sprint
-- **QA visual de M1** (no verificable por HTTP): botones de eliminar siguen pidiendo confirmación y la consola no muestra violaciones de CSP.
+- [x] ✅ **QA visual de M1 — VERIFICADO:** botones de eliminar siguen pidiendo confirmación y la consola no muestra violaciones de CSP.
 - **VULN-1 (residual):** el app-password de Gmail sigue en el **historial git** (commit `594f8e5`); opcional purgar con `git filter-repo`/BFG + `push --force` (destructivo). Verificar/rotar también las creds de BD de producción.
 - **Dependabot:** ~57 vulnerabilidades de dependencias (`composer`/`npm`) reportadas — frente distinto (no es código propio), pendiente.
 

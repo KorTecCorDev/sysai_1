@@ -99,6 +99,13 @@ class RendicionController
                     $errores[] = "Error al asignar el usuario actual.";
                 }
                 if (empty($errores)) {
+                    // Item 6: si la rendición es una adenda (Contador/Admin sobre un POA ya
+                    // APROBADO), nace aprobada para que el saldo contable la refleje al instante.
+                    $programaId = programaIdPorActividad($rubro->actividad_id);
+                    $docPoa = $programaId ? \Model\Poa::porProgramaAnio($programaId, date('Y')) : null;
+                    if ($docPoa && (int) $docPoa->estado === \Model\Poa::APROBADO) {
+                        Rendicion::aprobarPorPrograma($programaId);
+                    }
                     header("Location: /rendicion/admin?rubro_id={$rubro_id}&resultado=1");
                     exit();
                 }
