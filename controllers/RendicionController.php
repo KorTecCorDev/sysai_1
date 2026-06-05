@@ -11,6 +11,21 @@ use MVC\Router;
 
 class RendicionController
 {
+    /**
+     * Bloqueo: si el POA Presupuestal del programa (al que cuelga el rubro) está
+     * Enviado o Aprobado, el coordinador NO puede registrar/editar/eliminar
+     * rendiciones — es el mismo candado que congela los rubros. Contador/Admin
+     * pasan (modifican como adenda). Si bloquea, hace el redirect y devuelve true.
+     */
+    private static function poaPresupuestalBloqueaRendicion(int $rubro_id, ?int $actividad_id): bool
+    {
+        if (esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad($actividad_id))) {
+            header("Location: /rendicion/admin?rubro_id={$rubro_id}&resultado=18");
+            return true;
+        }
+        return false;
+    }
+
     // Listado de rendiciones imputadas a un RUBRO. Muestra monto del rubro,
     // total ya rendido y saldo disponible (regla: Σ rendiciones ≤ monto del rubro).
     public static function index(Router $router)
@@ -30,6 +45,8 @@ class RendicionController
         $disponible     = max(0, (float) $rubro->monto - $totalRendido);
         $resultado      = is_array($resultado) ? ($resultado[1] ?? null) : null;
         $tipocomprobante = TipoComprobante::all();
+        // Candado: el coordinador no registra rendiciones si su POA Presupuestal está Enviado/Aprobado.
+        $bloqueado      = esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad($rubro->actividad_id));
 
         $router->render('rendicion/admin', [
             'resultado'       => $resultado,
@@ -38,7 +55,8 @@ class RendicionController
             'rubro_id'        => $rubro_id,
             'totalRendido'    => $totalRendido,
             'disponible'      => $disponible,
-            'tipocomprobante' => $tipocomprobante
+            'tipocomprobante' => $tipocomprobante,
+            'bloqueado'       => $bloqueado
         ]);
     }
 
@@ -52,6 +70,10 @@ class RendicionController
         }
         // A1: el coordinador solo crea rendiciones en rubros de SU programa.
         exigirProgramaPropioPorRubro($rubro_id);
+        // Candado POA Presupuestal: bloquea al coordinador si el documento está Enviado/Aprobado.
+        if (self::poaPresupuestalBloqueaRendicion($rubro_id, $rubro->actividad_id)) {
+            exit();
+        }
 
         $tipocomprobantes = TipoComprobante::all();
         // Fuentes disponibles: las vinculadas al programa del rubro (vía su actividad).
@@ -109,6 +131,10 @@ class RendicionController
         }
         // A1: la rendición debe pertenecer a un rubro de SU programa.
         exigirProgramaPropioPorRubro($rendicion->rubro_id);
+        // Candado POA Presupuestal: bloquea al coordinador si el documento está Enviado/Aprobado.
+        if (self::poaPresupuestalBloqueaRendicion($rubro_id, $rubro->actividad_id)) {
+            exit();
+        }
 
         $tipocomprobantes = TipoComprobante::all();
         $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id', $rubro->actividad_id);
@@ -157,6 +183,11 @@ class RendicionController
             }
             // A1: solo puede eliminar rendiciones de rubros de SU programa.
             exigirProgramaPropioPorRubro($rendicion->rubro_id);
+            // Candado POA Presupuestal: bloquea al coordinador si el documento está Enviado/Aprobado.
+            $rubro = Rubro::find($rendicion->rubro_id);
+            if ($rubro && self::poaPresupuestalBloqueaRendicion($rendicion->rubro_id, $rubro->actividad_id)) {
+                exit();
+            }
             $vali = Rendicion::setUsuarioActual();
             if ($vali) {
                 $rendicion->eliminarsinRedireccion();

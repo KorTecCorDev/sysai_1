@@ -11,6 +11,12 @@
             }
         }
         ?>
+        <?php if (!empty($bloqueado)) : ?>
+            <div class="alert alert-warning alert-persistente">
+                <i class="bi bi-lock-fill me-2"></i>
+                El POA Presupuestal está enviado o aprobado: no se pueden registrar rendiciones en este rubro.
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Panel de saldo del rubro: regla Σ rendiciones ≤ monto del rubro -->
@@ -40,8 +46,10 @@
             <h2>Comprobantes</h2>
         </div>
         <div class="d-flex justify-content-end gap-2">
-            <a href="/rendicion/crear?rubro_id=<?php echo s($rubro_id); ?>" class="btn btn-primary rounded-pill shadow-sm">
-                <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php if (empty($bloqueado)) : ?>
+                <a href="/rendicion/crear?rubro_id=<?php echo s($rubro_id); ?>" class="btn btn-primary rounded-pill shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i>Agregar</a>
+            <?php endif; ?>
             <a href="/rubro/admin?actividad_id=<?php echo s($rubro->actividad_id); ?>" class="btn btn-outline-danger rounded-pill px-4 py-2">
                 <i class="bi bi-arrow-left-short me-2"></i> Volver
             </a>
@@ -85,22 +93,26 @@
                         <td><?php echo 'S./ ' . number_format($rendicion->monto, 2, '.', ','); ?></td>
                         <td class="td-acciones">
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="/rendicion/actualizar?id=<?php echo s($rendicion->id); ?>&rubro_id=<?php echo s($rubro_id); ?>"
-                                    class="btn btn-sm btn-outline-warning rounded-pill px-3"
-                                    title="Editar rendición">
-                                    <i class="bi bi-pencil-fill"></i>
-                                </a>
+                                <?php if (!empty($bloqueado)) : ?>
+                                    <span class="text-muted small"><i class="bi bi-lock"></i></span>
+                                <?php else : ?>
+                                    <a href="/rendicion/actualizar?id=<?php echo s($rendicion->id); ?>&rubro_id=<?php echo s($rubro_id); ?>"
+                                        class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                        title="Editar rendición">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
 
-                                <form method="POST" class="d-inline" action="/rendicion/eliminar"><?php echo csrf_input(); ?>
-                                    <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
-                                    <input type="hidden" name="tipo" value="rubro">
-                                    <button type="submit"
-                                        class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                        title="Eliminar rendición"
-                                        data-confirm="¿Estás seguro de eliminar esta rendición?">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
-                                </form>
+                                    <form method="POST" class="d-inline" action="/rendicion/eliminar"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($rendicion->id); ?>">
+                                        <input type="hidden" name="tipo" value="rubro">
+                                        <button type="submit"
+                                            class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                            title="Eliminar rendición"
+                                            data-confirm="¿Estás seguro de eliminar esta rendición?">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

@@ -352,6 +352,10 @@ function mostrarNotificacion($codigo)
         case 17:
             $mensaje = 'Ya existe un POA Presupuestal para este programa y año';
             break;
+        //RENDICIONES BLOQUEADAS — POA PRESUPUESTAL ENVIADO/APROBADO
+        case 18:
+            $mensaje = 'El POA Presupuestal está enviado o aprobado: no se pueden registrar rendiciones';
+            break;
         default:
             $mensaje = false;
             break;

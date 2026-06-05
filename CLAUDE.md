@@ -572,8 +572,15 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [x] **Límite por rubro:** `Rendicion::totalImputadoAlRubro()` + `validarLimiteRubro($rubroMonto)` → Σ rendiciones (incluida la actual, excluyéndose a sí misma en edición) ≤ `rubro.monto`; error con saldo disponible. Validado en `crear` y `actualizar`.
 - [x] Emisor solo **RUC + razón social** (ya en esquema; sin DNI). `Rendicion` model: `rubro_id` en `columnasDB`, `validar` exige rubro. `estado`/`poa_rendicion_id` se omiten del model a propósito (DEFAULT 0 / NULL; su gestión es del item 6).
 - [x] **Navegación reorganizada a por-rubro:** `rubro/admin` tiene botón "Rendiciones" por rubro → `/rendicion/admin?rubro_id=`; el panel muestra monto del rubro / total rendido / disponible. Se quitó el enlace de comprobantes de `actividad/admin`. `RendicionController` (index/crear/actualizar/eliminar) reescrito a `rubro_id`; nuevos helpers `programaIdPorRubro` / `exigirProgramaPropioPorRubro`. `RendicionAdminVista` += `rubro_id`.
+- [x] **Bloqueo de rendiciones por estado del POA Presupuestal** (fix 2026-06-05): mientras el POA Presupuestal del programa esté **Enviado(1) o Aprobado(3)**, el **Coordinador** NO puede crear/editar/eliminar rendiciones en sus rubros (mismo candado que congela los rubros, reutiliza `poaPresupuestalEditable`). Contador/Admin pasan (adenda). Guard en `RendicionController` (crear/actualizar/eliminar) → redirige a `/rendicion/admin?...&resultado=18`; en `rubro/admin` el botón "Rendiciones" sigue disponible (read-only), pero en `rendicion/admin` se ocultan "Agregar" y las acciones de fila y se muestra banner (`.alert-persistente`) + candado. Nuevo código de notificación **18**.
 
 > **QA:** arnés `database/qa_rendicion.ps1` (10/10) — login, CSRF 419, cross-tenant 403 (rubro ajeno), creación imputada al rubro (verifica `rubro_id`/`estado=0`/`poa_rendicion_id=NULL`), límite por rubro (rechaza 4000>3500 con mensaje, acepta el tope exacto 3500), rechazo de GET en eliminar. Sin regresión en items 3/4 (18/18 c/u).
+>
+> ⏭️ **PENDIENTE (próximo a realizar):** añadir a `database/qa_rendicion.ps1` un check automatizado del
+> **bloqueo de rendiciones por estado del POA Presupuestal** (fix 2026-06-05): poner el POA del programa 1 en
+> **Enviado**, verificar que el coordinador NO puede crear/editar/eliminar rendiciones (redirect `resultado=18`,
+> sin inserción en BD), confirmar que **Contador/Admin sí pueden** (adenda), y **revertir** el estado del POA
+> al terminar (auto-limpieza, como el resto de arneses). Hoy solo está verificado de forma manual.
 
 ### 6 — POA Rendición (documento + flujo + saldos)
 - [ ] Modelo `PoaRendicion` (tabla `poa_rendicion`).
