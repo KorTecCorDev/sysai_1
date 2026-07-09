@@ -1,21 +1,21 @@
 # CLAUDE.md — SysAI · Organización Arco Iris
 
-> **Memoria única del proyecto: contexto técnico y de negocio para el desarrollo del sistema.**
-> Este documento es la fuente de verdad. Consolida dos líneas de trabajo previas:
-> - **Línea de negocio** (rama `feat/bd-migraciones-grupos-8-13`) → reglas de negocio confirmadas, migraciones `database/migrations/001-009`, backlog de implementación.
-> - **Línea de análisis técnico** (auditoría 2026-06-02) → arquitectura interna, setup/devstack, sprint de seguridad, modelo de datos detallado.
+> **Memoria caliente del proyecto: contexto técnico y de negocio para el desarrollo del sistema.**
+> Este documento es la fuente de verdad *operativa*. El detalle histórico y de referencia vive en `docs/`
+> (ver índice abajo) y se lee solo cuando hace falta, para no cargar tokens innecesarios cada sesión.
 >
-> Diseñado para merge con otras instancias: cada sección es independiente y está etiquetada.
->
-> ✅ **Nota de integración (actualizada):** el **sprint de seguridad** descrito en *[SECCION: SEGURIDAD]*
-> —originalmente en la rama `seguridad/hardening-y-despliegue-local`— ya fue **integrado mediante merge
-> curado** y **mergeado a `main`** (fast-forward, tip `5e24398`). En esa integración: el SMTP pasó a `.env`
-> (ya **no** está hardcodeado en `LoginController`), las 3 migraciones de seguridad se portaron al runner
-> (`database/migrations/010-012`), y se descartó el sistema de migraciones viejo (`db/`). Probado end-to-end
-> por HTTP en local (CSRF 419, auth redirect, login 3 roles, saldos, errores neutros) — todo OK.
-> **BD local:** ✅ migraciones de negocio 001-009 (+ la 013 de catálogo) **ya aplicadas** sobre la base
-> reconciliada — ver *[SECCION: ESTADO DE LA BD]*. **Pendiente de despliegue:** replicar el flujo en Hostinger.
-> El QA visual de CSP en local ya está **verificado** (sin violaciones en consola).
+> ✅ El **sprint de seguridad** ya está integrado y mergeado a `main` (SMTP en `.env`, migraciones 010-012
+> en el runner). La **producción de Hostinger fue dada de baja** → el próximo despliegue es **greenfield**
+> (proyecto + BD nuevos desde cero). Detalle en `docs/historial-seguridad.md`.
+
+### Índice de referencia (`docs/`, leer bajo demanda)
+- `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
+- `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
+- `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
+- `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP.
+- `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
+- `docs/build-assets.md` — pipeline Gulp.
+- `docs/follow-ups-tecnicos.md` — deuda técnica pendiente (detalle).
 
 ---
 
@@ -26,11 +26,9 @@
 - **Repositorio:** `KorTecCorDev/sysai_1` (privado, GitHub).
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
-- **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai_1`.
-- **Producción:** ⚠️ **DADA DE BAJA (2026-06-03).** El sistema estuvo desplegado en **Hostinger** (hosting
-  compartido, Apache + `.htaccess`, BD `u612374195_sysai`) pero esa producción **ya fue decomisionada**. El
-  próximo despliegue será **greenfield**: proyecto y BD **nuevos desde cero** (sin datos productivos que
-  preservar ni reconciliar). BD local: `sysai`.
+- **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai_1`. BD local: `sysai`.
+- **Producción:** ⚠️ **DADA DE BAJA (2026-06-03).** Estuvo en Hostinger (BD `u612374195_sysai`), decomisionada.
+  El próximo despliegue es **greenfield**: proyecto y BD nuevos, sin datos que preservar ni reconciliar.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
 - **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` ignorado en git (lee `.env` y conecta MySQL).
 - **Moneda base:** Sol peruano (PEN / S/). Conversiones a USD/EUR solo para reportes.
@@ -41,7 +39,7 @@
 
 - **Backend:** PHP puro, arquitectura MVC casera. Patrón ActiveRecord propio (estilo cursos de Juan de la Torre / DevWebCamp).
 - **Base de datos:** MySQL/MariaDB vía `mysqli` (conexión única global). Uso intensivo de **VISTAS SQL** (los modelos con sufijo `*Vista` mapean vistas, no tablas). Mecanismo de auditoría con `SET @usuario_actual` (triggers que registrarían quién modifica — ver *[SECCION: MODELO DE DATOS]*).
-- **Frontend:** Bootstrap 5 + Bootstrap Icons; SASS compilado con **Gulp** (`gulpfile.js`). Assets compilados en `build/` (CSS/JS/img); fuente en `src/`.
+- **Frontend:** Bootstrap 5 + Bootstrap Icons; SASS compilado con **Gulp** (`gulpfile.js`). Assets compilados en `build/` (CSS/JS/img); fuente en `src/`. Pipeline detallado en `docs/build-assets.md`.
 - **Dependencias Composer (`composer.json`):**
   - `phpoffice/phpspreadsheet` ^4.1 — generación de reportes Excel.
   - `phpmailer/phpmailer` ^6.9 — envío de correos (recuperación de contraseña).
@@ -86,59 +84,13 @@ local3000                             # php -S localhost:3000  → http://localh
 - `includes/config/database.php` — conexión (lee `.env`). Gitignored. Plantilla: `.env.example`.
   `conectarDB()` hace `mysqli_report(MYSQLI_REPORT_OFF)` porque el código comprueba valores de retorno (no usa try/catch).
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
-  ⚠️ **Estado actual de la rama:** las credenciales SMTP están **hardcodeadas en `LoginController`**
-  (`controllers/LoginController.php`, ~líneas 140-148). **Pendiente** moverlas a `.env`/config externa
-  (ver *[SECCION: FOLLOW-UPS TECNICOS]* y *[SECCION: SEGURIDAD]* A-VULN1).
-- **Credenciales de prueba / seed** (cuando se usa data ficticia): históricamente `admin@sysai.test`,
-  `contador@sysai.test`, `coordinador@sysai.test` (pass `Test1234*`).
-  ⚠️ La **BD local actual** suele tener el admin como `robertokar97@gmail.com` y **NO** entra con `Test1234*`
-  (sí entran contador y coordinador). Para QA como admin: re-sembrar o resetear el hash del admin en local.
-  > **Pendiente de catálogo/seed formal** para despliegue desde cero — ver *[SECCION: FOLLOW-UPS TECNICOS]*.
-
----
-
-## [SECCION: PRUEBAS QA AUTOMATIZADAS]
-
-> Arneses de **QA HTTP de extremo a extremo** (PowerShell + `Invoke-WebRequest`, sesiones reales por cookie +
-> verificación en BD). Cubren lo verificable por programa (login, CSRF, autorización por rol, cross-tenant,
-> flujos de estado, invariantes financieras). Lo **puramente visual** (banners, CSP, menús, árboles read-only)
-> se valida aparte en el navegador. **Cada arnés crea y limpia sus propios datos de prueba** (no deja basura).
-
-**Scripts (en `database/`):**
-
-| Script | Item | Cubre (nº de checks) |
-|---|---|---|
-| `qa_poa_indicadores.ps1` | 3 | Flujo POA Indicadores 0→1→2→3, CSRF 419, rol, cross-tenant, bloqueo de jerarquía, observación. **18** |
-| `qa_poa_presupuestal.ps1` | 4 + 6 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación + **item 6** (al aprobar, la rendición pasa a Aprobada(1) y se descuenta del saldo contable). **21** |
-| `qa_rendicion.ps1` | 5 | Rendición imputada al rubro, límite Σ ≤ monto del rubro, cross-tenant, CSRF. **10** |
-| `qa_all.ps1` | — | **Runner**: corre los tres y resume (esperado: `TODOS LOS ARNESES OK`, 49 checks). |
-
-**Cómo ejecutar (desde la raíz del proyecto):**
-```powershell
-# 1) Arrancar el servidor de desarrollo (en otra terminal, desde la raíz):
-local3000                 # = php -S localhost:3000
-
-# 2) Correr todos los arneses:
-pwsh -File database\qa_all.ps1
-
-# Con un setup distinto (ruta de mysql.exe / URL / passwords) se pasan parámetros:
-pwsh -File database\qa_all.ps1 -BaseUrl http://localhost:3000 -MysqlExe "C:\xampp\mysql\bin\mysql.exe" -PassCoord "Test1234*" -PassConta "admin1234"
-
-# O un arnés individual:
-pwsh -File database\qa_poa_presupuestal.ps1
-```
-
-**Prerrequisitos:**
-- Servidor `local3000` corriendo y **MariaDB de XAMPP** arriba.
-- BD `sysai` con migraciones **001-019** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
-  jerarquía Resultado→Producto→Actividad y **rubros**; programa **5** para los tests cross-tenant).
-- Usuarios de prueba: **coordinador@sysai.test / `Test1234*`** (programa 1) y **contador@sysai.test / `admin1234`**
-  (esta última también es la del admin `robertokar97@gmail.com`).
-- Parámetros configurables por script (`-BaseUrl`, `-MysqlExe`, `-PassCoord`, `-PassConta`) con defaults para el
-  setup XAMPP documentado → portables a otra máquina cambiando solo la ruta de `mysql.exe` si difiere.
-
-> Detalle de qué valida cada flujo y hallazgos corregidos durante el QA: ver cada ítem en
-> *[SECCION: BACKLOG DE IMPLEMENTACION]*.
+  ✅ Credenciales ya externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env` (helper
+  `enviarTokenRecuperacion()`). En **modo DEV** (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) el token solo se
+  escribe en `includes/logs/mail.log`, no se envía correo real.
+- **Credenciales de prueba / QA local:** coordinador `coordinador@sysai.test` / `Test1234*` (programa 1);
+  contador `contador@sysai.test` / `admin1234` (= admin local `robertokar97@gmail.com`).
+  ⚠️ **No re-sembrar ni resetear `usuario.password`** en la BD local — el usuario gestiona sus contraseñas
+  vía el flujo de cambio; `seed.sql`/`UPDATE` los pisarían. Seed idempotente `INSERT IGNORE` para alta inicial únicamente.
 
 ---
 
@@ -156,12 +108,11 @@ includes/config/database.php → Lee .env, conecta MySQL (gitignored)
 controllers/       → ~18-19 controladores (lógica de negocio)
 models/            → ~56-80 modelos (Active Record + vistas SQL)
 views/             → ~82 vistas por módulo (admin, crear, actualizar, formulario)
-database/          → migrate.php, migrations/, schema_baseline.sql, README.md
+database/          → migrate.php, migrations/, schema_baseline.sql, seed.sql, README.md
 build/             → CSS/JS/IMG compilados (output de Gulp)
 src/               → SCSS y JS fuente
 ```
-> Los conteos de controladores/modelos/vistas difieren entre las dos memorias originales (snapshots
-> distintos); úsense como orden de magnitud, no como cifra exacta.
+> Los conteos de controladores/modelos/vistas son orden de magnitud, no cifra exacta.
 
 ### Front controller y enrutamiento
 1. **`index.php`** arranca sesión, fija cabecera CSP, carga `includes/app.php`, registra rutas públicas
@@ -171,36 +122,34 @@ src/               → SCSS y JS fuente
    `comprobarRutas()` (despacha por `REQUEST_URI` + método), `render()` y `renderssdbr()` (vistas sin sidebar, p. ej. login).
    - **Autorización por rol = carga condicional de rutas.** Las rutas de admin solo se registran si `cargo_id==1`;
      un coordinador ni siquiera las tiene registradas (caen en 404). Es el principal mecanismo de control de acceso.
+   - **CSRF:** `Router::requiereCsrf()` protege los sufijos `/crear|/actualizar|/eliminar|/enviar|/observar|/aprobar|/guardar`
+     (POST sin token → 419). Los formularios emiten `csrf_input()`.
 
 ### Capa de datos — `models/ActiveRecord.php` (clase base)
 - `setDB()`, `guardar()` (decide crear/actualizar por `$this->id`), `crear()`/`actualizar()`/`eliminar()` y
   variantes `*sinRedireccion()` (las normales hacen `header(Location...)` + `exit` tras éxito → la redirección
   está acoplada al modelo; usar las `*sinRedireccion()` para encadenar operaciones).
 - Lectura: `all()`, `find($id)`, `findxatributo()`, `findwithparameters()`, `consultarSql()`, etc.
+  ⚠️ `consultarPreparado()`/`crearObjeto()` descartan columnas fuera de `$columnasDB` (p. ej. alias de agregación);
+  para leer un escalar calculado, consultar con mysqli directo.
 - **`sanitizarAtributos()`** escapa en escrituras; **`convertirAMayusculas()`** fuerza TODO string a MAYÚSCULAS
   antes de insertar (decisión de negocio). Excepciones declaradas en `$columnasSinMayuscula = ['password','reset_token','email']`.
+  ⚠️ `null` se normaliza a `''` en todo `UPDATE` (intencional): "limpiar" un campo = cadena vacía, no `NULL`.
 - Helpers de reportes Excel embebidos: `insertarCeldasReportePOA()`, `insertarRendicionesFuente()`,
   `insertarDatosDesdeArray()`, `combinarCeldasRepetidas()`, `insertarDatosDesdeArrayEgresosRendiciones()`.
 - `setUsuarioActual()` ejecuta `SET @usuario_actual = '<descripción>'` para auditoría en BD.
 
-### Modelos (`models/`)
+### Modelos, controladores y vistas
 - **Modelos de tabla:** `Usuario`, `Persona`, `Cargo`, `Poa`, `Programa`, `Producto`, `Actividad`, `Resultado`,
   `Rubro`, `CategoriaRubro`, `SubCategoriaRubro`, `TipoRubro`, `FuenteFinanciamiento`, `DetalleFinanciamiento`,
-  `Rendicion`, `RendicionFf`, `OtrosIngresosEgresos`, `OieComprobante`, `OieTipoComprobante`, `TipoComprobante`,
-  `TipoCambioDolar`, `TipoCambioEuro`, `Login`, etc.
-- **Modelos de VISTA SQL** (sufijo `*Vista`): `UsuarioVista`, `RendicionAdminVista`, `IngresoEgresoAdminVista`,
-  `ReporteEgresosVista`, `SaldoFuenteFinanciamientoVista`, etc. — consultas precompuestas en la BD.
-
-### Controladores (`controllers/`)
-Estáticos, reciben `Router $router`. Patrón típico: `index` (listado/admin), `crear`, `actualizar`, `eliminar`.
-Renderizan con `$router->render('carpeta/vista', [datos])`.
-
-### Vistas (`views/`)
-Una subcarpeta por entidad (`actividad/`, `usuario/`, `poa/`, `rendicion/`, `reporte/`, …), cada una con
-`admin.php` (listado), `crear.php`, `actualizar.php`, `formulario.php` (parcial compartido). Layouts:
-`layout.php`, `layout_admin/contador/coordinador.php`, `layout_login.php`. Helper de escape: **`s()`** en
-`includes/funciones.php` (= `htmlspecialchars`, `ENT_QUOTES`, UTF-8, null-safe). La única salida cruda
-intencional es `echo $contenido` en los layouts (HTML ya renderizado).
+  `Rendicion`, `RendicionFf`, `OtrosIngresosEgresos`, `OieComprobante`, `TipoComprobante`, `CoordinadorPrograma`,
+  `PoaIndicadores`, `DetalleActividad`, `TipoCambioDolar`, `TipoCambioEuro`, `Login`, etc.
+- **Modelos de VISTA SQL** (sufijo `*Vista`): mapean vistas precompuestas. Lista completa en `docs/modelo-datos-detalle.md`.
+- **Controladores** (`controllers/`): estáticos, reciben `Router $router`. Patrón CRUD `index/crear/actualizar/eliminar`
+  (+ flujo `enviar/observar/aprobar/revisar` en los documentos POA). Renderizan con `$router->render('carpeta/vista', [datos])`.
+- **Vistas** (`views/`): una subcarpeta por entidad, cada una con `admin.php`/`crear.php`/`actualizar.php`/`formulario.php`.
+  Layouts `layout_admin/contador/coordinador.php` + `layout_login.php`. Helper de escape **`s()`** en
+  `includes/funciones.php` (`htmlspecialchars`, ENT_QUOTES, UTF-8, null-safe). Única salida cruda intencional: `echo $contenido` en los layouts.
 
 ---
 
@@ -235,94 +184,79 @@ intencional es `echo $contenido` en los layouts (HTML ya renderizado).
 
 ## [SECCION: REGLAS DE NEGOCIO — CONFIRMADAS]
 
+> Decisiones de negocio confirmadas (Grupos 8-13, sesiones 2026-06-02/05). **No volver a preguntar.**
+
 ### Fuentes de Financiamiento
 - Una fuente es una organización de caridad con presupuesto anual.
 - El monto es referencial hasta que se elaboren los POAs presupuestales.
-- Una fuente puede estar vinculada a múltiples programas (`detalle_financiamiento`).
-- Solo las fuentes vinculadas al programa pueden usarse en rendiciones.
-- No hay límite de fuentes por programa.
+- Una fuente puede estar vinculada a múltiples programas (`detalle_financiamiento`). Solo las fuentes vinculadas al programa pueden usarse en rendiciones. No hay límite de fuentes por programa.
 - **Dos tipos de presupuesto por fuente:**
-  - `presupuesto_comprometido`: se define al aprobar el POA Presupuestal.
+  - `presupuesto_comprometido`: suma automática de los montos de todos los POAs Presupuestales aprobados que usan esa fuente.
   - `presupuesto_contable`: monto inicial + ingresos − rendiciones aprobadas − otros egresos.
-- El saldo contable sobrante al cierre del año se traslada al siguiente periodo.
+- El presupuesto de la fuente **no se reparte por programa** (`detalle_financiamiento` sin `monto_asignado`).
+- El saldo contable sobrante al cierre del año se traslada al siguiente periodo (`fuente_presupuesto_anual`).
 
 ### Programa
 - Cada programa tiene **uno y solo un coordinador activo**.
 - Vínculo coordinador-programa mediante tabla intermedia `coordinador_programa` (usuario_id, programa_id, activo).
-- Al cambiar coordinador: desactivar vínculo anterior (`activo=0`), crear nuevo vínculo (`activo=1`).
-- Un coordinador solo puede tener un programa activo a la vez.
-- Jerarquía: Programa → Resultado → Producto → Actividad → Rubro (POA Presupuestal)
-- Jerarquía: Programa → Resultado → Producto → Actividad → Indicadores (POA Indicadores)
+- Al cambiar coordinador: desactivar vínculo anterior (`activo=0`), crear nuevo vínculo (`activo=1`). Un coordinador solo puede tener un programa activo a la vez.
+- Jerarquía: Programa → Resultado → Producto → Actividad → **Rubro** (POA Presupuestal) / **Indicadores** (POA Indicadores).
 
 ### POA Indicadores
 - Se crea **antes** del POA Presupuestal.
-- Tiene su propio registro documento con **estados**: Borrador(0) → Enviado(1) → Observado(2) → Aprobado(3). Mismo flujo que el Presupuestal.
-- La jerarquía Resultado → Producto → Actividad es **compartida** entre el POA Indicadores y el POA Presupuestal. El Presupuestal solo agrega Rubros a la misma estructura.
-- Indicadores solo a nivel de Actividad (las tablas `indicador_producto` e `indicador_resultado` son para uso futuro).
+- Documento con **estados**: Borrador(0) → Enviado(1) → Observado(2) → Aprobado(3). Mismo flujo que el Presupuestal.
+- La jerarquía Resultado → Producto → Actividad es **compartida** con el POA Presupuestal (el Presupuestal solo agrega Rubros a la misma estructura, sin duplicar).
+- Indicadores solo a nivel de Actividad (`indicador_producto`/`indicador_resultado` son de uso futuro).
+- **Al Observar, el Contador escribe un comentario obligatorio** (`poa_indicadores.observacion`, migr. 015) que se muestra al Coordinador para subsanar. (Enmienda 2026-06-04 a la regla original "retorno sin comentario".)
 
 ### POA Presupuestal
-- Se elabora a partir de la estructura del POA Indicadores.
-- **Estados:** Borrador(0) → Enviado(1) → Observado(2) → Aprobado(3)
-- El Coordinador puede editar hasta que el Contador lo apruebe.
-- Si el Contador observa, retorna al Coordinador para modificación (sin comentario).
-- Luego de aprobado: solo visible para el Coordinador. Solo el Contador puede modificarlo (como adenda).
-- Al aprobarse: define el `presupuesto_comprometido` del programa y de las fuentes vinculadas.
+- Se elabora a partir de la estructura del POA Indicadores. **Estados:** Borrador(0) → Enviado(1) → Observado(2) → Aprobado(3).
+- El Coordinador edita hasta que el Contador aprueba. Al Observar, el Contador escribe comentario obligatorio (`poa.observacion`, migr. 016); `enviar`/`aprobar` lo limpian.
+- Presupuesto del documento = Σ `rubro.monto` del programa; se calcula al iniciar y **se congela al enviar**.
+- Luego de aprobado: solo visible para el Coordinador; solo el Contador puede modificarlo (como **adenda**).
 - Máximo un POA Presupuestal activo por programa por año.
+- ⚠️ El `presupuesto_comprometido` **NO** se calcula al aprobar; se acumula desde rendiciones + otros egresos por fuente (`ff_id`). El POA Presupuestal es solo planificación.
 
 ### Rubros
-- Un rubro es un Bien o Servicio (campo `tipo_rubro`: TRB001=Bien, TRB002=Servicio).
-- Tiene un monto máximo. La suma de todas las rendiciones contra ese rubro no puede exceder ese monto.
-- Pueden registrarse múltiples rendiciones por rubro.
+- Un rubro es un Bien o Servicio (`tipo_rubro`: TRB001=Bien, TRB002=Servicio).
+- Tiene un monto máximo. Σ de todas las rendiciones contra ese rubro no puede exceder ese monto. Pueden registrarse múltiples rendiciones por rubro.
 
 ### Rendiciones
-- Las elaboran: Coordinador y Contador.
-- Siempre vinculadas a un rubro (bien o servicio).
+- Las elaboran Coordinador y Contador. Siempre vinculadas a un **rubro** (la actividad se deriva por rubro→actividad).
 - Una rendición usa **una sola fuente** vinculada al programa.
-- Documentos de sustento válidos (catálogo `tipo_comprobante`): factura, **boleta de venta**, **boleta de viaje**, **recibo de caja**, **recibo de servicio básico**, recibo de viaje, declaración jurada, recibo de pago de servicios, recibo general. La "boleta" genérica se desdobla en *Boleta de venta* y *Boleta de viaje* (decisión 2026-06-03).
-- Datos obligatorios: **RUC** y **razón social / nombre**. El RUC identifica a cualquier proveedor (empresa o persona natural). No se usa DNI.
-- El monto de rendiciones comprometidas se muestra como "presupuesto comprometido" en la fuente.
-- El descuento real del saldo contable ocurre al aprobar el POA_Rendición.
+- Documentos de sustento (`tipo_comprobante`): factura, **boleta de venta**, **boleta de viaje**, **recibo de caja**, **recibo de servicio básico**, recibo de viaje, declaración jurada, recibo de pago de servicios, recibo general. (La "boleta" genérica se desdobló en venta/viaje — decisión 2026-06-03.)
+- Datos obligatorios: **RUC** + **razón social / nombre** (identifica a cualquier proveedor, empresa o persona natural). **No se usa DNI.**
+- Nace **Pendiente (estado=0)** y NO afecta el saldo contable hasta que se aprueba.
 
-### POA Rendición
-- **Uno solo por programa por año.** El Contador puede re-abrirlo después de aprobado para agregar más rendiciones (no se crea un documento nuevo).
-- Mismo flujo de aprobación que el POA Presupuestal: Borrador → Enviado → Observado → Aprobado.
-- Lo elabora el Coordinador (y el Contador como coordinador en jefe).
-- Una vez **enviado**, el Coordinador queda bloqueado: no puede agregar rendiciones hasta que el Contador lo observe (devuelva) o apruebe.
-- Al aprobarse por el Contador: las rendiciones se bloquean y se descuenta el `presupuesto_contable` de cada fuente.
-- Luego de la aprobación: el Contador puede re-abrirlo para agregar rendiciones adicionales.
+### POA Rendición (= el mismo POA Presupuestal)
+- ⚠️ **Reencuadre 2026-06-05:** el "POA Rendición" **NO es un documento aparte**: es el **mismo POA Presupuestal** (`poa`). Lo que el usuario llama "POA Rendición" es el **reporte Excel** (`/reporte/poarendicion`). La tabla `poa_rendicion` (migr. 005) y `rendicion.poa_rendicion_id` (migr. 006) quedan **vestigiales**; solo se usa `rendicion.estado`.
+- Una vez el POA Presupuestal está **Enviado(1)/Aprobado(3)**, el Coordinador queda bloqueado (no agrega/edita/elimina rendiciones; `resultado=18`). Contador/Admin pasan (adenda).
+- **Al aprobar el POA Presupuestal**, todas las rendiciones del programa pasan a **Aprobada(1)**, se congelan y descuentan el `presupuesto_contable` de cada fuente.
+- Adenda del Contador sobre POA ya Aprobado: la rendición nace Aprobada (descuenta al instante).
+- Re-apertura por el Contador → *diferido v1.1*.
 
 ### Otros Ingresos / Egresos (OIE)
-- **SOLO los registra el Contador** — aprobación automática (descuento/suma inmediata).
-- Ingresos: nuevas donaciones. Suman al `presupuesto_contable` de la fuente.
-- Egresos: gastos fuera del POA. Restan al `presupuesto_contable` de la fuente.
-- Requieren selección de programa y fuente vinculada al programa.
-- Incluyen recibo con datos del benefactor/proveedor.
+- **SOLO los registra el Contador** — aprobación automática (descuento/suma inmediata sobre `presupuesto_contable`).
+- Ingresos (nuevas donaciones) suman; Egresos (gastos fuera del POA) restan. Requieren programa + fuente vinculada. Monto en `oie_comprobante.monto`. Incluyen recibo con datos del benefactor/proveedor.
 
 ### Tipo de Cambio
-- Módulo de registro de USD y EUR.
-- Se usa el **tipo de cambio vigente** (último registrado) para todos los cálculos de conversión.
-- No hay cálculo con tipo de cambio histórico.
+- Registro de USD y EUR. Se usa el **tipo de cambio vigente** (último registrado) para toda conversión. No hay cálculo con TC histórico.
 
 ### Saldos
-- Se muestran stats de fuentes y programas.
-- Saldo fuente = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos
+- Saldo fuente = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
 - El saldo de programas solo se muestra cuando el POA Presupuestal está aprobado.
 - Al registrar rendiciones aprobadas u OIE, los saldos se actualizan.
-- `presupuesto_comprometido` de una fuente = suma automática de los montos de todos los POAs Presupuestales aprobados que usan esa fuente.
-- El presupuesto de la fuente **no se reparte formalmente por programa** (`detalle_financiamiento` sin campo monto_asignado).
 
 ### Cierre Anual
-- El saldo sobrante de cada fuente al cierre del año se registra en la tabla `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable).
-- Permite ver el histórico de saldos año a año por fuente.
+- El saldo sobrante de cada fuente al cierre del año se registra en `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). Permite el histórico año a año.
 
 ---
 
 ## [SECCION: MODELO DE DATOS]
 
-> Charset baseline real del proyecto: **`InnoDB`, `CHARSET=utf8 COLLATE=utf8_general_ci`**, `datetime` para `fecha`.
-> (El análisis antiguo describía el dump original con `utf8mb3`/`utf8mb4`; la baseline versionada hoy
-> estandariza en `utf8_general_ci`.) Las vistas del dump original traían `ALGORITHM=UNDEFINED` y
-> `SQL SECURITY DEFINER` con `root@localhost` → ⚠️ al importar en Hostinger ajustar/quitar definer.
+> Charset baseline real: **`InnoDB`, `CHARSET=utf8 COLLATE=utf8_general_ci`**, `datetime` para `fecha`.
+> Las vistas del dump original traían `DEFINER=root@localhost` → ⚠️ al importar en otro host ajustar/quitar definer.
+> **Lista completa de vistas SQL + discrepancias/deuda de esquema: `docs/modelo-datos-detalle.md`.**
 
 ### Jerarquía de planificación (POA)
 ```
@@ -334,19 +268,16 @@ programa (tipo_programa)
 poa (programa, anio, presupuesto, estado, usuario_id→coordinador)
 detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ```
-> `detalle_actividad` es la tabla base de los indicadores del POA Indicadores (campos: `indicador_medido`,
+> `detalle_actividad` es la tabla base de los indicadores del POA Indicadores (`indicador_medido`,
 > `medio_verificacion`, `supuesto`, `responsable`). Las tablas `*_detalle`, `indicador_*` y `avance_*`
-> existen pero están **vacías / sin controladores** → seguimiento de indicadores/avances **no implementado**
-> (solo esquema; uso futuro — ver *[SECCION: DIFERIDO A v1.1]*).
+> existen pero están **vacías / sin controladores** (uso futuro — ver *[SECCION: DIFERIDO A v1.1]*).
 
 ### Tablas de movimientos contables
 - **`rendicion`** — gasto rendido imputado a un **rubro**: `rubro_id` (FK, migr. 017 — reemplaza al viejo
-  `actividad_id`; la actividad se deriva por `rubro → actividad`), `tipo_comprobante_id`, `ff_id` (fuente),
-  comprobante (serie, numero, **ruc**, **razon_social**, monto, fecha_original). Sin DNI. Tiene también
-  `estado` y `poa_rendicion_id` (migr. 006; gestionados por el flujo del POA Rendición, item 6).
-- **`otros_ingresos_egresos` (OIE)** — ingresos/egresos sueltos: tras migración vinculado a `programa_id`
-  (antes `poa_id`), `oie_comprobante_id`, `oie_tipo_id` (1=Ingreso, 2=Egreso), `ff_id`. El **monto vive en
-  `oie_comprobante.monto`** (no falta un campo monto). Comprobante con `oie_tipo_comprobante_id`.
+  `actividad_id`), `tipo_comprobante_id`, `ff_id` (fuente), comprobante (serie, numero, **ruc**, **razon_social**,
+  monto, fecha_original). Sin DNI. Tiene `estado` (0=Pendiente, 1=Aprobada) y `poa_rendicion_id` (vestigial).
+- **`otros_ingresos_egresos` (OIE)** — vinculado a `programa_id` (migr. 007; antes `poa_id`), `oie_comprobante_id`,
+  `oie_tipo_id` (1=Ingreso, 2=Egreso), `ff_id`. El **monto vive en `oie_comprobante.monto`**.
 - **`tipo_cambio_dolar` / `tipo_cambio_euro`** — TC por usuario y fecha (se usa el último registro).
 
 ### Catálogos
@@ -356,257 +287,43 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ### Identidad
 - **`persona`** (datos personales: `nro_documento` UNIQUE, apellidos, nombres, telefono).
 - **`usuario`** (`persona_id` UNIQUE, `cargo_id`, `descripcion` = código corto UNIQUE, `email`,
-  `password` char(60) bcrypt, `reset_token`). ⚠️ `email` **NO es UNIQUE** (riesgo de ambigüedad en login `LIMIT 1`).
-
-### Vistas SQL principales (alimentan los modelos `*Vista`)
-- **`login_session_vista`** → modelo `Login`. Reescrita (migración 002) usando `coordinador_programa` para
-  dar `programa_id` a los coordinadores. Incluye `password` y `reset_token`.
-- **`otros_ingresos_egresos_admin_vista`** → recreada apuntando a `programa` (antes dependía de `oie.poa_id`).
-- Listados: `usuario_admin_vista`, `rendicion_admin`, `rubro_admin_vista`.
-- Reportes: `reporte_poa_rubros`, `reporte_poa_rubros_sumas`, `reporte_poa_rendicion`, `reporte_rendiciones`,
-  `reporte_ingresos` (oie_tipo=1), `reporte_egresos` (oie_tipo=2), `reporte_fuentes`,
-  `reporte_fuentes_programa`, `reporte_fuentes_programa_rendicion`.
-- Auxiliares: `fuente_por_actividad_vista`, `fuentes_por_poa_id`, `vista_fuentes_financiamiento_por_actividad`,
-  `programa_poa_vista`, `programas_sin_coordinador_vista`, `usuarios_coordinador_vista`,
-  `usuario_id_disponible_programa_vista`, `tipo_rubro_vista`, `vista_dolar`, `vista_euro`,
-  `total_monto_rendiciones_por_actividad`.
-  - ⚠️ `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` fueron **reescritas**
-    (migración 014, Fase 1) para derivar de `coordinador_programa` (vínculo activo) en vez de `poa.usuario_id`.
-- **Eliminada** (migración 009): `cantidad_fuentes_rendicion` (era VISTA, no tabla) — una rendición usa una sola fuente.
-
-### ⚠️ Discrepancias esquema ↔ código / deuda de datos
-1. `usuario` **no tiene** columnas `intentos`/`estado` pero código histórico de `Login.php` las referenciaba.
-   > En la rama de seguridad esto se resolvió (control por sesión + tabla `login_intentos`). **En la rama
-   > actual, verificar** si ese código muerto sigue presente antes de confiar en el bloqueo por intentos.
-2. **Auditoría sin implementar:** existe tabla `auditoria` y `ActiveRecord::setUsuarioActual()`, pero el dump
-   no trae triggers y `auditoria.id` no era AUTO_INCREMENT → la tabla nunca se llena automáticamente.
-3. **Overflow de montos (dump original):** `monto`/`presupuesto` eran `decimal(7,2)` (máx 99 999.99) en `rubro`,
-   `rendicion`, `oie_comprobante`, `poa`; `fuente_financiamiento.presupuesto` `decimal(8,2)`.
-   > **`poa.presupuesto` ya se amplió a `decimal(14,2)`** (migración 004). (La rama de seguridad proponía
-   > `decimal(12,2)` en `db/schema.sql`; el valor vigente es el de la migración.) Pendiente revisar overflow
-   > en `rubro`/`rendicion`/`oie_comprobante` si no lo cubre otra migración.
-4. `avance` era `decimal(2,2)` (rango máx 0.99 — no admite 100%) en `avance_actividad`/`avance_resultado`. Tablas de uso futuro.
-5. `rendicion.fecha_original` era `varchar(500)` mientras `oie_comprobante.fecha_original` es `date` (inconsistencia).
-6. `email` de `usuario` no es UNIQUE.
-7. `reporte_poa_rubros_sumas` usaba `SUM(DISTINCT u.monto)` y joins con fan-out cartesiano por fuentes →
-   posible **bug de reporte** (inflado). Corregido en la rama de seguridad; verificar en producción.
+  `password` char(60) bcrypt, `reset_token`). ⚠️ `email` **NO es UNIQUE** (riesgo en login `LIMIT 1`).
 
 ---
 
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
-> **Runner** `database/migrate.php`, baseline `database/schema_baseline.sql`, tabla de control
-> `schema_migrations`. **Este es el enfoque vigente** — sustituye al antiguo `db/schema.sql` +
-> `db/seed.sql` + `db/migracion_*.sql` (la carpeta `db/` ya no existe).
->
-> ✅ **Estado real de la BD local (`sysai`) al 2026-06-03 — TODAS LAS MIGRACIONES APLICADAS (001-013):**
-> tras la Fase 0 de la transformación, las migraciones de negocio **001-009** se aplicaron sobre la base
-> reconciliada (que ya tenía las de seguridad 010-012), más la nueva **013** (catálogo `tipo_comprobante`).
-> `migrate.php --status` muestra **001-013 todas aplicadas**. Verificado: `coordinador_programa` creada,
-> `poa.presupuesto`→`decimal(14,2)`, `rendicion` con `estado`+`poa_rendicion_id`, `otros_ingresos_egresos`
-> con `programa_id` (backfill OK, `poa_id` eliminada), `poa_indicadores`/`poa_rendicion`/`fuente_presupuesto_anual`
-> creadas, vista `cantidad_fuentes_rendicion` eliminada, `tipo_comprobante` con 10 filas. Se hizo `mysqldump`
-> previo (`database/sysai_schema_backup_pre001_*.sql`, gitignored). La BD queda lista para el backlog de negocio.
-> **Despliegue desde cero validado end-to-end** (baseline + 001-013 + `seed.sql`) en BD limpia.
-> El próximo despliegue a Hostinger es **greenfield** (la producción previa fue dada de baja): se importa el
-> flujo en una BD nueva y vacía — **ya no hay que reconciliar** `schema_migrations` contra un estado previo.
+- **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
+  Migraciones vigentes: **001-019** (`database/migrations/`).
+- **BD local `sysai`:** migraciones aplicadas hasta 019. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-019 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+- **Tabla completa de migraciones 001-019, hallazgos y brechas resueltas: `docs/historial-migraciones.md`.**
 
-**Migraciones `database/migrations/`:**
+---
 
-| # | Archivo | Qué hace |
+## [SECCION: ORDEN / ESTADO DE IMPLEMENTACION]
+
+| # | Módulo | Estado |
 |---|---|---|
-| 001 | `crear_coordinador_programa.sql` | Tabla intermedia `coordinador_programa` (usuario_id, programa_id, activo). |
-| 002 | `reescribir_login_session_vista.sql` | `login_session_vista` ahora deriva `programa_id` de `coordinador_programa`. |
-| 003 | `crear_poa_indicadores.sql` | Entidad documento `poa_indicadores` con estados. |
-| 004 | `ampliar_poa_presupuesto.sql` | `poa.presupuesto` → `decimal(14,2)`. |
-| 005 | `crear_poa_rendicion.sql` | Entidad documento `poa_rendicion`. |
-| 006 | `rendicion_estado_y_poa_rendicion.sql` | `rendicion` += `estado`, `poa_rendicion_id`. |
-| 007 | `oie_desvincular_poa.sql` | `otros_ingresos_egresos`: `poa_id` → `programa_id`. |
-| 008 | `crear_fuente_presupuesto_anual.sql` | Tabla `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). |
-| 009 | `eliminar_cantidad_fuentes_rendicion.sql` | Elimina la vista `cantidad_fuentes_rendicion`. |
-| 010 | `vistas_saldos_contables.sql` *(seguridad B1)* | Crea las 4 vistas de saldos (`vista_total_ingresos/egresos`, `vista_saldo_contable`, `vista_saldo_fuente_financiamiento`). |
-| 011 | `login_intentos_rate_limit.sql` *(seguridad C2)* | Tabla `login_intentos` (rate-limit de login por IP/email). |
-| 012 | `recuperacion_password_segura.sql` *(seguridad A3)* | `usuario.reset_token`→varchar(64) sha256 + `reset_token_expira`; tabla `recuperacion_intentos`. |
-| 013 | `ampliar_tipo_comprobante.sql` | Catálogo `tipo_comprobante`: `TCM002 Boleta`→`Boleta de venta` + nuevos TCM005-010 (Boleta de viaje, Recibo de caja/servicio básico/viaje/pago de servicios/general). Decisión 2026-06-03. |
-| 014 | `coordinador_programa_backfill_vistas.sql` *(Fase 1)* | Backfill de `coordinador_programa` desde `poa` (cargo 3) + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar del vínculo activo. |
-| 015 | `poa_indicadores_observacion.sql` *(Fase 2)* | `poa_indicadores` += `observacion` varchar(500). El Contador, al **Observar** (devolver) el documento, registra el motivo para que el Coordinador sepa qué subsanar (cambia la regla "retorno sin comentario" del Grupo 11). |
-| 016 | `poa_observacion.sql` *(Item 4)* | `poa` += `observacion` varchar(500). Mismo patrón que la 015, para el flujo del POA Presupuestal. |
-| 017 | `rendicion_rubro.sql` *(Item 5)* | `rendicion`: += `rubro_id` (FK), **se elimina `actividad_id`**, se limpia la tabla. Reescribe las 5 vistas que dependían de `rendicion.actividad_id` para derivar la actividad vía rubro (conservan columnas de salida + agregan `rubro_id`). |
-| 018 | `saldo_solo_rendiciones_aprobadas.sql` *(Item 6)* | Reescribe las 2 vistas de saldo **contable** (`vista_total_egresos`, `vista_saldo_fuente_financiamiento`) para restar **solo** rendiciones `estado=1` (Aprobada). Las vistas de reporte que suman rendiciones se mantienen sin filtrar. |
-| 019 | `backfill_rendiciones_poa_aprobado.sql` *(Item 6)* | Backfill: pone `estado=1` a las rendiciones de programas cuyo POA Presupuestal ya está Aprobado (consistencia con la regla de la 018). Idempotente; sin efecto en greenfield. |
+| 1 | Migración de BD | ✅ COMPLETADO (001-019) |
+| 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
+| 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
+| 4 | POA Presupuestal | ✅ COMPLETADO (QA 18/18) |
+| 5 | Rendiciones (↔ rubro) | ✅ COMPLETADO (QA 10/10) |
+| 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
+| 7 | Otros Ingresos/Egresos (OIE) | ⬜ PENDIENTE |
+| 8 | Saldos | ⬜ PENDIENTE |
+| 9 | Reportes Excel | ⏸ diferido v1.1 |
+| 10 | Usuarios | ⬜ PENDIENTE |
 
-**Hallazgos del esquema real (confirmados al volcar la BD):**
-- `cantidad_fuentes_rendicion` y `login_session_vista` eran **VISTAS**, no tablas.
-- `poa.estado` ya es `int(11)` → admite 0-3 sin cambio de tipo (solo lógica de app).
-- El monto del OIE no falta: vive en `oie_comprobante.monto` (igual que `rendicion.monto`).
-- `otros_ingresos_egresos_admin_vista` dependía de `oie.poa_id` → recreada apuntando a `programa`.
-
-**Resumen de brechas y su resolución:**
-
-| Tabla / Campo | Situación previa | Resolución |
-|---|---|---|
-| `poa.estado` | Solo 0/1 (insuficiente) | Lógica de app 0=Borrador,1=Enviado,2=Observado,3=Aprobado (campo ya int) |
-| `poa.presupuesto` | decimal(7,2) | Ampliado a decimal(14,2) (migr. 004) |
-| `poa_rendicion` | No existía | Creada (migr. 005) |
-| `poa_indicadores` | No existía | Creada con estados (migr. 003) |
-| `detalle_financiamiento` | Sin monto | Sin cambio — el presupuesto es de la fuente |
-| `fuente_presupuesto_anual` | No existía | Creada (migr. 008); `fuente_financiamiento.presupuesto` pasa a monto de referencia |
-| `rendicion` | Sin `estado`/`poa_rendicion_id`; solo RUC | Añadidos (migr. 006), sin DNI |
-| `coordinador_programa` | No existía | Creada (migr. 001) |
-| `cantidad_fuentes_rendicion` | Vista obsoleta | Eliminada (migr. 009) |
-| `otros_ingresos_egresos` | Vinculado a `poa_id` | Vinculado a `programa_id` (migr. 007) |
+> Detalle de construcción + QA de los items **completados (2-6)**: `docs/historial-implementacion-items-2-6.md`.
 
 ---
 
-## [SECCION: DECISIONES CONFIRMADAS — GRUPOS 8-13]
-
-> Estado: **RESUELTO** — implementar según estas decisiones.
-
-### Grupo 8 — Vínculo Coordinador-Programa ✓
-- **Tabla intermedia `coordinador_programa`** (usuario_id, programa_id, activo).
-- Un coordinador tiene **un solo programa activo** a la vez.
-- Al reemplazar: `activo=0` al vínculo anterior, nuevo registro con `activo=1`.
-- `login_session_vista` se rediseña usando `coordinador_programa`.
-
-### Grupo 9 — POA Rendición como documento ✓
-- **Un solo POA Rendición por programa por año.**
-- Una vez **enviado**, el Coordinador queda bloqueado (no puede agregar rendiciones).
-- Después de **aprobado**, el Contador puede **re-abrir** el mismo POA para agregar rendiciones adicionales (no se crea documento nuevo).
-
-### Grupo 10 — Presupuesto comprometido y contable ✓
-- `detalle_financiamiento` **no** tiene campo `monto_asignado`. El presupuesto es de la fuente, no se reparte por programa.
-- `presupuesto_comprometido` de una fuente = **suma automática** de los montos de todos los POAs Presupuestales aprobados que usan esa fuente.
-
-### Grupo 11 — POA Indicadores como documento ✓
-- Tiene **su propio registro documento** con estados Borrador → Enviado → Observado → Aprobado.
-- La jerarquía (Resultado → Producto → Actividad) es **compartida** entre el POA Indicadores y el POA Presupuestal. El Presupuestal solo agrega Rubros a la misma estructura sin duplicar registros.
-
-### Grupo 12 — Rendición: campos del emisor ✓
-- Se usa **solo RUC** como documento de identificación (tanto empresa como persona natural).
-- Campos en `rendicion`: `ruc` + `razon_social`. Sin campo `dni`.
-- Se elimina la referencia a DNI de cualquier formulario o validación.
-
-### Grupo 13 — Saldos contables y cierre anual ✓
-- Crear tabla **`fuente_presupuesto_anual`** (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable).
-- Permite ver el histórico de saldos año a año por fuente.
-- `fuente_financiamiento.presupuesto` pasa a ser solo el monto de referencia inicial de la fuente.
-
----
-
-## [SECCION: ORDEN DE IMPLEMENTACION]
-
-1. **Migración de BD** — ✅ **COMPLETADO** (`database/migrations/001`-`009`, + `013` catálogo, + `014` vínculo)
-2. Vínculo Coordinador-Programa — ✅ **COMPLETADO** (Fase 1)
-3. POA Indicadores — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
-4. POA Presupuestal — ✅ **COMPLETADO** (QA HTTP automatizado 18/18, 2026-06-04)
-5. Rendiciones — ✅ **COMPLETADO** (rendición↔rubro, QA HTTP 10/10, 2026-06-04)
-6. POA Rendición — ✅ **COMPLETADO** (= mismo doc que el POA Presupuestal; aprobar descuenta saldo; QA 21/21, 2026-06-05)
-7. Otros Ingresos/Egresos
-8. Saldos
-9. Reportes Excel *(diferido v1.1)*
-10. Usuarios
-
----
-
-## [SECCION: BACKLOG DE IMPLEMENTACION — PENDIENTE]
+## [SECCION: BACKLOG PENDIENTE]
 
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
-
-### 2 — Vínculo Coordinador-Programa  *(linchpin: va primero)* ✅ COMPLETADO (Fase 1)
-- [x] Modelo `CoordinadorPrograma` (tabla `coordinador_programa`) con helpers `asignarPrograma()`, `vinculoActivoPorUsuario()`, `desactivarPorUsuario()`, `desactivarPorPrograma()`, `eliminarPorUsuario()`.
-- [x] CRUD de asignación en `UsuarioController` (crear/actualizar/eliminar): `asignarPrograma()` desactiva el vínculo previo del coordinador **y** el del programa (ambas invariantes) y crea el nuevo (`activo=1`). El form envía `coordinador_programa[programa_id]` (antes `poa[programa_id]`).
-- [x] Alta de usuario coordinador crea su vínculo; se eliminó el viejo mecanismo de "poa-como-vínculo" en altas/ediciones (los `poa` reales se siguen usando para el documento POA).
-- [x] Login consume `programa_id` desde `login_session_vista` (verificado: coordinador recupera `programa_id`/`poa_id`).
-- [x] Migración **014**: backfill de `coordinador_programa` desde los `poa` de cargo 3 + reescritura de `programas_sin_coordinador_vista` y `usuario_id_disponible_programa_vista` para derivar de `coordinador_programa` (activo).
-- Probado por HTTP (login admin, crear coordinador→vínculo, quitar programa→vínculo `activo=0`) y a nivel de datos.
-
-### 3 — POA Indicadores (documento + flujo)  ✅ COMPLETADO (QA HTTP automatizado, 2026-06-04)
-- [x] Modelo `PoaIndicadores` (tabla `poa_indicadores`) con estados y `observacion`. Modelo `DetalleActividad` (captura de indicadores por actividad, 1:1, upsert).
-- [x] Flujo de estados 0→1→2→3 (Borrador/Enviado/Observado/Aprobado) en `PoaIndicadoresController` (index/crear/enviar/observar/aprobar/revisar).
-- [x] Coordinador elabora (crea/captura indicadores/envía); Contador aprueba/observa **con comentario obligatorio** (migración 015) desde la **vista de revisión consolidada read-only** (`poa_indicadores/revisar`).
-- [x] Reutiliza jerarquía compartida Resultado→Producto→Actividad (no duplica); captura indicadores en `detalle_actividad`.
-- [x] **Bloqueo de jerarquía** al Enviar/Aprobar: helper `exigirPoaIndicadoresEditable` (redirect+flash, no 403 crudo) en Resultado/Producto/Actividad + DetalleActividad; **banner + botones deshabilitados** en las vistas admin de la jerarquía (prevención en UI).
-- [x] **Visualización de la observación**: banner visible para coordinador (tarjeta) y contador (fila-banner en la tabla de `poa_indicadores/admin`) y en `revisar`. Decisión 2026-06-04: la observación **solo persiste mientras el documento está en estado Observado** (se limpia al reenviar/aprobar en `transicionar()`).
-- [x] **Banner persistente**: `eliminarAlertas()` (`src/js/app.js`) auto-oculta los `.alert` flash a los 3 s, pero ahora respeta `.alert-persistente`; los banners de observación llevan esa clase para no desaparecer hasta cambiar de vista. ⚠️ recompilar bundle (`npx gulp js`) si se vuelve a tocar el JS.
-- Decisión 2026-06-04: el **comentario de observación** reemplaza la regla "retorno sin comentario" del Grupo 11 (para POA Indicadores). El Presupuestal podría adoptarlo después (no cambiado aún).
-
-> **✅ QA HTTP AUTOMATIZADO (2026-06-04) — 18/18 OK.** Arnés `database/qa_poa_indicadores.ps1`
-> (PowerShell + `Invoke-WebRequest`, 3 sesiones reales por cookie + verificación en BD). Credenciales
-> locales: coordinador `coordinador@sysai.test`/`Test1234*` (prog. 1); contador `contador@sysai.test`/`admin1234`
-> (= admin). Cubre: login 3 vías (incl. password incorrecto), **CSRF 419** en `/crear` sin token,
-> **autorización por rol** (coordinador sin `/aprobar`, contador sin `/crear` → `/error`), **cross-tenant**
-> (coordinador no revisa doc ajeno → 403), **flujo de estados completo** Borrador→Enviado→Observado→Enviado→Aprobado
-> con verificación en BD, **observar sin comentario** → `resultado=15` sin cambio, **transición inválida** →
-> `resultado=13`, **bloqueo de jerarquía** con doc Enviado (`/resultado/crear` → `resultado=14`, no inserta),
-> y **acciones rechazan GET**. Re-ejecutable; crea y limpia su propio doc de prueba (programa 1).
->
-> **Hallazgo corregido (CSRF):** `Router::requiereCsrf()` solo protegía sufijos `/crear|/actualizar|/eliminar`
-> → las acciones de flujo `/enviar`, `/observar`, `/aprobar` y `/detalle_actividad/guardar` **mutaban estado
-> sin token CSRF**. Se añadieron esos sufijos (`/enviar|/observar|/aprobar|/guardar`) a la protección. Los
-> formularios ya emitían `csrf_input()`, así que no rompió nada.
->
-> **Nota (observación al reenviar/aprobar):** el controlador hace `observacion = null`, pero `ActiveRecord`
-> normaliza `null → ''` en todo `UPDATE` (intencional). Por tanto "limpiar" = cadena vacía, no `NULL` literal;
-> el banner usa `!empty()` así que `''` lo oculta igual. (Ajustado en CLAUDE.md respecto a la redacción previa "NULL".)
->
-> **QA visual en navegador — ✅ VERIFICADO:** (a) banner de observación con `.alert-persistente` **no**
-> desaparece a los 3 s mientras los flash de CRUD sí; (b) consola sin violaciones de CSP y `data-confirm`
-> pide confirmación; (c) entrada de menú presente en los 3 layouts; (d) árbol de `revisar` read-only
-> (actividad sin indicador en rojo, panel de decisión solo contador/admin si Enviado); (e) upsert de
-> indicadores en `detalle_actividad` (1 fila, precarga al reeditar). ⚠️ admin local = `robertokar97@gmail.com`.
-
-### 4 — POA Presupuestal (estados + flujo)  ✅ COMPLETADO (QA HTTP automatizado 18/18, 2026-06-04)
-- [x] Estados 0-3 en `poa` (Borrador/Enviado/Observado/Aprobado) — reemplaza la semántica vieja del modal (En espera/Completado/Verificado). Constantes + helpers en `models/Poa.php` (`porProgramaAnio`, `esEditable`, `etiquetaEstado`, `presupuestoCalculado`). Migración **016**: `poa.observacion` varchar(500).
-- [x] Flujo Coordinador↔Contador en `PoaController` (index/crear/enviar/observar/aprobar/revisar) **igual al Item 3**: vista `poa/revisar` read-only (árbol Resultado→Producto→Actividad→**Rubros** + total) y **comentario obligatorio** al observar (decisión 2026-06-04, no "sin comentario"). `enviar`/`aprobar` limpian la observación.
-- [x] **Presupuesto** del documento = Σ `rubro.monto` del programa (`presupuestoCalculado`, S/ base); se calcula al iniciar y **se congela al enviar**. El legado `/reporte/guardarpoa` ahora hace upsert en **Borrador** (sin forzar estado) respetando el bloqueo; `/reporte/modificarpoa` quedó **deprecado** (redirige).
-- [x] **Decisión confirmada (2026-06-04):** el `presupuesto_comprometido` **NO** se calcula al aprobar; se acumula desde **rendiciones + otros egresos** por fuente (`ff_id`) — corresponde a los items 5/6/8. El POA Presupuestal es solo planificación.
-- [x] **Bloqueo de rubros** al Enviar/Aprobar: helper `exigirPoaPresupuestalEditable` / `...PorActividad` (redirect+flash `resultado=16`) en `RubroController` (crear/actualizar/eliminar) + **banner y botones ocultos** en `rubro/admin` (prevención UI). Admin/Contador pasan (adenda).
-- [x] Máximo un POA Presupuestal por programa/año (`crear` valida `porProgramaAnio` → `resultado=17`). Tras aprobado: el coordinador no edita (solo Contador como adenda, vía el helper que solo restringe a coordinadores).
-- [x] Rutas `/poa/{admin,revisar,crear,enviar,observar,aprobar}` por rol (iadmin todas; iconta admin/revisar/observar/aprobar; icoordi admin/revisar/crear/enviar). Entrada de menú "POA Presupuestal" en los 3 layouts. Códigos notif. 16/17.
-- [x] CSRF: las rutas de flujo (`/enviar|/observar|/aprobar`) ya quedaron protegidas en el fix del Item 3.
-
-> **QA:** arnés `database/qa_poa_presupuestal.ps1` (18/18) — login, CSRF 419, autorización por rol, cross-tenant 403, flujo 0→1→2→1→3 en BD, presupuesto calculado (28000) y congelado, bloqueo de rubros en Enviado **y** Aprobado, observar sin/con comentario, transición inválida, rechazo de GET. **Hallazgo corregido:** `consultarPreparado()` pasa filas por `crearObjeto()` que descarta columnas fuera de `$columnasDB` (alias de agregación) → `presupuestoCalculado` ahora lee el escalar con mysqli directo.
-
-### 5 — Rendiciones  ✅ COMPLETADO (QA HTTP automatizado 10/10, 2026-06-04)
-- [x] **Decisión técnica (2026-06-04):** la rendición se imputa **directo a un rubro**. Migración **017**: `rendicion` += `rubro_id` (FK), **se elimina `actividad_id`**, y se **limpia** la tabla (datos de prueba). La actividad se deriva por `rubro → actividad`. Las **5 vistas SQL** que dependían de `rendicion.actividad_id` (`rendicion_admin`, `total_monto_rendiciones_por_actividad`, `reporte_rendiciones`, `reporte_poa_rendicion`, `reporte_fuentes_programa`) se reescribieron para derivar la actividad desde el rubro, **conservando sus columnas de salida** (incl. `actividad_id`) + agregando `rubro_id` → reportes intactos.
-- [x] **Límite por rubro:** `Rendicion::totalImputadoAlRubro()` + `validarLimiteRubro($rubroMonto)` → Σ rendiciones (incluida la actual, excluyéndose a sí misma en edición) ≤ `rubro.monto`; error con saldo disponible. Validado en `crear` y `actualizar`.
-- [x] Emisor solo **RUC + razón social** (ya en esquema; sin DNI). `Rendicion` model: `rubro_id` en `columnasDB`, `validar` exige rubro. `estado`/`poa_rendicion_id` se omiten del model a propósito (DEFAULT 0 / NULL; su gestión es del item 6).
-- [x] **Navegación reorganizada a por-rubro:** `rubro/admin` tiene botón "Rendiciones" por rubro → `/rendicion/admin?rubro_id=`; el panel muestra monto del rubro / total rendido / disponible. Se quitó el enlace de comprobantes de `actividad/admin`. `RendicionController` (index/crear/actualizar/eliminar) reescrito a `rubro_id`; nuevos helpers `programaIdPorRubro` / `exigirProgramaPropioPorRubro`. `RendicionAdminVista` += `rubro_id`.
-- [x] **Bloqueo de rendiciones por estado del POA Presupuestal** (fix 2026-06-05): mientras el POA Presupuestal del programa esté **Enviado(1) o Aprobado(3)**, el **Coordinador** NO puede crear/editar/eliminar rendiciones en sus rubros (mismo candado que congela los rubros, reutiliza `poaPresupuestalEditable`). Contador/Admin pasan (adenda). Guard en `RendicionController` (crear/actualizar/eliminar) → redirige a `/rendicion/admin?...&resultado=18`; en `rubro/admin` el botón "Rendiciones" sigue disponible (read-only), pero en `rendicion/admin` se ocultan "Agregar" y las acciones de fila y se muestra banner (`.alert-persistente`) + candado. Nuevo código de notificación **18**.
-
-> **QA:** arnés `database/qa_rendicion.ps1` (10/10) — login, CSRF 419, cross-tenant 403 (rubro ajeno), creación imputada al rubro (verifica `rubro_id`/`estado=0`/`poa_rendicion_id=NULL`), límite por rubro (rechaza 4000>3500 con mensaje, acepta el tope exacto 3500), rechazo de GET en eliminar. Sin regresión en items 3/4 (18/18 c/u).
->
-> ✅ **VERIFICADO (automatizado):** `database/qa_rendicion.ps1` cubre el **bloqueo de rendiciones por estado
-> del POA Presupuestal** (fix 2026-06-05): pone el POA del programa 1 en **Enviado**, verifica que el
-> coordinador NO puede crear/editar/eliminar rendiciones (redirect `resultado=18`, sin inserción en BD),
-> confirma que **Contador/Admin sí pueden** (adenda), y **revierte** el estado del POA al terminar
-> (auto-limpieza, como el resto de arneses). Pasó exitosamente.
-
-### 6 — POA Rendición  ✅ COMPLETADO (QA HTTP 21/21, 2026-06-05)
-> **Decisión 2026-06-05 (reencuadre del Grupo 9):** el **"POA Rendición" NO es un documento
-> aparte**: es **el mismo POA Presupuestal** (`poa`). El "POA Rendición" que veía el usuario es el
-> **reporte Excel** de ese documento (`/reporte/poarendicion`), que **se mantiene tal cual**. Por
-> tanto **no** se construye modelo/flujo/vistas/rutas `PoaRendicion`; la tabla `poa_rendicion`
-> (migr. 005) y `rendicion.poa_rendicion_id` (migr. 006) **quedan vestigiales** (solo se usa
-> `rendicion.estado`). El ciclo de la rendición lo gobierna el flujo del POA Presupuestal (item 4).
-- [x] **Bloqueo al enviar/aprobar**: ya cubierto por el candado del item 5 (`resultado=18`): cuando el
-  POA Presupuestal está Enviado(1)/Aprobado(3) el Coordinador no agrega/edita/elimina rendiciones.
-- [x] **Al aprobar el POA Presupuestal** (`PoaController::aprobar`) → `Rendicion::aprobarPorPrograma()`
-  marca **todas** las rendiciones del programa como **Aprobada (estado=1)** y las congela. Constantes
-  `Rendicion::PENDIENTE=0` / `APROBADA=1`. `estado` se mantiene **fuera de `$columnasDB`** (el CRUD no lo
-  toca; INSERT toma DEFAULT 0); la aprobación es un `UPDATE` directo (join rubro→actividad→…→programa).
-- [x] **Descuento del saldo contable**: migración **018** reescribe las 2 vistas de saldo contable
-  (`vista_total_egresos`, `vista_saldo_fuente_financiamiento`) para restar **solo** rendiciones
-  `estado=1`. Antes de aprobar, una rendición Pendiente(0) **no** afecta el saldo; al aprobar, sí.
-  Migración **019**: backfill de rendiciones de programas con POA ya Aprobado (idempotente; no afecta greenfield).
-- [x] **Adenda**: si el Contador registra una rendición sobre un POA ya Aprobado, nace Aprobada
-  (auto-aprobación en `RendicionController::crear`) para que el saldo la refleje al instante.
-- [ ] Re-apertura por Contador → *diferido v1.1* (MVP = aprobar una vez).
-
-> **QA:** integrado en `database/qa_poa_presupuestal.ps1` (ahora **21/21**): una rendición Pendiente(0)
-> no mueve `vista_total_egresos`; al aprobar el POA pasa a Aprobada(1) y el saldo la descuenta
-> (Δ egresos = monto). Crea y limpia su propia rendición de prueba (programa 1). Suite completa OK.
 
 ### 7 — Otros Ingresos/Egresos
 - [ ] Actualizar modelo `OtrosIngresosEgresos`: `poa_id` → `programa_id` (columna ya migrada). Quitar validación de `poa_id`.
@@ -618,60 +335,8 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - [ ] Mostrar `presupuesto_comprometido` vs `presupuesto_contable`.
 - [ ] Saldo de programa visible solo con POA Presupuestal aprobado.
 
----
-
-## [SECCION: SEGURIDAD — SPRINT DE HARDENING]
-
-> ✅ **ESTADO:** este sprint (originalmente rama `seguridad/hardening-y-despliegue-local`) ya fue
-> **integrado por merge curado** (`4c4e6eb`) y **mergeado a `main`** (fast-forward, tip `5e24398`).
-> El código de hardening de abajo está en `main`; el SMTP se externalizó a `.env` y las 3 migraciones de
-> seguridad viven en `database/migrations/010-012` (ya aplicadas en la BD local y registradas en
-> `schema_migrations`). Probado end-to-end por HTTP (CSRF 419, auth, login 3 roles, saldos, errores neutros).
-> **BD local:** ✅ migraciones de negocio 001-009 ya aplicadas (Fase 0). **Despliegue greenfield** (la
-> producción de Hostinger fue dada de baja): cuando toque, importar `schema_baseline.sql` + migraciones
-> 001-019 + `seed.sql` en una BD nueva y vacía. El QA visual de CSP/confirmaciones en local ya está
-> **verificado**. Ya **no es urgente** (no hay sistema en vivo expuesto).
-
-### Resumen (en la rama de seguridad)
-- **Críticas:** VULN-1 (credenciales externalizadas + app-password Gmail revocado), C1 (hash de password
-  corrompido por MAYÚSCULAS — corregido con `$columnasSinMayuscula`), C2 (rate-limit de login en BD,
-  tabla `login_intentos` por IP y email), B1 (vistas de saldos `/saldos_contables/saldos`).
-- **Altas:** A1+A2 (IDOR / mass-assignment acotados por programa con helpers `exigirRol`, `exigirProgramaPropio*`),
-  A3 (recuperación de contraseña segura: CSPRNG `random_bytes`, token sha256 con TTL 30 min, rate-limit),
-  A4 (`.htaccess` bloquea `.git/`, `db/`, ocultos), A5 (anti-enumeración de usuarios en `/chgpsswd`, respuesta neutra).
-- **Medias:** M1 (CSP `script-src` sin `unsafe-inline/eval`; `onclick` → `data-confirm` en `build/js/seguridad.js`;
-  `style-src` conserva `unsafe-inline`), M2 (cookies `HttpOnly`+`SameSite=Lax`+`secure` bajo HTTPS, HSTS,
-  timeout de inactividad 30 min), M3 (prepared statements en escrituras de `ActiveRecord`),
-  M4 (XSS residual: `s()` en ~73 echoes), M5 (CSRF también en formularios de auth → 419 sin token),
-  M6 (eliminadas `debuguear()`/`debuguearHTML()`).
-- **Aspectos ya correctos:** bcrypt (`password_hash`/`verify`), `session_regenerate_id(true)` tras login,
-  logout destruye sesión+cookie, validación de IDs con `FILTER_VALIDATE_INT`, cabeceras de seguridad en `.htaccess`.
-
-### Migraciones de la rama de seguridad (pendientes de portar al runner / Hostinger)
-> Estos `.sql` vivían en `db/` (carpeta inexistente en la rama actual). Si se mergea el hardening, **portarlos
-> al runner `database/migrations/`** y aplicarlos en Hostinger (`u612374195_sysai`):
-> 1. `migracion_saldos.sql` (B1 — 4 vistas de saldos; corrige también el fan-out B2)
-> 2. `migracion_rate_limit_login.sql` (C2 — tabla `login_intentos`)
-> 3. `migracion_recuperacion_segura.sql` (A3 — `reset_token` sha256/64 + `reset_token_expira` + tabla `recuperacion_intentos`)
-
-### QA / acciones manuales de ese sprint
-- [x] ✅ **QA visual de M1 — VERIFICADO:** botones de eliminar siguen pidiendo confirmación y la consola no muestra violaciones de CSP.
-- **VULN-1 (residual):** el app-password de Gmail sigue en el **historial git** (commit `594f8e5`); opcional purgar con `git filter-repo`/BFG + `push --force` (destructivo). Verificar/rotar también las creds de BD de producción.
-- **Dependabot:** ~57 vulnerabilidades de dependencias (`composer`/`npm`) reportadas — frente distinto (no es código propio), pendiente.
-
----
-
-## [SECCION: BUILD DE ASSETS (GULP)]
-
-- **Pipeline** (`gulpfile.js`): SCSS `src/scss/**` → Dart Sass + autoprefixer + cssnano + sourcemaps →
-  `build/css/app.css`. JS `src/js/**` → concat `bundle.js` + terser → `build/js/bundle.min.js`.
-  Imágenes `src/img/**` → imagemin → `build/img/` y versión `.webp`.
-- **Tareas:** `gulp css` (compila y queda en watch de `src/scss`), `gulp js`, `gulp imagenes`, `gulp webp`,
-  `gulp build` (todo, sin watcher; para CI/prod), `gulp` / `npm run dev` (todo + watcher). `npm run css` → `gulp css`.
-- **Fixes ya aplicados:** eliminado `node-sass` muerto (el gulpfile usa Dart Sass `require('sass')`);
-  `@use "sass:color";` añadido en `_variables.scss`/`_sidebar.scss`; `npm run css` exportada.
-- **Pendiente menor:** los `@import` de Sass están *deprecated* (migrar a `@use/@forward`); `build/css/`
-  contiene SVGs de bootstrap-icons commiteados (revisar/limpiar).
+### 10 — Usuarios
+- [ ] Revisión/ajustes finales del CRUD de usuarios (el vínculo coordinador-programa ya está en item 2).
 
 ---
 
@@ -682,6 +347,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 - Controladores con métodos **estáticos**; patrón CRUD `index/crear/actualizar/eliminar`.
 - La redirección post-guardado vive en el modelo (`crear()/actualizar()` hacen `header()+exit`); usar las variantes `*sinRedireccion()` para encadenar operaciones.
 - Tras una operación se redirige a `/<entidad>/admin?resultado=N` y `mostrarNotificacion(N)` traduce el código a mensaje (1=creado, 2=actualizado, 3=eliminado…).
+- Banners que deben persistir (p. ej. observaciones) llevan clase `.alert-persistente` (los flash normales se auto-ocultan a los 3 s vía `src/js/app.js`; recompilar bundle con `npx gulp js` si se toca el JS).
 - Esquema: `InnoDB`, `CHARSET=utf8 COLLATE=utf8_general_ci`, `datetime` para `fecha`.
 
 ---
@@ -689,48 +355,28 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ## [SECCION: DIFERIDO A v1.1]
 
 - **Re-apertura del POA Rendición** por el Contador (MVP = ciclo enviar→aprobar una vez).
-- **Rollover de cierre anual** — lógica de traspaso de saldo entre años (tabla `fuente_presupuesto_anual` ya existe).
+- **Rollover de cierre anual** — traspaso de saldo entre años (`fuente_presupuesto_anual` ya existe).
 - **Reportes Excel nuevos/ampliados** — se conserva lo existente; no se agregan nuevos en MVP.
-- **Avances** (`avance_actividad`, `avance_producto`, `avance_resultado`) — seguimiento, uso futuro.
+- **Avances** (`avance_actividad/producto/resultado`) — seguimiento, uso futuro.
 - **Indicadores a nivel de Producto/Resultado** (`indicador_producto`, `indicador_resultado`) — uso futuro.
 
 ---
 
-## [SECCION: FOLLOW-UPS TECNICOS]
+## [SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]
 
-- [x] ✅ **SMTP externalizado al `.env`** (integrado en `integ/seguridad`). `LoginController` ya no tiene credenciales; el envío usa el helper `enviarTokenRecuperacion()` y `includes/config/mail.php` lee las claves `MAIL_*` del `.env`. Sin credenciales hardcodeadas en código trackeado.
-- [ ] `usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia (bloqueo por intentos) → confirmar si es código muerto o falta migración antes de confiar en el bloqueo. *(Resuelto en la rama de seguridad con `login_intentos`; verificar en la actual.)*
-- [ ] Retirar/limpiar modelo `RendicionFuentesCantidadVista` (su vista `cantidad_fuentes_rendicion` fue eliminada en migración 009).
-- [x] ✅ **Seed data** para despliegue desde cero: `database/seed.sql` (idempotente, `INSERT IGNORE`) con catálogos (`cargo`, `tipo_programa`, `tipo_rubro`, `oie_tipo`, `oie_tipo_comprobante`, `tipo_comprobante`, `categoria_rubro`, `subcategoria_rubro`) + usuario admin inicial (`admin@arcoiris.pe` / `Arcoiris2026*`, temporal). Validado en BD limpia. Documentado en `database/README.md`.
-- [x] ✅ Relación rendición↔rubro resuelta (migr. 017): `rendicion.rubro_id` reemplaza a `actividad_id`; límite Σ rendiciones ≤ monto del rubro. Ver item 5 del backlog.
-- [ ] **B2 — Reportes POA inflados en producción** (fan-out por fuentes) — corregido en la rama de seguridad, falta portar/migrar.
-- [ ] **B3 — Esquema desalineado** (overflow de montos en `rubro`/`rendicion`/`oie_comprobante`; `avance decimal(2,2)`; `rendicion.fecha_original varchar`; `email` no UNIQUE; auditoría sin triggers/AUTO_INCREMENT) — revisar qué cubren las migraciones actuales vs. lo corregido en la rama de seguridad.
-- [ ] **B4 — MAYÚSCULAS forzadas** indiscriminadas (degrada calidad de datos; origen del bug C1).
-- [ ] **B5 — Código muerto / de otro proyecto:** `includes/templates/formulario_propiedades.php`, `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.
-- [ ] **B6 — `validarPropiedadArray()`** sin `isset` (warnings).
-- [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
-- [ ] Confirmar contra **producción** todas las discrepancias de *[SECCION: MODELO DE DATOS]* y planificar la migración de las correcciones pendientes.
-
----
-
-## [SECCION: NOTAS TECNICAS]
-
-- `cantidad_fuentes_rendicion`: vista eliminada (migr. 009). Una rendición solo tiene una fuente.
-- `login_session_vista`: rediseñada usando `coordinador_programa` (tabla intermedia con `activo`) — migr. 002.
-- `poa.presupuesto`: ampliado a `decimal(14,2)` (migr. 004).
-- `fuente_financiamiento.presupuesto`: pasa a ser solo monto de referencia. Los saldos anuales van en `fuente_presupuesto_anual`.
-- El correo de recuperación usa credenciales SMTP hardcodeadas en `LoginController` — mover al `.env`.
-- `detalle_actividad`: tabla base de los indicadores del POA Indicadores (`indicador_medido`, `medio_verificacion`, `supuesto`, `responsable`).
-- `avance_actividad`, `avance_producto`, `avance_resultado`: tablas de seguimiento de avances para uso futuro.
-- `rendicion.dni`: no agregar — se usa solo RUC para cualquier proveedor (empresa o persona natural).
-- Las vistas del dump original traían `DEFINER=root@localhost` → ajustar al importar en Hostinger.
-- `php -S` no procesa `.htaccess` → en dev no aplican los bloqueos de archivos/carpetas; cuidar secretos.
+> Detalle completo (hechos + pendientes) en `docs/follow-ups-tecnicos.md`. Abiertos, en resumen:
+- [ ] Confirmar si el código de bloqueo por intentos (`Login.php` referencia `intentos`/`estado` inexistentes) es muerto o falta migración (la rama de seguridad lo resolvió con `login_intentos`; verificar en la actual).
+- [ ] Retirar modelo `RendicionFuentesCantidadVista` (vista `cantidad_fuentes_rendicion` eliminada en migr. 009).
+- [ ] B2 — reportes POA inflados por fan-out de fuentes (corregido en la rama de seguridad, falta portar).
+- [ ] B3 — esquema desalineado (overflow de montos, `avance decimal(2,2)`, `fecha_original varchar`, `email` no UNIQUE, auditoría sin triggers).
+- [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
+- [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 
 ---
 
 ## [SECCION: PRIORIDADES ACORDADAS]
 
-1. Implementar el backlog de negocio (Grupos 8-13) sobre la BD ya migrada.
-2. **Sprint de seguridad** ya integrado en `main` (ver *[SECCION: SEGURIDAD]*). Su urgencia **bajó**: la producción de Hostinger fue dada de baja, ya no hay sistema en vivo expuesto. Se aplica en el despliegue greenfield.
+1. Implementar el backlog de negocio pendiente (items 7 OIE, 8 Saldos, 10 Usuarios) sobre la BD ya migrada.
+2. **Sprint de seguridad** ya integrado en `main` (`docs/historial-seguridad.md`); urgencia baja (producción dada de baja).
 3. Documentar/entender la lógica de negocio (reportes POA y rendiciones, conversión de moneda).
-4. Refactorizar la capa de datos hacia consultas preparadas y validaciones consistentes (parcialmente hecho en la rama de seguridad).
+4. Refactorizar la capa de datos hacia consultas preparadas y validaciones consistentes (parcialmente hecho).
