@@ -55,6 +55,8 @@ class ResultadoController
             $res->validar();
             $errores = Resultado::getErrores();
             if (empty($errores)) {
+                //El código se autogenera (jerárquico por programa: 1, 2, ...); el usuario no lo teclea.
+                $res->codigo = Resultado::siguienteCodigo((int) $idprograma);
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = Resultado::setUsuarioActual();

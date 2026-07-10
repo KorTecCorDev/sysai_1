@@ -34,17 +34,32 @@ class Resultado extends ActiveRecord
         if (!$this->programa_id) {
             self::$errores[] = 'Debe de seleccionar un programa válido';
         }
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes ingresar un código válido';
-        }
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido para el resultado';
         }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otro resultado';
-        }
         return self::$errores;
+    }
+
+    /**
+     * Siguiente código jerárquico autogenerado dentro del programa: "1", "2", ...
+     * (raíz del árbol POA; Producto será "1.1", Actividad "1.1.1", etc.).
+     * Estable con huecos: MAX(nº)+1 entre los resultados del mismo programa.
+     */
+    public static function siguienteCodigo(int $programaId): string
+    {
+        $n = 0;
+        if ($stmt = self::$db->prepare(
+            "SELECT COALESCE(MAX(CAST(codigo AS UNSIGNED)), 0) AS m
+             FROM " . static::$tabla . " WHERE programa_id = ?"
+        )) {
+            $stmt->bind_param('i', $programaId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $n = (int) ($res->fetch_assoc()['m'] ?? 0);
+            $stmt->close();
+        }
+        return (string) ($n + 1);
     }
     public function agregarProvisional(string $cadena)
     {

@@ -52,6 +52,8 @@ class ActividadController
             $actividad->validar();
             $errores = Actividad::getErrores();
             if (empty($errores)) {
+                //El código se autogenera (jerárquico "<producto>.<n>"); el usuario no lo teclea.
+                $actividad->codigo = Actividad::siguienteCodigo((int) $idproducto);
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = Actividad::setUsuarioActual();

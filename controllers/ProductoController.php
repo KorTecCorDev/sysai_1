@@ -53,6 +53,8 @@ class ProductoController
             $producto->validar();
             $errores = Producto::getErrores();
             if (empty($errores)) {
+                //El código se autogenera (jerárquico "<resultado>.<n>"); el usuario no lo teclea.
+                $producto->codigo = Producto::siguienteCodigo((int) $resultadoid);
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = Producto::setUsuarioActual();

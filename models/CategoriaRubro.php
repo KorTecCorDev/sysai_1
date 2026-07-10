@@ -33,13 +33,13 @@ class CategoriaRubro extends ActiveRecord
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido';
         }
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes añadir un código válido';
-        }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otra categoría de rubro';
-        }
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         return self::$errores;
+    }
+
+    /** Código correlativo autogenerado: CAT001, CAT002, ... */
+    public static function siguienteCodigo(): string
+    {
+        return static::siguienteCodigoCorrelativo('CAT');
     }
 }

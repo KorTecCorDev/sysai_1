@@ -6,12 +6,11 @@ class Usuario extends ActiveRecord
 {
     //Declarando variables
     protected static $tabla = 'usuario';
-    protected static $columnasDB = ['id', 'persona_id', 'cargo_id', 'descripcion', 'email', 'password', 'fecha', 'reset_token'];
+    protected static $columnasDB = ['id', 'persona_id', 'cargo_id', 'email', 'password', 'fecha', 'reset_token'];
 
     public $id;
     public $persona_id;
     public $cargo_id;
-    public $descripcion;
     public $email;
     public $password;
     public $fecha;
@@ -24,7 +23,6 @@ class Usuario extends ActiveRecord
         $this->id = $args['id'] ?? null;
         $this->persona_id = $args['persona_id'] ?? '';
         $this->cargo_id = $args['cargo_id'] ?? '';
-        $this->descripcion = $args['descripcion'] ?? '';
         $this->email = $args['email'] ?? '';
         //El password se genera solo al crear el usuario
         $this->password = $args['password'] ?? password_hash(generarCodigoAleatorioSimple(10), PASSWORD_DEFAULT);;
@@ -34,20 +32,12 @@ class Usuario extends ActiveRecord
 
     public function validar()
     {
-        if (!$this->descripcion) {
-            self::$errores[] = 'Debes añadir un código de usuario válido';
-        }
-        
+        // El código de usuario fue eliminado: se identifica por email + nombre.
         if (!$this->email) {
             self::$errores[] = 'Debes añadir el correo válido del usuario';
         }
         if (!$this->cargo_id) {
             self::$errores[] = 'Debes de seleccionar un cargo válido';
-        }
-        //Verificar si la descripción ya existe
-        //Usamos la propiedad codigo porque así está definido en el FRONT
-        if (self::existeDato($this,['descripcion'])) {
-            self::$errores[] = 'El código de usuario ya existe';
         }
         //Verificar si el email ya existe para otro usuario
         //Usamos la propiedad email porque así está definido en el FRONT

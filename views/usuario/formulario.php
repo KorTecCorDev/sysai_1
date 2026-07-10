@@ -31,12 +31,6 @@
 
 <fieldset>
     <legend>Datos del acceso de usuario</legend>
-    <div class="mb-3 w-25">
-        <label for="descripcion" class="form-label">Usuario</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="descripcion" aria-describedby="descripcionHelp" name="usuario[descripcion]" value="<?php echo s($usuario->descripcion); ?>">
-        <div id="descripcionHelp" class="form-text">Ingrese el código de usuario</div>
-    </div>
-
     <div class="mb-3 w-50">
         <label for="email" class="form-label">Email</label>
         <input type="email" style="text-transform: uppercase" class="form-control shadow-sm" id="email" aria-describedby="emailHelp" name="usuario[email]" value="<?php echo s($usuario->email); ?>">

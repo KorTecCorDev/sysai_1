@@ -47,6 +47,8 @@ class ProgramaController
             $errores = $programa->validar();
             //Si no hubiera errores...
             if (empty($errores)) {
+                //El código se autogenera (correlativo PRG-###); el usuario no lo teclea.
+                $programa->codigo = Programa::siguienteCodigo();
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = Programa::setUsuarioActual();

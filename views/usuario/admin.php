@@ -26,8 +26,7 @@
             <table class="table table-hover align-middle mb-0"> <!-- Quitado table-bordered -->
                 <thead class="table">
                     <tr>
-                        <th scope="col" class="text-center rounded-start">Usuario</th>
-                        <th scope="col">Datos</th>
+                        <th scope="col" class="rounded-start">Datos</th>
                         <th scope="col">Email</th>
                         <th scope="col">Teléfono</th>
                         <th scope="col">Cargo</th>
@@ -39,8 +38,7 @@
 
                     <?php foreach ($usuarios as $usuario) : ?>
                         <tr>
-                            <td class="text-center fw-semibold"> <?php echo s($usuario->descripcion); ?> </td>
-                            <td> <?php echo s($usuario->datos); ?> </td>
+                            <td class="fw-semibold"> <?php echo s($usuario->datos); ?> </td>
                             <td> <?php echo s($usuario->email); ?> </td>
                             <td> <?php echo s($usuario->telefono); ?> </td>
                             <td> <?php echo s($usuario->cargo); ?> </td>

@@ -28,19 +28,19 @@ class FuenteFinanciamiento extends ActiveRecord
 
     public function validar()
     {
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes añadir un código válido';
-        }
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido';
         }
         if (!$this->presupuesto) {
             self::$errores[] = 'Debes añadir un monto de presupuesto válido';
         }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otra fuente de financiamiento';
-        }
         return self::$errores;
+    }
+
+    /** Código correlativo autogenerado: FF001, FF002, ... */
+    public static function siguienteCodigo(): string
+    {
+        return static::siguienteCodigoCorrelativo('FF');
     }
 }

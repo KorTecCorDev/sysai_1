@@ -26,7 +26,9 @@
 
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código:</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="codigo" name="codigo" placeholder="Código" value="<?php echo s($rubro->codigo); ?>">
+        <input type="text" class="form-control shadow-sm bg-body-secondary" id="codigo"
+               value="<?php echo s($rubro->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+        <div class="form-text">Se genera automáticamente (p. ej. 1.1.1.01).</div>
     </div>
 
     <div class="mb-3 w-75">
