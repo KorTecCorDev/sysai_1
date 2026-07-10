@@ -145,17 +145,22 @@ class Rendicion extends ActiveRecord
         return (int) $afectadas;
     }
 
-    // Valida el límite del rubro: Σ rendiciones (incluida la actual) ≤ monto del rubro.
-    // Agrega el error a self::$errores si se excede. Devuelve true si está dentro del límite.
-    public function validarLimiteRubro($rubroMonto): bool
+    // Valida el tope por SOBRE (sub-presupuesto de la fuente para el programa): el monto de
+    // la rendición no puede exceder el saldo disponible del sobre (programa, fuente).
+    // Reemplaza al antiguo tope por rubro (migración 020, decisión "solo el sobre"): el
+    // rubro deja de limitar el gasto y queda como clasificación. Agrega el error a
+    // self::$errores si se excede. Devuelve true si está dentro del límite.
+    public function validarLimiteSobre(int $programaId): bool
     {
-        $acumulado = self::totalImputadoAlRubro($this->rubro_id, $this->id);
-        $nuevoTotal = $acumulado + (float) $this->monto;
-        if ($nuevoTotal > (float) $rubroMonto + 0.001) {
-            $disponible = max(0, (float) $rubroMonto - $acumulado);
-            self::$errores[] = 'El monto excede el saldo del rubro. Disponible: S/. '
-                . number_format($disponible, 2, '.', ',')
-                . ' (monto del rubro S/. ' . number_format((float) $rubroMonto, 2, '.', ',') . ').';
+        $sobre = \Model\DetalleFinanciamiento::saldoSobre(
+            $programaId,
+            (int) $this->ff_id,
+            $this->id ? (int) $this->id : null
+        );
+        if ((float) $this->monto > $sobre['disponible'] + 0.001) {
+            self::$errores[] = 'El monto excede el saldo disponible del sobre '
+                . '(sub-presupuesto de la fuente para este programa). Disponible: S/. '
+                . number_format(max(0, $sobre['disponible']), 2, '.', ',') . '.';
             return false;
         }
         return true;

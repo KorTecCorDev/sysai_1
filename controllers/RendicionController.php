@@ -85,10 +85,12 @@ class RendicionController
             // El rubro lo fija la URL (no se acepta vía POST).
             $_POST['rubro_id'] = $rubro_id;
             $rendicion = new Rendicion($_POST);
+            $programaId = programaIdPorActividad($rubro->actividad_id);
             $errores = $rendicion->validar();
-            // Límite del rubro: Σ rendiciones (incluida la nueva) ≤ monto del rubro.
+            // Tope por SOBRE: el monto no puede exceder el saldo del sub-presupuesto
+            // (programa, fuente). Reemplaza al tope por rubro (migr. 020).
             if (empty($errores)) {
-                $rendicion->validarLimiteRubro($rubro->monto);
+                $rendicion->validarLimiteSobre((int) $programaId);
                 $errores = Rendicion::getErrores();
             }
             if (empty($errores)) {
@@ -101,7 +103,6 @@ class RendicionController
                 if (empty($errores)) {
                     // Item 6: si la rendición es una adenda (Contador/Admin sobre un POA ya
                     // APROBADO), nace aprobada para que el saldo contable la refleje al instante.
-                    $programaId = programaIdPorActividad($rubro->actividad_id);
                     $docPoa = $programaId ? \Model\Poa::porProgramaAnio($programaId, date('Y')) : null;
                     if ($docPoa && (int) $docPoa->estado === \Model\Poa::APROBADO) {
                         Rendicion::aprobarPorPrograma($programaId);
@@ -152,8 +153,10 @@ class RendicionController
             // A2: el rubro padre no se reasigna vía POST.
             $rendicion->rubro_id = $rubroOriginal;
             $errores = $rendicion->validar();
+            // Tope por SOBRE (sub-presupuesto de la fuente para el programa) — migr. 020.
             if (empty($errores)) {
-                $rendicion->validarLimiteRubro($rubro->monto);
+                $programaId = programaIdPorActividad($rubro->actividad_id);
+                $rendicion->validarLimiteSobre((int) $programaId);
                 $errores = Rendicion::getErrores();
             }
             if (empty($errores)) {

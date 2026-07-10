@@ -54,6 +54,11 @@
                                 <?php foreach ($resuls as $resul) { ?>
                                     <input class="idquery" type="hidden" value="<?php echo s($resul->fuente_financiamiento_id); ?>">
                                 <?php } ?>
+                                <!-- Sobre: monto de la fuente reservado a este programa (Fase 5). Solo se usa al Agregar. -->
+                                <div class="mb-2">
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                           name="detalle_financiamiento[monto_asignado]" placeholder="Monto a asignar (S/)">
+                                </div>
                                 <input class="btn btn-primary addff" type="submit" value="Agregar">
                                 <?php ?>
                             </form>

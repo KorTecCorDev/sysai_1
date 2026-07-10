@@ -69,7 +69,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-019
+php database/migrate.php                                                       # aplica migrations/001-021
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -191,9 +191,9 @@ src/               → SCSS y JS fuente
 - El monto es referencial hasta que se elaboren los POAs presupuestales.
 - Una fuente puede estar vinculada a múltiples programas (`detalle_financiamiento`). Solo las fuentes vinculadas al programa pueden usarse en rendiciones. No hay límite de fuentes por programa.
 - **Dos tipos de presupuesto por fuente:**
-  - `presupuesto_comprometido`: suma automática de los montos de todos los POAs Presupuestales aprobados que usan esa fuente.
+  - `presupuesto_comprometido` = **Σ de los sobres asignados** (`detalle_financiamiento.monto_asignado`) de esa fuente (enmienda 2026-07-09; antes era "Σ POAs aprobados que usan la fuente", que nunca se calculó). Lo expone `SaldoFuenteFinanciamientoVista::desglosePorFuente()`.
   - `presupuesto_contable`: monto inicial + ingresos − rendiciones aprobadas − otros egresos.
-- El presupuesto de la fuente **no se reparte por programa** (`detalle_financiamiento` sin `monto_asignado`).
+- ⚠️ **SUB-PRESUPUESTOS ("sobres") — enmienda 2026-07-09 (migr. 020, REVIERTE la regla previa):** el presupuesto de la fuente **SÍ se reparte por programa** en "sobres" exclusivos (`detalle_financiamiento.monto_asignado`). Invariante: **Σ sobres por fuente ≤ presupuesto** (se permite remanente sin asignar). El sobre `(programa, fuente)` es la unidad contra la que se gasta. Se captura al vincular fuente↔programa (`/dfinanciamiento/crear`), validado por `DetalleFinanciamiento::validarLimiteAsignacion()`.
 - El saldo contable sobrante al cierre del año se traslada al siguiente periodo (`fuente_presupuesto_anual`).
 
 ### Programa
@@ -215,17 +215,18 @@ src/               → SCSS y JS fuente
 - Presupuesto del documento = Σ `rubro.monto` del programa; se calcula al iniciar y **se congela al enviar**.
 - Luego de aprobado: solo visible para el Coordinador; solo el Contador puede modificarlo (como **adenda**).
 - Máximo un POA Presupuestal activo por programa por año.
-- ⚠️ El `presupuesto_comprometido` **NO** se calcula al aprobar; se acumula desde rendiciones + otros egresos por fuente (`ff_id`). El POA Presupuestal es solo planificación.
+- ⚠️ El `presupuesto_comprometido` **NO** se calcula al aprobar el POA; es **Σ de los sobres** (`monto_asignado`) de la fuente (ver *Fuentes*). El POA Presupuestal es solo planificación.
 
 ### Rubros
 - Un rubro es un Bien o Servicio (`tipo_rubro`: TRB001=Bien, TRB002=Servicio).
-- Tiene un monto máximo. Σ de todas las rendiciones contra ese rubro no puede exceder ese monto. Pueden registrarse múltiples rendiciones por rubro.
+- Tiene un monto de **planificación**. ⚠️ **Enmienda 2026-07-09 (migr. 020, decisión "solo el sobre"):** el rubro **ya NO limita el gasto** — el tope de una rendición es el **saldo del sobre** `(programa, fuente)`, no `rubro.monto`. El rubro queda como clasificación/imputación. Pueden registrarse múltiples rendiciones por rubro.
 
 ### Rendiciones
 - Las elaboran Coordinador y Contador. Siempre vinculadas a un **rubro** (la actividad se deriva por rubro→actividad).
 - Una rendición usa **una sola fuente** vinculada al programa.
 - Documentos de sustento (`tipo_comprobante`): factura, **boleta de venta**, **boleta de viaje**, **recibo de caja**, **recibo de servicio básico**, recibo de viaje, declaración jurada, recibo de pago de servicios, recibo general. (La "boleta" genérica se desdobló en venta/viaje — decisión 2026-06-03.)
 - Datos obligatorios: **RUC** + **razón social / nombre** (identifica a cualquier proveedor, empresa o persona natural). **No se usa DNI.**
+- El monto no puede exceder el **saldo disponible del sobre** `(programa, fuente)` (`Rendicion::validarLimiteSobre()` → `DetalleFinanciamiento::saldoSobre()`). El "disponible para comprometer" cuenta rendiciones de **todo estado** (evita sobre-comprometer); el saldo **contable** solo las aprobadas.
 - Nace **Pendiente (estado=0)** y NO afecta el saldo contable hasta que se aprueba.
 
 ### POA Rendición (= el mismo POA Presupuestal)
@@ -237,15 +238,18 @@ src/               → SCSS y JS fuente
 
 ### Otros Ingresos / Egresos (OIE)
 - **SOLO los registra el Contador** — aprobación automática (descuento/suma inmediata sobre `presupuesto_contable`).
-- Ingresos (nuevas donaciones) suman; Egresos (gastos fuera del POA) restan. Requieren programa + fuente vinculada. Monto en `oie_comprobante.monto`. Incluyen recibo con datos del benefactor/proveedor.
+- Ingresos (nuevas donaciones) suman; Egresos (gastos fuera del POA) restan. Monto en `oie_comprobante.monto`. Incluyen recibo con datos del benefactor/proveedor.
+- **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** descuenta del sobre `(programa, fuente)`.
+- ⚠️ El **tope por sobre en OIE** y el CRUD final de OIE son parte del **item 7 (pendiente)**; la plomería ya está (`programa_id` nullable + `DetalleFinanciamiento::saldoSobre()` reutilizable).
 
 ### Tipo de Cambio
 - Registro de USD y EUR. Se usa el **tipo de cambio vigente** (último registrado) para toda conversión. No hay cálculo con TC histórico.
 
 ### Saldos
-- Saldo fuente = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
-- El saldo de programas solo se muestra cuando el POA Presupuestal está aprobado.
-- Al registrar rendiciones aprobadas u OIE, los saldos se actualizan.
+- Saldo **fuente** = presupuesto + ingresos − rendiciones_aprobadas − otros_egresos (`vista_saldo_fuente_financiamiento`).
+- Saldo **sobre** `(programa, fuente)` = monto_asignado + ingresos_al_sobre − egresos − rendiciones_aprobadas (`vista_saldo_sobre`, migr. 021).
+- Pantalla `/saldos_contables/saldos` (Admin/Contador): 4 niveles → KPIs globales · gráfico SVG por fuente · tarjetas por fuente (con comprometido = Σ sobres, y remanente sin asignar) · tabla por sobre.
+- Al registrar rendiciones aprobadas u OIE, los saldos se actualizan (las vistas calculan en vivo).
 
 ### Cierre Anual
 - El saldo sobrante de cada fuente al cierre del año se registra en `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). Permite el histórico año a año.
@@ -266,7 +270,7 @@ programa (tipo_programa)
             └─ actividad   (+ detalle_actividad, indicador_actividad, avance_actividad)
                  └─ rubro  (categoria_rubro → subcategoria_rubro; tipo_rubro: TRB001=Bien, TRB002=Servicio)
 poa (programa, anio, presupuesto, estado, usuario_id→coordinador)
-detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
+detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado` = sobre, migr. 020)
 ```
 > `detalle_actividad` es la tabla base de los indicadores del POA Indicadores (`indicador_medido`,
 > `medio_verificacion`, `supuesto`, `responsable`). Las tablas `*_detalle`, `indicador_*` y `avance_*`
@@ -294,10 +298,11 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-019** (`database/migrations/`).
-- **BD local `sysai`:** migraciones aplicadas hasta 019. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-019 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
-- **Tabla completa de migraciones 001-019, hallazgos y brechas resueltas: `docs/historial-migraciones.md`.**
+  Migraciones vigentes: **001-021** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`.
+- **BD local `sysai`:** migraciones aplicadas hasta 021. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-021 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
+- **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 
 ---
 
@@ -305,18 +310,19 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 
 | # | Módulo | Estado |
 |---|---|---|
-| 1 | Migración de BD | ✅ COMPLETADO (001-019) |
+| 1 | Migración de BD | ✅ COMPLETADO (001-021) |
 | 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
 | 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
 | 4 | POA Presupuestal | ✅ COMPLETADO (QA 18/18) |
-| 5 | Rendiciones (↔ rubro) | ✅ COMPLETADO (QA 10/10) |
+| 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
-| 7 | Otros Ingresos/Egresos (OIE) | ⬜ PENDIENTE |
-| 8 | Saldos | ⬜ PENDIENTE |
+| 7 | Otros Ingresos/Egresos (OIE) | ⬜ PENDIENTE (plomería de sobres lista) |
+| 8 | Saldos (fuente + **sobre** + comprometido) | 🟡 EN CURSO — pantalla y vistas hechas; falta cierre anual/`fuente_presupuesto_anual` |
 | 9 | Reportes Excel | ⏸ diferido v1.1 |
 | 10 | Usuarios | ⬜ PENDIENTE |
 
 > Detalle de construcción + QA de los items **completados (2-6)**: `docs/historial-implementacion-items-2-6.md`.
+> **Sub-presupuestos ("sobres") — Fases 1-5 (2026-07-09):** migr. 020-021, validaciones (`validarLimiteSobre`, `validarLimiteAsignacion`), saldos por sobre + comprometido, y captura de `monto_asignado` en `/dfinanciamiento/crear`. Ver *Fuentes*, *Rubros*, *Saldos*.
 
 ---
 
@@ -367,7 +373,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento)
 > Detalle completo (hechos + pendientes) en `docs/follow-ups-tecnicos.md`. Abiertos, en resumen:
 - [ ] Confirmar si el código de bloqueo por intentos (`Login.php` referencia `intentos`/`estado` inexistentes) es muerto o falta migración (la rama de seguridad lo resolvió con `login_intentos`; verificar en la actual).
 - [ ] Retirar modelo `RendicionFuentesCantidadVista` (vista `cantidad_fuentes_rendicion` eliminada en migr. 009).
-- [ ] B2 — reportes POA inflados por fan-out de fuentes (corregido en la rama de seguridad, falta portar).
+- [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
 - [ ] B3 — esquema desalineado (overflow de montos, `avance decimal(2,2)`, `fecha_original varchar`, `email` no UNIQUE, auditoría sin triggers).
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.

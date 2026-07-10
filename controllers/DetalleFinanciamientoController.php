@@ -65,6 +65,14 @@ class DetalleFinanciamientoController
                     $detallefinanciamiento = new DetalleFinanciamiento($_POST['detalle_financiamiento']);
                     //Verificamos si no tenemos errores
                     $errores = $detallefinanciamiento->validar();
+                    // Fase 5: Σ sobres de la fuente (incluido el nuevo) ≤ presupuesto de la fuente.
+                    if (empty($errores)) {
+                        DetalleFinanciamiento::validarLimiteAsignacion(
+                            (int) $detallefinanciamiento->fuente_financiamiento_id,
+                            (float) $detallefinanciamiento->monto_asignado
+                        );
+                        $errores = DetalleFinanciamiento::getErrores();
+                    }
                     if (empty($errores)) {
                         //Insertando la accion de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos

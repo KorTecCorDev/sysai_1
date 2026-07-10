@@ -24,6 +24,17 @@ function s($html): string
     return htmlspecialchars((string) ($html ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Formatea un monto como moneda en Soles: "S/ 1,234.56".
+ * Null-safe (null o cadena vacía => "S/ 0.00"). Centraliza el formato de
+ * moneda para no repetir number_format() por las vistas. La salida es segura
+ * para HTML (solo dígitos, comas, puntos y el símbolo), no requiere s().
+ */
+function soles($monto): string
+{
+    return 'S/ ' . number_format((float) ($monto ?? 0), 2);
+}
+
 // ----------------------------------------------------------------------------
 // Protección CSRF
 // ----------------------------------------------------------------------------
