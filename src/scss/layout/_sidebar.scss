@@ -9,9 +9,10 @@
 }
 
 //Globales
-span {
-  color: v.$blanco;
-}
+// (Retirado) `span { color: blanco }` global: camuflaba el texto de los spans sin
+// clase de color sobre fondos claros (cards, tablas). Los badges se auto-colorean
+// (`.badge { color: #fff }` en Bootstrap 5.3) y el sidebar fija sus colores en
+// `base/_sidebar-tema.scss`; el resto de spans hereda el color del body (tinta).
 
 a {
   text-decoration: none;
@@ -299,33 +300,9 @@ ul.padre .sidebar-link {
 
 //Estilos para los Tooltip del Sidebar
 
-//Relación entre Programas y Fuentes de financiamiento
-.financia-dslc {
-  border: solid;
-  border-color: v.$incorrecto;
-
-  input {
-    background-color: v.$incorrecto;
-    border-color: v.$incorrecto;
-    &:hover {
-      background-color: v.$incorrecto;
-      border-color: v.$incorrecto;
-    }
-  }
-}
-.financia-slc {
-  border: solid;
-  border-color: v.$correcto;
-
-  input {
-    background-color: v.$correcto;
-    border-color: v.$correcto;
-    &:hover {
-      background-color: v.$correcto;
-      border-color: v.$correcto;
-    }
-  }
-}
+// (Retirado) Estados neón de las cards de vínculo fuente↔programa
+// ($correcto/$incorrecto). Reemplazados por clases Bootstrap tematizadas
+// renderizadas server-side en views/dfinanciamiento/crear.php.
 
 .nav {
   text-align: center;

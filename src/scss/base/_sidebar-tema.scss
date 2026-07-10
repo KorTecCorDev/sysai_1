@@ -1,0 +1,264 @@
+// =============================================================
+//  SIDEBAR SysAI — capa de estandarización sobre el sidebar legacy.
+//  Carga DESPUÉS de layout/sidebar y base/tema (gana en cascada).
+//  Perfil CLARO (panel gris) pensado para baja visión: alto contraste
+//  (texto AAA) + activo sólido azul, tipografía del tema, offset de contenido.
+//  Aditiva y reversible; las reglas legacy de layout/_sidebar.scss
+//  se retirarán en la fase de propagación.
+//  Cambiar de perfil = editar SOLO este bloque de tokens (ley base: refactor
+//  por tokens). Los valores fluyen a todas las reglas de abajo.
+// =============================================================
+
+// Tokens locales del sidebar — perfil CLARO (panel gris) para baja visión.
+#sidebar {
+  --sb-surface:    #E7EAEF;                 // panel gris (algo más oscuro para separarlo del contenido)
+  --sb-surface-2:  #FFFFFF;                 // flyout: tarjeta blanca sobre el panel
+  --sb-line:       #DCE0E6;                 // divisor INTERNO claro (cabecera, pie, flyout)
+  --sb-edge:       #CDD3DB;                 // borde EXTERNO derecho (separa del contenido)
+  --sb-text:       #1B2430;                 // texto por defecto (~13:1, AAA)
+  --sb-text-strong:#0F1720;                 // énfasis / hover
+  --sb-muted:      #4A5260;                 // iconos y secundario (~7:1, AAA)
+  --sb-accent:     #1E63B8;                 // acento de marca
+  --sb-hover-bg:   rgba(27, 36, 48, .07);   // tinte válido sobre gris y sobre blanco
+  --sb-active-bg:  #164E92;                 // bloque sólido del activo (blanco 8.3:1, AAA)
+  --sb-active-bar: #7DB2E8;                 // barra de acento del activo
+  --sb-danger:     #A82F2F;                 // cerrar sesión (~5:1 sobre gris, AA)
+  --sb-danger-bg:  #A82F2F;                 // hover sólido (texto blanco)
+}
+
+// -------------------------------------------------------------
+//  Contenedor
+// -------------------------------------------------------------
+#sidebar {
+  background-color: var(--sb-surface);
+  height: 100vh;
+  top: 0;
+  left: 0;
+  border-radius: 0;
+  border-right: 1px solid var(--sb-edge);
+  box-shadow: 1px 0 0 var(--sb-edge), 4px 0 16px rgba(16, 24, 40, .07);
+  padding-bottom: .25rem;
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+
+// Ancho expandido: suficiente para las etiquetas largas en una sola línea
+// (p. ej. "Relación F. Financiamiento") sin recortarlas.
+#sidebar.expand {
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px;
+}
+
+// IMPORTANTE: el nav NO debe recortar. En modo colapsado el flyout de
+// submenús sale hacia la derecha, fuera del ancho del sidebar; cualquier
+// overflow != visible lo recortaría (overflow-y:auto también fuerza el eje X).
+.sidebar-nav {
+  padding: .5rem .5rem 1rem;
+  overflow: visible;
+}
+
+// -------------------------------------------------------------
+//  Cabecera / marca
+// -------------------------------------------------------------
+.sidebar-header {
+  align-items: center;
+  gap: .25rem;
+  border-bottom: 1px solid var(--sb-line);
+  margin: .75rem .5rem .25rem;
+  padding: .25rem .25rem .85rem;
+  position: relative;
+}
+// Firma arco iris (identidad de la ONG), fina y discreta
+.sidebar-header::after {
+  content: "";
+  position: absolute;
+  left: .25rem; right: .25rem; bottom: -1px;
+  height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, #C6413B, #D98A1F 26%, #2F855A 52%, #1E63B8 76%, #7C4DBB);
+  opacity: .85;
+}
+.toggle-btn {
+  border-radius: 8px;
+  &:hover { background-color: var(--sb-hover-bg); }
+}
+.toggle-btn img { max-width: 42px; }
+
+.sidebar-logo p {
+  margin-bottom: 0;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .82rem;
+  line-height: 1.25;
+  font-weight: 400;
+  color: var(--sb-muted);
+}
+.sidebar-logo p:first-child { color: var(--sb-text); font-weight: 500; }
+.sidebar-logo span {
+  font-family: "Rubik", "Segoe UI", sans-serif;
+  color: var(--sb-text-strong);
+  font-weight: 600;
+  font-size: .92rem;
+  letter-spacing: -.01em;
+}
+
+// -------------------------------------------------------------
+//  Enlaces de navegación
+// -------------------------------------------------------------
+a.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+  color: var(--sb-text);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .9rem;
+  font-weight: 500;
+  padding: .6rem .8rem;
+  margin: .12rem .25rem;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: background-color .16s ease, color .16s ease;
+}
+.sidebar-link i {
+  font-size: 1.2rem;
+  width: 1.7rem;
+  text-align: center;
+  margin-right: .35rem;
+  color: var(--sb-muted);
+  transition: color .16s ease;
+  flex: 0 0 auto;
+}
+.sidebar-link span { color: var(--sb-text); }
+
+// Hover
+a.sidebar-link:hover {
+  background-color: var(--sb-hover-bg);
+  border-left-color: transparent;
+  color: var(--sb-text-strong);
+  span { color: var(--sb-text-strong); }
+  i { color: var(--sb-text-strong); }
+}
+
+// Estado activo (página actual) — bloque azul sólido de alta orientación.
+// El selector :hover mantiene el blanco al pasar el mouse por el ítem activo.
+a.sidebar-link.active,
+a.sidebar-link.active:hover {
+  background-color: var(--sb-active-bg);
+  border-left-color: var(--sb-active-bar);
+  color: #FFFFFF;
+  font-weight: 600;
+  span { color: #FFFFFF; }
+  i { color: #FFFFFF; }
+}
+
+// Sección (ícono padre) que contiene la página actual — lo marca el JS
+a.sidebar-link.active-parent {
+  color: var(--sb-text-strong);
+  i { color: var(--sb-accent); }
+}
+
+// Foco de teclado visible (accesibilidad)
+a.sidebar-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(30, 99, 184, .45);
+}
+
+// -------------------------------------------------------------
+//  Submenús (dropdown)
+// -------------------------------------------------------------
+.padre .sidebar-link {
+  font-size: .86rem;
+  font-weight: 400;
+  padding-top: .48rem;
+  padding-bottom: .48rem;
+}
+.padre.show a { padding-left: 1.75rem; }
+
+// Chevron del padre desplegable (expandido)
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"]::after {
+  border-color: var(--sb-muted);
+  right: 1.1rem;
+  top: 1.15rem;
+}
+
+// Flyout cuando está colapsado: panel flotante a la DERECHA del ícono,
+// pegado al borde del sidebar (sin gap para no perder el hover).
+#sidebar:not(.expand) .sidebar-item .sidebar-dropdown {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 16.5rem;
+  background-color: var(--sb-surface-2);
+  border: 1px solid var(--sb-line);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, .16);
+  padding: .35rem;
+  z-index: 1200;
+}
+
+// -------------------------------------------------------------
+//  Pie — cerrar sesión
+// -------------------------------------------------------------
+.sidebar-footer {
+  background-color: transparent;
+  border-top: 1px solid var(--sb-line);
+  margin: 0 .25rem;
+  padding-top: .25rem;
+  a { color: var(--sb-danger); }
+  a span { color: var(--sb-danger); }
+  a i { color: var(--sb-danger); }
+}
+#sidebar .sidebar-footer:hover .sidebar-link {
+  background-color: var(--sb-danger-bg);
+  span, i { color: #FFFFFF; }
+}
+.sidebar-footer a:hover { color: #FFFFFF; }
+
+// -------------------------------------------------------------
+//  Tooltips (modo colapsado) al tono del tema — fondo y flecha
+// -------------------------------------------------------------
+.tooltip {
+  --bs-tooltip-bg: #1B2430;
+  --bs-tooltip-color: #FFFFFF;
+  --bs-tooltip-opacity: 1;
+  --bs-tooltip-font-size: .82rem;
+}
+.tooltip-inner {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 500;
+  padding: .4rem .65rem;
+  box-shadow: 0 4px 14px rgba(9, 14, 22, .35);
+}
+
+// Cabecera con el nombre de la sección dentro del flyout (solo colapsado)
+.sidebar-flyout-title { display: none; }
+#sidebar:not(.expand) .sidebar-dropdown .sidebar-flyout-title {
+  display: block;
+  padding: .35rem .7rem .5rem;
+  margin-bottom: .25rem;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sb-muted);
+  border-bottom: 1px solid var(--sb-line);
+}
+
+// -------------------------------------------------------------
+//  Offset del contenido: el sidebar es fixed → reservamos su ancho
+//  para que no se superponga con el área de contenido.
+// -------------------------------------------------------------
+#sidebar ~ .container {
+  margin-left: 96px;
+  transition: margin-left .25s ease;
+}
+@media (min-width: 992px) {
+  #sidebar.expand ~ .container { margin-left: 312px; }
+}
+@media (max-width: 991.98px) {
+  // En pantallas chicas el sidebar expandido se superpone (no empuja)
+  #sidebar.expand ~ .container { margin-left: 96px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sidebar, #sidebar ~ .container, a.sidebar-link, .sidebar-link i { transition: none; }
+}

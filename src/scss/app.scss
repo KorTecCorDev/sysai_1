@@ -6,3 +6,7 @@
 @import "layout/sidebar";
 //Importando los estilos de las páginas
 @import "paginas/login";
+//Capa de tema SysAI sobre Bootstrap (debe ir al final para ganar en cascada)
+@import "base/tema";
+//Estandarización del sidebar (después del tema y del sidebar legacy)
+@import "base/sidebar-tema";

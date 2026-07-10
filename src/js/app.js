@@ -1,13 +1,120 @@
 //Llamados a las funciones que se ejecutarán al inicio
 document.addEventListener("DOMContentLoaded", function () {
-  inicio();
   eventListeners();
-  cambiarestiloAddquite();
   mostrarModales();
   actualizarIdprograma();
   closeModal();
   eliminarAlertas();
+  marcarSidebarActivo();
+  prepararSidebarTooltips();
 });
+
+// Marca el enlace del sidebar de la página actual (estado activo) y abre su
+// submenú padre si corresponde. Sirve para los 3 layouts (comparten clases).
+function marcarSidebarActivo() {
+  const path = window.location.pathname;
+  const links = document.querySelectorAll("#sidebar a.sidebar-link[href]");
+  let best = null;
+  let bestLen = -1;
+
+  links.forEach((a) => {
+    const href = a.getAttribute("href");
+    if (!href || href === "#" || href === "/logout") return;
+    // Coincidencia exacta o por prefijo de ruta (p. ej. /programa/admin)
+    if (path === href || path.startsWith(href + "/")) {
+      if (href.length > bestLen) { best = a; bestLen = href.length; }
+    }
+  });
+
+  // Respaldo: coincidir por el primer segmento de la ruta (/programa/...)
+  if (!best) {
+    const seg = "/" + path.split("/")[1];
+    if (seg.length > 1) {
+      links.forEach((a) => {
+        const href = a.getAttribute("href");
+        if (!href || href === "#") return;
+        if (href.indexOf(seg) === 0 && href.length > bestLen) { best = a; bestLen = href.length; }
+      });
+    }
+  }
+
+  if (!best) return;
+  best.classList.add("active");
+
+  // Si el enlace activo vive en un submenú, resaltar su ícono padre.
+  // El submenú inline solo se abre si el sidebar está expandido; en modo
+  // colapsado los submenús se muestran como flyout al pasar el mouse, así
+  // que no forzamos su apertura (evita un panel pegado y "raro").
+  const dropdown = best.closest("ul.sidebar-dropdown");
+  if (dropdown) {
+    const toggler = document.querySelector('[data-bs-target="#' + dropdown.id + '"]');
+    if (toggler) toggler.classList.add("active-parent");
+    const sidebar = document.querySelector("#sidebar");
+    if (sidebar && sidebar.classList.contains("expand")) {
+      dropdown.classList.add("show");
+      if (toggler) {
+        toggler.classList.remove("collapsed");
+        toggler.setAttribute("aria-expanded", "true");
+      }
+    }
+  }
+}
+
+// Instancias de tooltip vivas del sidebar (para poder descartarlas al expandir).
+var sidebarTooltips = [];
+
+// Prepara los tooltips del sidebar: enlaces hoja de primer nivel (y "Cerrar
+// sesión") reciben un tooltip con su nombre; los ítems con submenú reciben una
+// cabecera con el nombre de la sección dentro de su flyout. Cubre los 3 layouts.
+function prepararSidebarTooltips() {
+  const sidebar = document.querySelector("#sidebar");
+  if (!sidebar) return;
+
+  // Enlaces hoja de primer nivel + cerrar sesión → tooltip con su nombre.
+  const hojas = sidebar.querySelectorAll(
+    ".sidebar-nav > .sidebar-item > a.sidebar-link:not(.has-dropdown), .sidebar-footer > a.sidebar-link"
+  );
+  hojas.forEach((a) => {
+    const span = a.querySelector("span");
+    if (span && !a.getAttribute("data-bs-title")) {
+      a.setAttribute("data-bs-title", span.textContent.trim());
+    }
+    a.setAttribute("data-bs-toggle", "tooltip");
+    a.setAttribute("data-bs-placement", "right");
+  });
+
+  // Ítems con submenú → cabecera con el nombre de la sección dentro del flyout.
+  const padres = sidebar.querySelectorAll(".sidebar-nav > .sidebar-item > a.has-dropdown");
+  padres.forEach((a) => {
+    const dropdown = a.parentElement.querySelector(".sidebar-dropdown");
+    const span = a.querySelector("span");
+    if (dropdown && span && !dropdown.querySelector(".sidebar-flyout-title")) {
+      const titulo = document.createElement("li");
+      titulo.className = "sidebar-flyout-title";
+      titulo.textContent = span.textContent.trim();
+      dropdown.insertBefore(titulo, dropdown.firstChild);
+    }
+  });
+
+  sincronizarSidebarTooltips();
+}
+
+// Activa los tooltips solo cuando el sidebar está colapsado; los descarta al
+// expandir (ahí las etiquetas ya son visibles y el tooltip sobra).
+function sincronizarSidebarTooltips() {
+  const sidebar = document.querySelector("#sidebar");
+  if (!sidebar || typeof bootstrap === "undefined") return;
+  const colapsado = !sidebar.classList.contains("expand");
+
+  if (colapsado && sidebarTooltips.length === 0) {
+    sidebar.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+      sidebarTooltips.push(new bootstrap.Tooltip(el));
+    });
+  } else if (!colapsado && sidebarTooltips.length > 0) {
+    sidebarTooltips.forEach((t) => t.dispose());
+    sidebarTooltips = [];
+  }
+}
 
 //Listeners
 function eventListeners(e) {
@@ -16,24 +123,8 @@ function eventListeners(e) {
   if (hamburger) {
     hamburger.addEventListener("click", function () {
       document.querySelector("#sidebar").classList.toggle("expand");
-      ///MOSTRANDO CORRECTAMENTE LOS TOOLTIPS
-      //Permite mostrar los Tooltips del SIDEBAR
-      // Si no tiene la clase .expand, inicializar tooltips nuevamente
-      var tooltipTriggerList = [].slice.call(
-        document.querySelectorAll('[data-bs-toggle="tooltip"]')
-      );
-      var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-      });
-      //Restricción que si tiene la clase EXPAND desactive los Tooltips
-      if (!document.querySelector("#sidebar").classList.contains("expand")) {
-        tooltipTriggerList.forEach((tooltipTriggerEl) => {
-          new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-      } else {
-        tooltipList.forEach((tooltip) => tooltip.dispose());
-        // Si no tiene la clase .expand, inicializar tooltips nuevamente
-      }
+      // Los tooltips solo aplican cuando el sidebar está colapsado.
+      sincronizarSidebarTooltips();
     });
   }
 
@@ -163,42 +254,10 @@ function cambiarIdProgramasenCards(e) {
   }
 }
 
-function cambiarestiloAddquite(e) {
-  const crds = document.querySelectorAll("div.card");
-  const resuls = document.querySelectorAll("input.idquery");
-  crds.forEach((crd) => {
-    resuls.forEach((resul) => {
-      if (crd.classList.contains(resul.value)) {
-        crd.classList.remove("financia-dslc");
-        crd.classList.add("financia-slc");
-      }
-    });
-  });
-  //Asignando el verdadero valor que debe de tener los submit de cada card
-  crds.forEach((crd) => {
-    const btn = crd.querySelector("input.addff");
-    if (crd.classList.contains("financia-slc")) {
-      btn.value = "Quitar";
-    }
-  });
-}
-
-function inicio(e) {
-  //Limpiando datos antes de iniciar
-  const elmnts = document.querySelectorAll("input.idprogram");
-  const elmnts2 = document.querySelectorAll("input.idff");
-  const crds = document.querySelectorAll("div.card");
-
-  crds.forEach((crd) => {
-    crd.classList.add("financia-dslc");
-  });
-  elmnts.forEach((elmnt) => {
-    elmnt.value = "0";
-  });
-  elmnts2.forEach((elmnt) => {
-    elmnt.value = "0";
-  });
-}
+// (Retirado) inicio() y cambiarestiloAddquite() gestionaban los estados neón de
+// las cards de vínculo fuente↔programa. Ahora el estado (vinculada/disponible) se
+// renderiza server-side en views/dfinanciamiento/crear.php con clases Bootstrap
+// tematizadas (badge/border-success, btn-primary/btn-outline-danger).
 
 function mostrarModales() {
   const modals = document.querySelectorAll("div.modal");

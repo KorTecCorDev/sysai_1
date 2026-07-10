@@ -5,7 +5,7 @@
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
             if ($mensaje) { ?>
-                <p class="alert alert-info"><?php echo s($mensaje); ?></p>
+                <div class="alert alert-info"><?php echo s($mensaje); ?></div>
         <?php
             }
         }
@@ -15,7 +15,7 @@
                 <h2>Programas</h2>
             </div>
             <div class="d-flex justify-content-end mb-4"> <!-- Contenedor flexible alineado a la derecha -->
-                <a href="/programa/crear" class="btn btn-primary rounded-pill shadow-sm">
+                <a href="/programa/crear" class="btn btn-primary shadow-sm">
                     <i class="bi bi-plus-circle me-2"></i>Agregar</a>
             </div>
         </div>
@@ -24,7 +24,7 @@
     <div class="container">
         <div class="table-responsive rounded-3 shadow-sm"> <!-- Agregado rounded-3 y sombra -->
             <table class="table table-hover align-middle mb-0"> <!-- Quitado table-bordered -->
-                <thead class="table">
+                <thead class="table-light">
                     <tr>
                         <th scope="col" class="text-center rounded-start">Código</th>
                         <th scope="col">Tipo</th>
@@ -47,7 +47,7 @@
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="/programa/actualizar?id=<?php echo s($programa->id); ?>"
-                                        class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                        class="btn btn-sm btn-outline-warning px-3"
                                         title="Editar registro">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
@@ -56,7 +56,7 @@
                                         <input type="hidden" name="id" value="<?php echo s($programa->id); ?>">
                                         <input type="hidden" name="tipo" value="programa">
                                         <button type="submit"
-                                            class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                            class="btn btn-sm btn-outline-danger px-3"
                                             title="Eliminar registro"
                                             data-confirm="¿Estás seguro de eliminar este registro?">
                                             <i class="bi bi-trash-fill"></i>
