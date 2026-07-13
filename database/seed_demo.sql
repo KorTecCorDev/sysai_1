@@ -66,12 +66,14 @@ INSERT INTO persona (id, nro_documento, apellido_paterno, apellido_materno, nomb
   (3, 31752980, 'MAGUIÑA',   'TARAZONA', 'JOSÉ LUIS',        '944882301', NOW()),
   (4, 32048715, 'COCHACHÍN', 'MILLA',    'ROSA ANGÉLICA',    '945770142', NOW());
 
-INSERT INTO usuario (id, persona_id, cargo_id, descripcion, email, password, fecha) VALUES
-  (2, 2, 2, 'CTB001', 'contador@arcoiris.pe',
+-- `usuario.descripcion` (código de usuario) fue retirado en la migración 024: el
+-- login es por email. Ya no se inserta esa columna.
+INSERT INTO usuario (id, persona_id, cargo_id, email, password, fecha) VALUES
+  (2, 2, 2, 'contador@arcoiris.pe',
      '$2y$10$tRtbOZnB6/e6BOqLaPo8ee6a19xO.ZLelQY69vjghVEKQuUJJe5RK', NOW()),
-  (3, 3, 3, 'CRD001', 'coordinador.comunidad@arcoiris.pe',
+  (3, 3, 3, 'coordinador.comunidad@arcoiris.pe',
      '$2y$10$YS2HxxHLG9hS/j.O/Ewn6OlfKVmEL23BjMN777D65/8pXj2HuYjqi', NOW()),
-  (4, 4, 3, 'CRD002', 'coordinador.casahogar@arcoiris.pe',
+  (4, 4, 3, 'coordinador.casahogar@arcoiris.pe',
      '$2y$10$77nIuyAtRiG/kUwqxc3Z6.7s/l01Kg7PZaE/0dbbWLlpQ73EOYowm', NOW());
 
 -- ---------------------------------------------------------------------------
@@ -123,54 +125,57 @@ INSERT INTO detalle_financiamiento (id, programa_id, fuente_financiamiento_id, m
 -- ===========================================================================
 --  6) JERARQUÍA POA — PROGRAMA 1: COMUNIDAD
 -- ===========================================================================
+-- Códigos jerárquicos autogenerados (formato F0-F3): Resultado "1", Producto "1.1",
+-- Actividad "1.1.1", Rubro "1.1.1.01" — unicidad por padre (migr. 022-023).
 INSERT INTO resultado (id, programa_id, codigo, nombre, descripcion, fecha) VALUES
-  (1, 1, 'RES001', 'FAMILIAS FORTALECEN SUS CAPACIDADES ECONÓMICAS Y PRODUCTIVAS',
+  (1, 1, '1', 'FAMILIAS FORTALECEN SUS CAPACIDADES ECONÓMICAS Y PRODUCTIVAS',
         'RESULTADO ORIENTADO A LA GENERACIÓN DE INGRESOS FAMILIARES', NOW()),
-  (2, 1, 'RES002', 'COMUNIDAD MEJORA SU ACCESO A SERVICIOS BÁSICOS DE SALUD',
+  (2, 1, '2', 'COMUNIDAD MEJORA SU ACCESO A SERVICIOS BÁSICOS DE SALUD',
         'RESULTADO ORIENTADO A LA SALUD PREVENTIVA COMUNITARIA', NOW());
 
 INSERT INTO producto (id, resultado_id, codigo, nombre, descripcion, fecha) VALUES
-  (1, 1, 'PRD001', 'FAMILIAS CAPACITADAS EN EMPRENDIMIENTO Y GESTIÓN FAMILIAR', NULL, NOW()),
-  (2, 1, 'PRD002', 'FAMILIAS IMPLEMENTAN HUERTOS FAMILIARES SOSTENIBLES', NULL, NOW()),
-  (3, 2, 'PRD003', 'POBLACIÓN ACCEDE A JORNADAS DE SALUD PREVENTIVA', NULL, NOW());
+  (1, 1, '1.1', 'FAMILIAS CAPACITADAS EN EMPRENDIMIENTO Y GESTIÓN FAMILIAR', NULL, NOW()),
+  (2, 1, '1.2', 'FAMILIAS IMPLEMENTAN HUERTOS FAMILIARES SOSTENIBLES', NULL, NOW()),
+  (3, 2, '2.1', 'POBLACIÓN ACCEDE A JORNADAS DE SALUD PREVENTIVA', NULL, NOW());
 
 INSERT INTO actividad (id, producto_id, codigo, nombre, descripcion, fecha) VALUES
-  (1, 1, 'ACT001', 'EJECUTAR TALLERES DE CAPACITACIÓN EN EMPRENDIMIENTO FAMILIAR', NULL, NOW()),
-  (2, 2, 'ACT002', 'BRINDAR ASISTENCIA TÉCNICA EN INSTALACIÓN DE HUERTOS FAMILIARES', NULL, NOW()),
-  (3, 3, 'ACT003', 'REALIZAR CAMPAÑAS DE SALUD PREVENTIVA EN LA COMUNIDAD', NULL, NOW());
+  (1, 1, '1.1.1', 'EJECUTAR TALLERES DE CAPACITACIÓN EN EMPRENDIMIENTO FAMILIAR', NULL, NOW()),
+  (2, 2, '1.2.1', 'BRINDAR ASISTENCIA TÉCNICA EN INSTALACIÓN DE HUERTOS FAMILIARES', NULL, NOW()),
+  (3, 3, '2.1.1', 'REALIZAR CAMPAÑAS DE SALUD PREVENTIVA EN LA COMUNIDAD', NULL, NOW());
 
 -- Rubros (categoria_rubro_id 1..10; tipo_rubro_id: 1=Bien, 2=Servicio)
 INSERT INTO rubro (id, actividad_id, categoria_rubro_id, tipo_rubro_id, codigo, nombre, descripcion, monto, fecha) VALUES
-  (1, 1, 7, 2, 'RUB001', 'HONORARIOS DE FACILITADORES DE TALLERES',      NULL, 12000.00, NOW()),
-  (2, 1, 2, 1, 'RUB002', 'KITS Y MATERIALES DE CAPACITACIÓN',            NULL,  4500.00, NOW()),
-  (3, 2, 1, 1, 'RUB003', 'SEMILLAS, PLANTONES E INSUMOS AGRÍCOLAS',      NULL,  6000.00, NOW()),
-  (4, 3, 8, 2, 'RUB004', 'SERVICIOS PROFESIONALES DE SALUD',             NULL,  8000.00, NOW()),
-  (5, 3, 4, 2, 'RUB005', 'VIÁTICOS Y TRANSPORTE DE BRIGADA DE SALUD',    NULL,  3500.00, NOW());
+  (1, 1, 7, 2, '1.1.1.01', 'HONORARIOS DE FACILITADORES DE TALLERES',      NULL, 12000.00, NOW()),
+  (2, 1, 2, 1, '1.1.1.02', 'KITS Y MATERIALES DE CAPACITACIÓN',            NULL,  4500.00, NOW()),
+  (3, 2, 1, 1, '1.2.1.01', 'SEMILLAS, PLANTONES E INSUMOS AGRÍCOLAS',      NULL,  6000.00, NOW()),
+  (4, 3, 8, 2, '2.1.1.01', 'SERVICIOS PROFESIONALES DE SALUD',             NULL,  8000.00, NOW()),
+  (5, 3, 4, 2, '2.1.1.02', 'VIÁTICOS Y TRANSPORTE DE BRIGADA DE SALUD',    NULL,  3500.00, NOW());
 -- Presupuesto POA COMUNIDAD = 12000 + 4500 + 6000 + 8000 + 3500 = 34000.00
 
 -- ===========================================================================
 --  7) JERARQUÍA POA — PROGRAMA 2: CASA HOGAR
 -- ===========================================================================
+-- Códigos jerárquicos por programa: el árbol de CASA HOGAR arranca de nuevo en "1".
 INSERT INTO resultado (id, programa_id, codigo, nombre, descripcion, fecha) VALUES
-  (3, 2, 'RES003', 'NIÑOS Y ADOLESCENTES EN ACOGIMIENTO RECIBEN ATENCIÓN INTEGRAL',
+  (3, 2, '1', 'NIÑOS Y ADOLESCENTES EN ACOGIMIENTO RECIBEN ATENCIÓN INTEGRAL',
         'RESULTADO ORIENTADO AL BIENESTAR DE LOS RESIDENTES', NOW()),
-  (4, 2, 'RES004', 'INFRAESTRUCTURA DE LA CASA HOGAR MANTENIDA Y SEGURA',
+  (4, 2, '2', 'INFRAESTRUCTURA DE LA CASA HOGAR MANTENIDA Y SEGURA',
         'RESULTADO ORIENTADO A AMBIENTES DIGNOS Y SEGUROS', NOW());
 
 INSERT INTO producto (id, resultado_id, codigo, nombre, descripcion, fecha) VALUES
-  (4, 3, 'PRD004', 'RESIDENTES RECIBEN ALIMENTACIÓN BALANCEADA DIARIA', NULL, NOW()),
-  (5, 3, 'PRD005', 'RESIDENTES CUENTAN CON APOYO EDUCATIVO Y PSICOLÓGICO', NULL, NOW()),
-  (6, 4, 'PRD006', 'AMBIENTES DE LA CASA HOGAR EQUIPADOS Y EN BUEN ESTADO', NULL, NOW());
+  (4, 3, '1.1', 'RESIDENTES RECIBEN ALIMENTACIÓN BALANCEADA DIARIA', NULL, NOW()),
+  (5, 3, '1.2', 'RESIDENTES CUENTAN CON APOYO EDUCATIVO Y PSICOLÓGICO', NULL, NOW()),
+  (6, 4, '2.1', 'AMBIENTES DE LA CASA HOGAR EQUIPADOS Y EN BUEN ESTADO', NULL, NOW());
 
 INSERT INTO actividad (id, producto_id, codigo, nombre, descripcion, fecha) VALUES
-  (4, 4, 'ACT004', 'PROVEER ALIMENTACIÓN DIARIA A LOS RESIDENTES', NULL, NOW()),
-  (5, 5, 'ACT005', 'CONTRATAR SERVICIO DE APOYO PSICOPEDAGÓGICO', NULL, NOW()),
-  (6, 6, 'ACT006', 'EJECUTAR MANTENIMIENTO Y EQUIPAMIENTO DE DORMITORIOS', NULL, NOW());
+  (4, 4, '1.1.1', 'PROVEER ALIMENTACIÓN DIARIA A LOS RESIDENTES', NULL, NOW()),
+  (5, 5, '1.2.1', 'CONTRATAR SERVICIO DE APOYO PSICOPEDAGÓGICO', NULL, NOW()),
+  (6, 6, '2.1.1', 'EJECUTAR MANTENIMIENTO Y EQUIPAMIENTO DE DORMITORIOS', NULL, NOW());
 
 INSERT INTO rubro (id, actividad_id, categoria_rubro_id, tipo_rubro_id, codigo, nombre, descripcion, monto, fecha) VALUES
-  (6, 4, 6, 1, 'RUB006', 'VÍVERES Y ALIMENTOS DE PRIMERA NECESIDAD',        NULL, 18000.00, NOW()),
-  (7, 5, 7, 2, 'RUB007', 'HONORARIOS DE PSICÓLOGO Y TUTOR PEDAGÓGICO',      NULL, 14400.00, NOW()),
-  (8, 6, 3, 1, 'RUB008', 'MANTENIMIENTO E IMPLEMENTACIÓN DE AMBIENTES',     NULL,  9000.00, NOW());
+  (6, 4, 6, 1, '1.1.1.01', 'VÍVERES Y ALIMENTOS DE PRIMERA NECESIDAD',        NULL, 18000.00, NOW()),
+  (7, 5, 7, 2, '1.2.1.01', 'HONORARIOS DE PSICÓLOGO Y TUTOR PEDAGÓGICO',      NULL, 14400.00, NOW()),
+  (8, 6, 3, 1, '2.1.1.01', 'MANTENIMIENTO E IMPLEMENTACIÓN DE AMBIENTES',     NULL,  9000.00, NOW());
 -- Presupuesto POA CASA HOGAR = 18000 + 14400 + 9000 = 41400.00
 
 -- ---------------------------------------------------------------------------

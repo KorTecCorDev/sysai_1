@@ -39,7 +39,12 @@
 
 ## Pendientes conocidos (no son bugs)
 - **OIE** (`/ingreso_egreso`) todavía pide código a mano → se hará junto con **item 7** (rework del módulo).
-- **Seed greenfield**: `seed.sql`/`seed_demo.sql` insertan `usuario.descripcion` (columna ya eliminada) → un import limpio fallaría. Se corrige en **F5** (regenerar seeds + normalizar códigos viejos).
+- ✅ **Seed greenfield — RESUELTO (F5):** `seed.sql`/`seed_demo.sql` ya NO insertan `usuario.descripcion`;
+  el árbol POA del demo usa códigos jerárquicos (`1 / 1.1 / 1.1.1 / 1.1.1.01`) y `categoria_rubro` usa `CAT###`.
+  Verificado con import limpio en BD scratch (baseline + migr. 001-024 + seed + seed_demo, sin errores).
+  Arnés `qa_rendicion.ps1` actualizado (ya no envía `codigo`; identifica por serie+número; su sección 5
+  pasó de "límite por rubro" a "límite por sobre"). Fixture de QA portátil (`database/seed_qa.sql`, aplicado
+  por `qa_all.ps1`). **Suite completa VERDE: 49/49** (18+21+10) confirmada contra `localhost:3000` (2026-07-13).
 
 ---
 ### Hallazgos durante las pruebas

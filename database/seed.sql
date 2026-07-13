@@ -6,7 +6,7 @@
 --
 -- Orden de despliegue desde cero (ver database/README.md):
 --   1) schema_baseline.sql   (estructura, sin datos)
---   2) php database/migrate.php  (migraciones 001-013)
+--   2) php database/migrate.php  (migraciones 001-024)
 --   3) database/seed.sql     (este archivo)
 --
 -- Idempotente: todo va con INSERT IGNORE (claves UNIQUE) → re-ejecutar es seguro.
@@ -68,17 +68,19 @@ INSERT IGNORE INTO `subcategoria_rubro` (`id`, `codigo`, `nombre`, `descripcion`
   (1, 'SCR001', 'Costos directos',   '', NOW()),
   (2, 'SCR002', 'Costos indirectos', '', NOW());
 
+-- Códigos CAT### para coincidir con el generador (CategoriaRubro::siguienteCodigo →
+-- 'CAT'); así las categorías creadas después continúan la secuencia (CAT011, ...).
 INSERT IGNORE INTO `categoria_rubro` (`id`, `subcategoria_rubro_id`, `codigo`, `nombre`, `descripcion`, `fecha`) VALUES
-  (1,  1, 'CRB001', 'Asistencia técnica',          '',                                NOW()),
-  (2,  1, 'CRB002', 'Equipamiento',                '',                                NOW()),
-  (3,  1, 'CRB003', 'Infraestructura',             '',                                NOW()),
-  (4,  1, 'CRB004', 'Desplazamiento',              'Viajes y viáticos',               NOW()),
-  (5,  1, 'CRB005', 'Monitoreo y evaluación',      '',                                NOW()),
-  (6,  1, 'CRB006', 'Otros',                       '',                                NOW()),
-  (7,  2, 'CRB007', 'Personal',                    'Permanente',                      NOW()),
-  (8,  2, 'CRB008', 'Servicios de terceros',       'Contabilidad y asesoría',         NOW()),
-  (9,  2, 'CRB009', 'Implementación de oficina',   'Mobiliario o equipo informático', NOW()),
-  (10, 2, 'CRB010', 'Administración del proyecto', 'Servicios y otros',               NOW());
+  (1,  1, 'CAT001', 'Asistencia técnica',          '',                                NOW()),
+  (2,  1, 'CAT002', 'Equipamiento',                '',                                NOW()),
+  (3,  1, 'CAT003', 'Infraestructura',             '',                                NOW()),
+  (4,  1, 'CAT004', 'Desplazamiento',              'Viajes y viáticos',               NOW()),
+  (5,  1, 'CAT005', 'Monitoreo y evaluación',      '',                                NOW()),
+  (6,  1, 'CAT006', 'Otros',                       '',                                NOW()),
+  (7,  2, 'CAT007', 'Personal',                    'Permanente',                      NOW()),
+  (8,  2, 'CAT008', 'Servicios de terceros',       'Contabilidad y asesoría',         NOW()),
+  (9,  2, 'CAT009', 'Implementación de oficina',   'Mobiliario o equipo informático', NOW()),
+  (10, 2, 'CAT010', 'Administración del proyecto', 'Servicios y otros',               NOW());
 
 -- ---------------------------------------------------------------------------
 -- Usuario administrador inicial (bootstrap)
@@ -92,7 +94,9 @@ INSERT IGNORE INTO `persona`
   (`id`, `nro_documento`, `apellido_paterno`, `apellido_materno`, `nombres`, `telefono`, `fecha`) VALUES
   (1, 99999999, 'ADMINISTRADOR', 'SISTEMA', 'ADMIN', NULL, NOW());
 
+-- Nota: `usuario` YA NO tiene columna `descripcion` (código de usuario retirado en
+-- la migración 024 — el login es por email). No la insertamos.
 INSERT IGNORE INTO `usuario`
-  (`id`, `persona_id`, `cargo_id`, `descripcion`, `email`, `password`, `fecha`) VALUES
-  (1, 1, 1, 'ADM001', 'admin@arcoiris.pe',
+  (`id`, `persona_id`, `cargo_id`, `email`, `password`, `fecha`) VALUES
+  (1, 1, 1, 'admin@arcoiris.pe',
    '$2y$10$o2eDTocv2MTDD/DdXGFb9.9vjLxMXdGvjZ.zF.1P.PSS7xSTMrEEm', NOW());
