@@ -4,21 +4,37 @@
 # USO (desde cualquier carpeta):
 #   pwsh -File database\qa_all.ps1
 #   pwsh -File database\qa_all.ps1 -BaseUrl http://localhost:3000 -MysqlExe "C:\xampp\mysql\bin\mysql.exe"
+#   pwsh -File database\qa_all.ps1 -SkipSeed        # NO reinstala el fixture (usa el estado actual)
 #
 # PRERREQUISITOS:
-#   - Servidor de desarrollo corriendo (local3000 = php -S localhost:3000 desde la raiz).
-#   - MariaDB de XAMPP arriba; BD `sysai` con migraciones 001-017 aplicadas + seed/datos demo.
-#   - Usuarios de prueba: coordinador@sysai.test / Test1234* (programa 1, con jerarquia y rubros),
-#     contador@sysai.test / admin1234 (= admin robertokar97@gmail.com).
-#   Cada arnes crea y limpia sus propios datos de prueba; no deja basura en la BD.
+#   - Servidor de desarrollo corriendo (local3000 = php -S localhost:3000 desde la raiz del proyecto).
+#     OJO: la app se sirve en la RAIZ del dominio (RewriteBase /); bajo Apache/XAMPP en un
+#     subdirectorio (/sysai_1) el ruteo se rompe. Usar php -S localhost:3000.
+#   - MariaDB de XAMPP arriba; BD `sysai` con migraciones 001-024 aplicadas.
+#   - Por defecto este runner APLICA database/seed_qa.sql (fixture determinista y versionado),
+#     de modo que la suite corre igual en cualquier maquina (portatil). Esto RESETEA los datos
+#     de `sysai` (borra el demo si estaba); para volver al escenario visual: seed_demo.sql.
+#     Fixture de QA: contador@sysai.test / admin1234 (cargo 2),
+#                    coordinador@sysai.test / Test1234* (coordinador del programa 1).
+#   Cada arnes ademas crea y limpia sus propios datos de prueba; no deja basura en la BD.
 param(
     [string]$BaseUrl   = 'http://localhost:3000',
     [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',
     [string]$PassCoord = 'Test1234*',
-    [string]$PassConta = 'admin1234'
+    [string]$PassConta = 'admin1234',
+    [switch]$SkipSeed
 )
 $ErrorActionPreference = 'Continue'
 $dir = $PSScriptRoot
+
+if (-not $SkipSeed) {
+    $seed = Join-Path $dir 'seed_qa.sql'
+    Write-Host "Aplicando fixture de QA: seed_qa.sql (resetea la BD sysai)..." -ForegroundColor Yellow
+    Get-Content -Raw $seed | & $MysqlExe -u root sysai
+    if ($LASTEXITCODE -ne 0) { Write-Host "ERROR aplicando seed_qa.sql (codigo $LASTEXITCODE). Abortando." -ForegroundColor Red; exit 2 }
+    Write-Host "Fixture de QA instalado." -ForegroundColor DarkGray
+}
+
 $scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1')
 $fail = 0
 foreach ($s in $scripts) {
