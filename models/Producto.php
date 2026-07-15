@@ -31,17 +31,17 @@ class Producto extends ActiveRecord
         if (!$this->resultado_id) {
             self::$errores[] = 'Debe de seleccionar un resultado válido';
         }
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes ingresar un código válido';
-        }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otro producto';
-        }
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido para el resultado';
         }
         return self::$errores;
+    }
+
+    /** Código jerárquico autogenerado dentro del resultado: "<cod_resultado>.<n>" (p. ej. "1.2"). */
+    public static function siguienteCodigo(int $resultadoId): string
+    {
+        return static::siguienteCodigoJerarquico('resultado', $resultadoId, 'resultado_id', 1);
     }
     public function agregarIdtoObjeto(int $id, string $key): object
     {

@@ -1,4 +1,4 @@
--- 022 · Item 7/OIE — Vista de administración compatible con el ingreso híbrido.
+-- 025 · Item 7/OIE — Vista de administración compatible con el ingreso híbrido.
 -- La vista de la migr. 007 hacía JOIN (interno) a programa: con programa_id NULL
 -- (ingreso al total de la fuente, migr. 020) esas filas desaparecían del listado.
 -- Se recrea con LEFT JOIN y se exponen programa y fuente para el listado del Contador.
@@ -25,4 +25,4 @@ FROM `otros_ingresos_egresos` `o`
   LEFT JOIN `fuente_financiamiento` `f` ON `o`.`ff_id` = `f`.`id`
 ORDER BY `o`.`id` DESC;
 
-INSERT IGNORE INTO `schema_migrations` (`version`) VALUES ('022');
+INSERT IGNORE INTO `schema_migrations` (`version`) VALUES ('025');

@@ -42,7 +42,9 @@
 
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código:</label>
-        <input type="text" class="form-control" id="codigo" name="codigo" placeholder="Código" value="<?php echo s($rendicion->codigo); ?>">
+        <input type="text" class="form-control bg-body-secondary" id="codigo"
+               value="<?php echo s($rendicion->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+        <div class="form-text">Se genera automáticamente (p. ej. REN001).</div>
     </div>
 
     <div class="mb-3 w-25">

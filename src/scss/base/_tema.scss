@@ -1,0 +1,171 @@
+// =============================================================
+//  TEMA SysAI — capa de tokens sobre Bootstrap 5.3 (CSS variables)
+//  Se carga DESPUÉS de bootstrap.min.css (via app.css), por lo que
+//  gana en el orden de cascada. Tematiza Bootstrap sin recompilarlo.
+//  Paleta y tipografía aprobadas en la guía de estilo (Rubik + IBM Plex Sans).
+// =============================================================
+
+:root {
+  // ---- Tokens de marca (fuente de verdad única) ----
+  --sa-primary:        #1E63B8;
+  --sa-primary-strong: #164E92;
+  --sa-primary-soft:   #EAF1FA;
+  --sa-ink:            #1B2430;
+  --sa-ink-soft:       #5B6472;
+  --sa-ground:         #F6F7F9;
+  --sa-surface:        #FFFFFF;
+  --sa-surface-2:      #FBFCFD;
+  --sa-line:           #E2E5EA;
+
+  // ---- Mapeo al tema de Bootstrap (acento) ----
+  --bs-primary:            #1E63B8;
+  --bs-primary-rgb:        30, 99, 184;
+  --bs-primary-text-emphasis: #0C2849;
+  --bs-primary-bg-subtle:  #EAF1FA;
+  --bs-primary-border-subtle: #B9D0EC;
+
+  --bs-link-color:         #1E63B8;
+  --bs-link-color-rgb:     30, 99, 184;
+  --bs-link-hover-color:   #164E92;
+  --bs-link-hover-color-rgb: 22, 78, 146;
+
+  // ---- Estados semánticos ----
+  --bs-success:            #2F855A;
+  --bs-success-rgb:        47, 133, 90;
+  --bs-success-text-emphasis: #123423;
+  --bs-success-bg-subtle:  #E6F2EC;
+  --bs-success-border-subtle: #B6D9C6;
+
+  --bs-warning:            #C8860D;
+  --bs-warning-rgb:        200, 134, 13;
+  --bs-warning-text-emphasis: #503606;
+  --bs-warning-bg-subtle:  #FBF1DC;
+  --bs-warning-border-subtle: #EED8A6;
+
+  --bs-danger:             #C53B3B;
+  --bs-danger-rgb:         197, 59, 59;
+  --bs-danger-text-emphasis: #4F1717;
+  --bs-danger-bg-subtle:   #FBE8E8;
+  --bs-danger-border-subtle: #EEBCBC;
+
+  --bs-info:               #2B6CB0;
+  --bs-info-rgb:           43, 108, 176;
+  --bs-info-text-emphasis: #112B47;
+  --bs-info-bg-subtle:     #E8F0F9;
+  --bs-info-border-subtle: #BDD4EC;
+
+  // ---- Neutros / superficie / texto ----
+  --bs-body-color:         #1B2430;
+  --bs-body-color-rgb:     27, 36, 48;
+  --bs-body-bg:            #F6F7F9;
+  --bs-emphasis-color:     #1B2430;
+  --bs-secondary-color:    rgba(27, 36, 48, .65);
+  --bs-tertiary-bg:        #FBFCFD;
+  --bs-border-color:       #E2E5EA;
+
+  // ---- Tipografía dúo ----
+  --bs-body-font-family:   "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  // ---- Forma ----
+  --bs-border-radius:      .55rem;
+  --bs-border-radius-sm:   .4rem;
+  --bs-border-radius-lg:   .75rem;
+}
+
+// -------------------------------------------------------------
+//  Base tipográfica (gana sobre reglas globales heredadas)
+// -------------------------------------------------------------
+body {
+  font-family: var(--bs-body-font-family);
+  color: var(--sa-ink);
+  background-color: var(--sa-ground);
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: "Rubik", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  color: var(--sa-ink);
+}
+
+// -------------------------------------------------------------
+//  Botones (Bootstrap 5.3 hornea los colores → override por componente)
+// -------------------------------------------------------------
+.btn-primary {
+  --bs-btn-bg: #1E63B8;            --bs-btn-border-color: #1E63B8;   --bs-btn-color: #fff;
+  --bs-btn-hover-bg: #164E92;      --bs-btn-hover-border-color: #164E92;   --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #143F78;     --bs-btn-active-border-color: #143F78;
+  --bs-btn-disabled-bg: #1E63B8;   --bs-btn-disabled-border-color: #1E63B8;
+  --bs-btn-focus-shadow-rgb: 30, 99, 184;
+}
+.btn-outline-primary {
+  --bs-btn-color: #1E63B8;         --bs-btn-border-color: #1E63B8;
+  --bs-btn-hover-bg: #1E63B8;      --bs-btn-hover-border-color: #1E63B8;   --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #164E92;     --bs-btn-active-border-color: #164E92;
+  --bs-btn-focus-shadow-rgb: 30, 99, 184;
+}
+.btn-success {
+  --bs-btn-bg: #2F855A;            --bs-btn-border-color: #2F855A;
+  --bs-btn-hover-bg: #266B49;      --bs-btn-hover-border-color: #266B49;
+  --bs-btn-active-bg: #1F5A3D;     --bs-btn-active-border-color: #1F5A3D;
+  --bs-btn-disabled-bg: #2F855A;   --bs-btn-disabled-border-color: #2F855A;
+  --bs-btn-focus-shadow-rgb: 47, 133, 90;
+}
+.btn-outline-warning {
+  --bs-btn-color: #C8860D;         --bs-btn-border-color: #C8860D;
+  --bs-btn-hover-bg: #C8860D;      --bs-btn-hover-border-color: #C8860D;   --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #A56F0A;     --bs-btn-active-border-color: #A56F0A;  --bs-btn-active-color: #fff;
+  --bs-btn-focus-shadow-rgb: 200, 134, 13;
+}
+.btn-outline-danger {
+  --bs-btn-color: #C53B3B;         --bs-btn-border-color: #C53B3B;
+  --bs-btn-hover-bg: #C53B3B;      --bs-btn-hover-border-color: #C53B3B;   --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #A32F2F;     --bs-btn-active-border-color: #A32F2F;
+  --bs-btn-focus-shadow-rgb: 197, 59, 59;
+}
+.btn-outline-secondary {
+  --bs-btn-color: #5B6472;         --bs-btn-border-color: #C7CDD6;
+  --bs-btn-hover-bg: #5B6472;      --bs-btn-hover-border-color: #5B6472;   --bs-btn-hover-color: #fff;
+  --bs-btn-focus-shadow-rgb: 91, 100, 114;
+}
+
+// -------------------------------------------------------------
+//  Tablas
+// -------------------------------------------------------------
+.table {
+  --bs-table-color: var(--sa-ink);
+  --bs-table-border-color: var(--sa-line);
+  --bs-table-hover-bg: var(--sa-surface-2);
+}
+.table > thead.table-light th,
+.table > thead.table-light {
+  --bs-table-bg: #F1F3F6;
+  color: var(--sa-ink-soft);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: .78rem;
+}
+
+// -------------------------------------------------------------
+//  Formularios — foco accesible con anillo de marca
+// -------------------------------------------------------------
+.form-control:focus,
+.form-select:focus {
+  border-color: #1E63B8;
+  box-shadow: 0 0 0 .2rem rgba(30, 99, 184, .25);
+}
+
+// -------------------------------------------------------------
+//  Foco de teclado visible en botones (accesibilidad)
+// -------------------------------------------------------------
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 .25rem rgba(30, 99, 184, .35);
+}
+
+// Respeta usuarios que reducen movimiento
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}

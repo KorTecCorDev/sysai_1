@@ -42,21 +42,22 @@ class Rubro extends ActiveRecord
         if (!$this->tipo_rubro_id) {
             self::$errores[] = 'Debes seleccionar un tipo de rubro válido';
         }
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes añadir un código válido para este rubro';
-        }
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido para este rubro';
         }
         if (!$this->monto) {
             self::$errores[] = 'Debes ingresar un monto válido para este rubro';
         }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otro rubro';
-        }
         return self::$errores;
     }
+
+    /** Código jerárquico autogenerado dentro de la actividad: "<cod_actividad>.<NN>" (p. ej. "1.1.1.01"). */
+    public static function siguienteCodigo(int $actividadId): string
+    {
+        return static::siguienteCodigoJerarquico('actividad', $actividadId, 'actividad_id', 2);
+    }
+
     public function agregarIdtoObjeto(int $id, string $key): object
     {
         $objeto = $this;

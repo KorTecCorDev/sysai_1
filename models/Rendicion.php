@@ -65,14 +65,7 @@ class Rendicion extends ActiveRecord
         if (!$this->ff_id) {
             self::$errores[] = 'Debes seleccionar una fuente de financiamiento válida';
         }
-        if (!$this->codigo) {
-            self::$errores[] = 'Debes de ingresar un código válido';
-        }
-        //Validamos que el codigo sea único
-        if ($this->existeDato($this, ['codigo'])) {
-            self::$errores[] = 'El código ingresado ya existe para otro comprobante';
-        }
-
+        // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->serie) {
             self::$errores[] = 'Debes de ingresar una serie de comprobante válida';
         }
@@ -92,6 +85,12 @@ class Rendicion extends ActiveRecord
             self::$errores[] = 'Debes de ingresar una fecha de emisión de comprobante válida';
         }
         return self::$errores;
+    }
+
+    /** Código correlativo autogenerado del comprobante de rendición: REN001, REN002, ... */
+    public static function siguienteCodigo(): string
+    {
+        return static::siguienteCodigoCorrelativo('REN');
     }
 
     // Σ de los montos de las rendiciones imputadas a un rubro. Permite excluir una

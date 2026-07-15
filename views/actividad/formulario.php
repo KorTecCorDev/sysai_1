@@ -2,8 +2,9 @@
     <legend>Actividad</legend>
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código</label>
-        <input type="text" class="form-control" id="codigo" aria-describedby="codigoHelp" name="codigo" value="<?php echo s($actividad->codigo); ?>">
-        <div class="form-text">Ingrese el código de la Actividad</div>
+        <input type="text" class="form-control bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
+               value="<?php echo s($actividad->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+        <div class="form-text">Se genera automáticamente (p. ej. 1.1.2).</div>
     </div>
     <div class="mb-3 w-auto">
         <label for="nombre" class="form-label">Nombre</label>

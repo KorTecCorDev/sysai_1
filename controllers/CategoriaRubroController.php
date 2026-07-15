@@ -36,6 +36,8 @@ class CategoriaRubroController
             $errores = $categoria_rubro->validar();
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
+                //El código se autogenera (correlativo CAT###); el usuario no lo teclea.
+                $categoria_rubro->codigo = CategoriaRubro::siguienteCodigo();
                 //Insertando la acción de audi para el usuario actual
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = CategoriaRubro::setUsuarioActual();

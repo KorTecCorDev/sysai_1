@@ -1,6 +1,14 @@
 # QA HTTP automatizado — Rendiciones imputadas al rubro (item 5)
 # Login, CSRF 419, autorizacion por rol/cross-tenant, creacion imputada a rubro,
-# limite por rubro (Σ rendiciones ≤ monto del rubro). Verificacion en BD.
+# limite por SOBRE (programa, fuente): el monto de la rendicion no puede exceder el
+# saldo disponible del sobre. Verificacion en BD.
+#
+# NOTA (enmienda de sobres, migr. 020): el tope dejo de ser rubro.monto y paso a ser
+# el saldo del sobre (DetalleFinanciamiento::saldoSobre). El codigo de la rendicion
+# YA NO se envia en el form: lo autogenera el modelo (REN###); por eso las filas de
+# prueba se identifican por serie+numero, no por codigo.
+# PRECONDICION del fixture local: el programa 1 debe tener un sobre (detalle_financiamiento
+# con monto_asignado) para la fuente 1 con saldo suficiente para la rendicion de la seccion 4.
 param(
     [string]$BaseUrl   = 'http://localhost:3000',          # URL del servidor de desarrollo
     [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',   # ruta a mysql.exe de XAMPP
@@ -51,8 +59,7 @@ function New-Login($email, $pwd) {
     return @{ Sess=$s; Resp=$r; Token=$token }
 }
 
-$RUBRO = 2          # programa 1, monto 3500
-$RUBRO_MONTO = 3500
+$RUBRO = 2          # rubro del programa 1 (la actividad se deriva por rubro)
 
 Write-Host "`n=== 1) AUTENTICACION ===" -ForegroundColor Cyan
 $coord = New-Login 'coordinador@sysai.test' $passCoord
@@ -74,40 +81,47 @@ Assert ($r.Status -eq 403) "Coordinador no accede a rendiciones de rubro de otro
 
 Write-Host "`n=== 4) CREAR RENDICION IMPUTADA AL RUBRO ===" -ForegroundColor Cyan
 $nAntes = Q "SELECT COUNT(*) FROM rendicion WHERE rubro_id=$RUBRO;"
-$form = @{ tipo_comprobante_id='1'; ff_id='1'; codigo='QAR001'; serie='S001'; numero='0001';
+# El codigo lo autogenera el modelo (REN###): NO se envia. Identificamos por serie+numero.
+$form = @{ tipo_comprobante_id='1'; ff_id='1'; serie='S001'; numero='0001';
            detalle='COMPRA QA'; descripcion='COMENTARIO QA'; ruc='20100100101'; razon_social='PROVEEDOR QA SAC';
            monto='3000'; fecha_original='2026-06-01'; csrf_token=$coord.Token }
 $r = Post-Raw $coord.Sess "/rendicion/crear?rubro_id=$RUBRO" $form
 $nDespues = Q "SELECT COUNT(*) FROM rendicion WHERE rubro_id=$RUBRO;"
 Assert ($r.Location -like "*rubro_id=$RUBRO*resultado=1*" -and [int]$nDespues -eq [int]$nAntes+1) "Rendicion creada e imputada al rubro $RUBRO (filas $nAntes->$nDespues)"
-$row = Q "SELECT rubro_id, estado, IFNULL(poa_rendicion_id,'NULL'), monto FROM rendicion WHERE codigo='QAR001';"
+$row = Q "SELECT rubro_id, estado, IFNULL(poa_rendicion_id,'NULL'), monto FROM rendicion WHERE serie='S001' AND numero='0001';"
 Assert ($row -match "^$RUBRO\s+0\s+NULL\s+3000") "Fila correcta: rubro_id=$RUBRO, estado=0, poa_rendicion_id=NULL, monto=3000 ('$row')"
+# El codigo autogenerado sigue el patron REN###
+$cod = Q "SELECT codigo FROM rendicion WHERE serie='S001' AND numero='0001';"
+Assert ($cod -match '^REN\d{3,}$') "Codigo de rendicion autogenerado con patron REN### ('$cod')"
 
-Write-Host "`n=== 5) LIMITE POR RUBRO (Σ ≤ monto rubro=$RUBRO_MONTO) ===" -ForegroundColor Cyan
-# Ya hay 3000 rendido; intentar 1000 mas (total 4000 > 3500) -> debe fallar sin insertar
-$form2 = @{ tipo_comprobante_id='1'; ff_id='1'; codigo='QAR002'; serie='S001'; numero='0002';
+Write-Host "`n=== 5) LIMITE POR SOBRE (monto <= disponible del sobre programa 1 / fuente 1) ===" -ForegroundColor Cyan
+# Tras la enmienda de sobres (migr. 020) el tope es el saldo del sobre, no rubro.monto.
+# Leemos el "disponible para comprometer" actual del sobre (prog 1, ff 1) — mismo criterio
+# que DetalleFinanciamiento::saldoSobre: asignado + ingresos OIE - egresos OIE - rendiciones
+# de TODO estado — e intentamos excederlo por S/ 1000: debe rechazarse sin insertar.
+$disp = Q @"
+SELECT ROUND(
+   COALESCE((SELECT monto_asignado FROM detalle_financiamiento WHERE programa_id=1 AND fuente_financiamiento_id=1),0)
+ + COALESCE((SELECT SUM(oc.monto) FROM otros_ingresos_egresos oie JOIN oie_comprobante oc ON oc.id=oie.oie_comprobante_id WHERE oie.programa_id=1 AND oie.ff_id=1 AND oie.oie_tipo_id=1),0)
+ - COALESCE((SELECT SUM(oc.monto) FROM otros_ingresos_egresos oie JOIN oie_comprobante oc ON oc.id=oie.oie_comprobante_id WHERE oie.programa_id=1 AND oie.ff_id=1 AND oie.oie_tipo_id=2),0)
+ - COALESCE((SELECT SUM(r.monto) FROM rendicion r JOIN rubro ru ON ru.id=r.rubro_id JOIN actividad a ON a.id=ru.actividad_id JOIN producto p ON p.id=a.producto_id JOIN resultado re ON re.id=p.resultado_id WHERE re.programa_id=1 AND r.ff_id=1),0)
+, 2);
+"@
+$exceso = [math]::Round([double]$disp + 1000, 2)
+$form2 = @{ tipo_comprobante_id='1'; ff_id='1'; serie='S001'; numero='0002';
             detalle='COMPRA QA2'; descripcion='COMENTARIO QA2'; ruc='20100100101'; razon_social='PROVEEDOR QA SAC';
-            monto='1000'; fecha_original='2026-06-02'; csrf_token=$coord.Token }
+            monto="$exceso"; fecha_original='2026-06-02'; csrf_token=$coord.Token }
 $r = Post-Raw $coord.Sess "/rendicion/crear?rubro_id=$RUBRO" $form2
-$existe = Q "SELECT COUNT(*) FROM rendicion WHERE codigo='QAR002';"
-$superaLimite = ($r.Body -match 'excede el saldo del rubro') -or ($r.Status -eq 200)
-Assert ($existe -eq '0') "Rendicion que excede el rubro NO se inserta (4000 > 3500)"
-Assert ($r.Body -match 'excede el saldo del rubro') "Muestra error de limite excedido"
-
-# Una que completa exacto el saldo (500 -> total 3500 = monto) debe pasar
-$form3 = @{ tipo_comprobante_id='1'; ff_id='2'; codigo='QAR003'; serie='S001'; numero='0003';
-            detalle='COMPRA QA3'; descripcion='COMENTARIO QA3'; ruc='20100100101'; razon_social='PROVEEDOR QA SAC';
-            monto='500'; fecha_original='2026-06-03'; csrf_token=$coord.Token }
-$r = Post-Raw $coord.Sess "/rendicion/crear?rubro_id=$RUBRO" $form3
-$total = Q "SELECT COALESCE(SUM(monto),0) FROM rendicion WHERE rubro_id=$RUBRO;"
-Assert ($r.Location -like '*resultado=1*' -and $total -match '^3500') "Rendicion al limite exacto pasa (total rendido=3500=monto)"
+$existe = Q "SELECT COUNT(*) FROM rendicion WHERE serie='S001' AND numero='0002';"
+Assert ($existe -eq '0') "Rendicion que excede el sobre NO se inserta (monto=$exceso > disponible=$disp)"
+Assert ($r.Body -match 'excede el saldo disponible del sobre') "Muestra error de limite de sobre excedido"
 
 Write-Host "`n=== 6) AUTORIZACION GET de eliminar ===" -ForegroundColor Cyan
 $r = Get-Raw $coord.Sess '/rendicion/eliminar'
 Assert ($r.Status -eq 302) "GET /rendicion/eliminar no ejecuta (redirige)"
 
-# Limpieza
-& $mysql -u root sysai -e "DELETE FROM rendicion WHERE codigo IN ('QAR001','QAR002','QAR003');" | Out-Null
+# Limpieza: las rendiciones de prueba se identifican por su serie/numero de comprobante
+& $mysql -u root sysai -e "DELETE FROM rendicion WHERE serie='S001' AND numero IN ('0001','0002','0003');" | Out-Null
 Write-Host "`n(limpieza) rendiciones de prueba eliminadas" -ForegroundColor DarkGray
 
 Write-Host "`n=== RESULTADO: $ok OK / $fail FAIL ===" -ForegroundColor Cyan

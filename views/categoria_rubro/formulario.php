@@ -1,8 +1,9 @@
 <fieldset>
     <div class="mb-3 w-25">
     <label for="codigo" class="form-label">Código</label>
-    <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="codigo" aria-describedby="codigoHelp" name="categoria_rubro[codigo]" value="<?php echo s($categoria_rubro->codigo); ?>">
-    <div id="codigoHelp" class="form-text">Ingrese el código que recibirá la categoría de rubro</div>
+    <input type="text" class="form-control shadow-sm bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
+           value="<?php echo s($categoria_rubro->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+    <div id="codigoHelp" class="form-text">Se genera automáticamente (p. ej. CAT001).</div>
     </div>
 
     <div class="mb-3 w-auto">

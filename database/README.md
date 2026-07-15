@@ -14,6 +14,16 @@ las migraciones son archivos `.sql` numerados que se aplican **en orden**.
 - `seed.sql` — datos de catálogo (cargo, tipos, categorías de rubro) + usuario
   administrador inicial. Idempotente (`INSERT IGNORE`). **No** contiene datos
   transaccionales. Se aplica **después** de las migraciones.
+- `seed_demo.sql` — escenario de **demostración visual** realista (ONG Arco Iris:
+  programas, fuentes con sobres, POAs, rendiciones, OIE). Re-ejecutable (borra-y-
+  reinserta, preserva el admin id=1). Para probar a mano en el navegador.
+- `seed_qa.sql` — **fixture determinista de la suite de QA** (`qa_*.ps1`). Reproduce
+  el contrato exacto que asumen los arneses (usuarios `*.test`, programa 1 con
+  jerarquía/rubros=28000/sobres, programa 5 cross-tenant). Re-ejecutable, preserva
+  el admin id=1. Es **mutuamente excluyente** con `seed_demo.sql` sobre la misma BD.
+
+> `seed_demo.sql` y `seed_qa.sql` son **modos** de la BD de desarrollo: instalar uno
+> reemplaza los datos del otro. Elegir según la tarea (demo visual vs QA automatizada).
 
 ## Aplicar migraciones
 
@@ -40,7 +50,20 @@ así que es seguro combinarlo con el runner.
    contraseña de inmediato** (credenciales temporales del seed).
 
 > Probado end-to-end en una BD limpia: `schema_baseline.sql` + migraciones
-> `001`-`013` + `seed.sql` aplican sin errores y el login del admin verifica.
+> `001`-`025` + `seed.sql` (+ opcionalmente `seed_demo.sql` o `seed_qa.sql`)
+> aplican sin errores y el login del admin verifica.
+
+## QA automatizada (portátil entre máquinas)
+
+```bash
+# con el server dev arriba (php -S localhost:3000 desde la raíz):
+pwsh -File database/qa_all.ps1              # aplica seed_qa.sql y corre los 3 arneses (49 checks)
+pwsh -File database/qa_all.ps1 -SkipSeed    # no reinstala el fixture (usa el estado actual)
+```
+
+`qa_all.ps1` aplica `seed_qa.sql` por defecto, así que la suite corre idéntica en
+cualquier máquina (el fixture está versionado). Tras la QA, para volver al demo:
+`mysql -u root sysai < database/seed_demo.sql`.
 
 ## Reglas
 

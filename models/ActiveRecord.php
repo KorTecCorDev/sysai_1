@@ -421,6 +421,58 @@ class ActiveRecord
     }
 
     /**
+     * Genera el siguiente código JERÁRQUICO estable con huecos para el árbol POA:
+     * "<codigo_del_padre>.<n>", donde n = MAX(último segmento entre hermanos) + 1.
+     *   $tablaPadre  tabla del padre (p. ej. 'resultado')
+     *   $padreId     id del padre
+     *   $fkPropia    columna FK al padre en la tabla propia (p. ej. 'resultado_id')
+     *   $pad         dígitos del último segmento (1 = "1.1", 2 = "…​.01" para rubro)
+     * Los identificadores de tabla/columna son constantes internas (sin input de usuario).
+     */
+    protected static function siguienteCodigoJerarquico(string $tablaPadre, int $padreId, string $fkPropia, int $pad = 1): string
+    {
+        // Código del padre
+        $codigoPadre = '';
+        if ($stmt = self::$db->prepare("SELECT codigo FROM `{$tablaPadre}` WHERE id = ? LIMIT 1")) {
+            $stmt->bind_param('i', $padreId);
+            $stmt->execute();
+            $r = $stmt->get_result();
+            $codigoPadre = (string) ($r->fetch_assoc()['codigo'] ?? '');
+            $stmt->close();
+        }
+        // Máximo del último segmento entre los hermanos (mismo padre) → estable con huecos
+        $n = 0;
+        if ($stmt = self::$db->prepare(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(codigo, '.', -1) AS UNSIGNED)), 0) AS m
+             FROM " . static::$tabla . " WHERE `{$fkPropia}` = ?"
+        )) {
+            $stmt->bind_param('i', $padreId);
+            $stmt->execute();
+            $r = $stmt->get_result();
+            $n = (int) ($r->fetch_assoc()['m'] ?? 0);
+            $stmt->close();
+        }
+        return $codigoPadre . '.' . str_pad((string) ($n + 1), $pad, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Genera el siguiente código CORRELATIVO con prefijo, estable con huecos:
+     * "<PREFIJO><n>" con relleno de ceros (p. ej. PRG001, FF001). n = MAX(sufijo)+1
+     * entre los códigos de la tabla que empiezan con ese prefijo. El UNIQUE de la
+     * columna es la red de seguridad ante colisiones. $prefijo es constante interna.
+     */
+    protected static function siguienteCodigoCorrelativo(string $prefijo, int $pad = 3): string
+    {
+        $desde = strlen($prefijo) + 1; // posición SQL (1-based) del primer dígito
+        $like  = self::$db->escape_string($prefijo) . '%';
+        $sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(codigo, {$desde}) AS UNSIGNED)), 0) AS m
+                FROM " . static::$tabla . " WHERE codigo LIKE '{$like}'";
+        $res = self::$db->query($sql);
+        $n = $res ? (int) ($res->fetch_assoc()['m'] ?? 0) : 0;
+        return $prefijo . str_pad((string) ($n + 1), $pad, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Recupera todos los IDs de la tabla de la base de datos asociada con el modelo ActiveRecord.
      *
      * Este método construye una consulta SQL para seleccionar todos los IDs de la tabla definida por la propiedad estática `$tabla`.
@@ -990,8 +1042,8 @@ class ActiveRecord
         if (isset($_SESSION['id'])) {
             $usuarioId = $_SESSION['id'];
             $usuarioObj = Usuario::find($usuarioId);
-            if ($usuarioObj && property_exists($usuarioObj, 'descripcion')) {
-                $usuario = $usuarioObj->descripcion;
+            if ($usuarioObj && property_exists($usuarioObj, 'email')) {
+                $usuario = $usuarioObj->email;
                 $query = "SET @usuario_actual = '" . self::$db->escape_string($usuario) . "'";
                 self::$db->query($query);
                 return true;

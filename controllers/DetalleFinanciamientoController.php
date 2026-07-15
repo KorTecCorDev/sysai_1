@@ -7,6 +7,7 @@ use MVC\Router;
 use Model\Programa;
 use Model\DetalleFinanciamiento;
 use Model\FuenteFinanciamiento;
+use Model\SaldoFuenteFinanciamientoVista;
 
 class DetalleFinanciamientoController
 {
@@ -91,6 +92,25 @@ class DetalleFinanciamientoController
                 }
             }
         }
+        // Desglose por fuente (presupuesto y comprometido = Σ sobres) para mostrar
+        // el disponible a asignar en cada card.
+        $desglose = SaldoFuenteFinanciamientoVista::desglosePorFuente();
+        // Mapa fuente_id => monto_asignado de los sobres YA vinculados a este programa.
+        $vinculos = [];
+        foreach ($resuls as $r) {
+            $vinculos[(int) $r->fuente_financiamiento_id] = (float) $r->monto_asignado;
+        }
+        // Programa seleccionado, resuelto aquí (no depender del leftover del foreach de la vista).
+        $programaSeleccionado = null;
+        if ($prgma_id) {
+            foreach ($programas as $p) {
+                if ((string) $p->id === (string) $prgma_id) {
+                    $programaSeleccionado = $p;
+                    break;
+                }
+            }
+        }
+
         //Renderizamos y enviamos los objetos recibidos
         $router->render('dfinanciamiento/crear', [
             'programas' => $programas,
@@ -98,7 +118,10 @@ class DetalleFinanciamientoController
             'detallefinanciamiento' => $detallefinanciamiento,
             'errores' => $errores,
             'resuls' => $resuls,
-            'resultado' => $resultado
+            'resultado' => $resultado,
+            'desglose' => $desglose,
+            'vinculos' => $vinculos,
+            'programaSeleccionado' => $programaSeleccionado
         ]);
     }
 }

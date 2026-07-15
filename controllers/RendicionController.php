@@ -94,6 +94,8 @@ class RendicionController
                 $errores = Rendicion::getErrores();
             }
             if (empty($errores)) {
+                //El código se autogenera (correlativo REN###); el usuario no lo teclea.
+                $rendicion->codigo = Rendicion::siguienteCodigo();
                 $vali = Rendicion::setUsuarioActual();
                 if ($vali) {
                     $rendicion->guardarsinRedireccion();

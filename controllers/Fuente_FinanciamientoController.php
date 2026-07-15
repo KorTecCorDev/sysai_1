@@ -34,6 +34,8 @@ class Fuente_FinanciamientoController
             $errores = $fuente_financiamiento->validar();
             //Antes de insertar los datos deberemos de validar que el array de errores esté vacío
             if (empty($errores)) {
+                //El código se autogenera (correlativo FF###); el usuario no lo teclea.
+                $fuente_financiamiento->codigo = FuenteFinanciamiento::siguienteCodigo();
                 //Enviamos el codigo de usuario a la base de datos
                 $vali = FuenteFinanciamiento::setUsuarioActual();
                 //Si es true...

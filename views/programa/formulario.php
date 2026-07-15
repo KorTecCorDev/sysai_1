@@ -1,8 +1,9 @@
 <fieldset>
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="codigo" name="programa[codigo]" aria-describedby="codigoHelp" value="<?php echo s($programa->codigo); ?>">
-        <div id="codigoHelp" class="form-text">Ingrese un código válido</div>
+        <input type="text" class="form-control shadow-sm bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
+               value="<?php echo s($programa->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+        <div id="codigoHelp" class="form-text">Se genera automáticamente (p. ej. PRG001).</div>
     </div>
 
     <div class="mb-3">
