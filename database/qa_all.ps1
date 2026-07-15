@@ -19,7 +19,7 @@ param(
 )
 $ErrorActionPreference = 'Continue'
 $dir = $PSScriptRoot
-$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1')
+$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1')
 $fail = 0
 foreach ($s in $scripts) {
     Write-Host "`n########## $s ##########" -ForegroundColor Magenta

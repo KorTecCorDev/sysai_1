@@ -129,22 +129,8 @@ $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'index
 //RUTA PROHIBIDA PARA EL COORDINADOR
 
 
-//Ruta para los otros egresos del coordinador
-//Rutas para los Otros Ingresos y Egresos
-$router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::class, 'index']);
-//Creando
-$router->get('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
-$router->post('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
-
-//Actualizando
-$router->get('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
-$router->post('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
-//Eliminando
-$router->post('/ingreso_egreso/eliminar', [Controllers\IngresoEgresoController::class, 'eliminar']);
-
-//Vistaff(selección de fuentes)
-$router->get('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class, 'indexff']);
-$router->post('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class, 'indexff']);
+//Otros Ingresos/Egresos: SOLO Contador (aprobación automática) — el coordinador no
+//tiene rutas OIE (regla confirmada, item 7)
 
 
 //Ruta del guardado del POA

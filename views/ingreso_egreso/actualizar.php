@@ -28,7 +28,7 @@
                     <i class="bi bi-arrow-left-short me-2"></i> Volver
                 </a>
                 <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
-                    <i class="bi bi-plus-circle me-2"></i> Registrar
+                    <i class="bi bi-pencil-fill me-2"></i> Actualizar
                 </button>
             </div>
         </form>

@@ -30,6 +30,8 @@
                     <th scope="col" class="text-center rounded-start">Código</th>
                     <th scope="col">Comprobante/Fecha</th>
                     <th scope="col">Tipo</th>
+                    <th scope="col">Fuente</th>
+                    <th scope="col">Destino</th>
                     <th scope="col" class="text-end">Tipo_Comprobante</th>
                     <th scope="col" class="text-end">Monto</th>
                     <th scope="col" class="text-center rounded-end">Acciones</th> <!-- Borde redondeado derecho -->
@@ -45,6 +47,8 @@
                         <td> <?php echo s($oe->codigo); ?> </td>
                         <td> <?php echo s($oe->comprobante_fecha); ?> </td>
                         <td> <?php echo s($oe->tipo); ?> </td>
+                        <td title="<?php echo s($oe->fuente_nombre); ?>"> <?php echo s($oe->fuente_codigo); ?> </td>
+                        <td> <?php echo $oe->programa_id ? s($oe->programa_nombre) : '<span class="text-muted">TOTAL FUENTE</span>'; ?> </td>
                         <?php // Tooltip que aparece en el código de tipo de comprobante 
                         ?>
                         <td title="<?php

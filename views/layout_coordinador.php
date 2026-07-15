@@ -83,13 +83,7 @@ $cargo = $_SESSION['cargo'] ?? false;
                                 <span>Rendición de cuentas</span>
                             </a>
                         </li>
-                        <!-- Ingresos-Egresos -->
-                        <li class="sidebar-item">
-                            <a href="/ingreso_egreso/admin" class="sidebar-link" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Ingresos/Egresos">
-                                <i class="bi bi-journal-plus"></i>
-                                <span>Ingresos-Egresos</span>
-                            </a>
-                        </li>
+                        <!-- Ingresos-Egresos: solo Contador (item 7) -->
                         <!-- Reportes -->
                         <li class="sidebar-item">
                             <a href="#" class="sidebar-link has-dropdown collapsed" data-bs-toggle="collapse" data-bs-target="#reportes" aria-expanded="false" aria-controls="reportes">

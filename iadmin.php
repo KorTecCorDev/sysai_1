@@ -168,10 +168,6 @@ $router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::clas
 //Creando
 $router->get('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
 $router->post('/ingreso_egreso/crear', [Controllers\IngresoEgresoController::class, 'crear']);
-//Vistaff(selección de fuentes)
-$router->get('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class, 'indexff']);
-$router->post('/ingreso_egreso/ff', [Controllers\IngresoEgresoController::class, 'indexff']);
-
 //Actualizando
 $router->get('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);
 $router->post('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController::class, 'actualizar']);

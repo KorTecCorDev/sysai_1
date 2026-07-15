@@ -69,7 +69,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-021
+php database/migrate.php                                                       # aplica migrations/001-022
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -237,10 +237,10 @@ src/               → SCSS y JS fuente
 - Re-apertura por el Contador → *diferido v1.1*.
 
 ### Otros Ingresos / Egresos (OIE)
-- **SOLO los registra el Contador** — aprobación automática (descuento/suma inmediata sobre `presupuesto_contable`).
+- **SOLO los registra el Contador** (y Admin) — aprobación automática (descuento/suma inmediata sobre `presupuesto_contable`; las vistas de saldo calculan en vivo). ✅ El coordinador ya no tiene rutas OIE ni enlace en su sidebar (item 7, 2026-07-14); defensa en profundidad con `exigirRol([1,2])` en el controlador.
 - Ingresos (nuevas donaciones) suman; Egresos (gastos fuera del POA) restan. Monto en `oie_comprobante.monto`. Incluyen recibo con datos del benefactor/proveedor.
-- **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** descuenta del sobre `(programa, fuente)`.
-- ⚠️ El **tope por sobre en OIE** y el CRUD final de OIE son parte del **item 7 (pendiente)**; la plomería ya está (`programa_id` nullable + `DetalleFinanciamiento::saldoSobre()` reutilizable).
+- **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** siempre lleva programa y descuenta del sobre `(programa, fuente)`.
+- ✅ **Item 7 COMPLETADO (2026-07-14, QA 22/22):** CRUD en un solo paso (se eliminó el flujo en dos pasos `/ingreso_egreso/ff`). Validaciones en `OtrosIngresosEgresos`: egreso exige programa, el par (programa, fuente) debe tener sobre (`DetalleFinanciamiento::existeVinculo()`), y el egreso no puede exceder el disponible del sobre (`validarTopeSobre()` → `saldoSobre()`, que ahora acepta excluir un OIE en edición). Eliminar borra el OIE **y su comprobante**. `programa_id` NULL real vía `ActiveRecord::$columnasNull` (opt-in). Vista de listado recreada con LEFT JOIN (migr. 022).
 
 ### Tipo de Cambio
 - Registro de USD y EUR. Se usa el **tipo de cambio vigente** (último registrado) para toda conversión. No hay cálculo con TC histórico.
@@ -298,9 +298,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-021** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`.
-- **BD local `sysai`:** migraciones aplicadas hasta 021. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-021 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Migraciones vigentes: **001-022** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7).
+- **BD local `sysai`:** migraciones aplicadas hasta 022. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-022 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
   Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
 - **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 
@@ -316,7 +316,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 4 | POA Presupuestal | ✅ COMPLETADO (QA 18/18) |
 | 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
-| 7 | Otros Ingresos/Egresos (OIE) | ⬜ PENDIENTE (plomería de sobres lista) |
+| 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
 | 8 | Saldos (fuente + **sobre** + comprometido) | 🟡 EN CURSO — pantalla y vistas hechas; falta cierre anual/`fuente_presupuesto_anual` |
 | 9 | Reportes Excel | ⏸ diferido v1.1 |
 | 10 | Usuarios | ⬜ PENDIENTE |
@@ -330,11 +330,6 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
-
-### 7 — Otros Ingresos/Egresos
-- [ ] Actualizar modelo `OtrosIngresosEgresos`: `poa_id` → `programa_id` (columna ya migrada). Quitar validación de `poa_id`.
-- [ ] Solo Contador, aprobación automática (descuento/suma inmediata sobre `presupuesto_contable`).
-- [ ] Monto desde `oie_comprobante.monto`.
 
 ### 8 — Saldos
 - [ ] Calcular sobre `fuente_presupuesto_anual` (año vigente): contable = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.

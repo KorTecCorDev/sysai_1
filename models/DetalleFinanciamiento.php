@@ -44,12 +44,12 @@ class DetalleFinanciamiento extends ActiveRecord
      *   comprometido = Σ rendiciones del sobre (todos los estados) + Σ egresos OIE del sobre
      *   disponible   = capacidad − comprometido
      * Las rendiciones se derivan por la cadena rubro → actividad → producto → resultado
-     * → programa; la fuente por ff_id. Permite excluir una rendición (en edición) para
-     * no contarla dos veces. Devuelve el desglose para construir mensajes claros.
+     * → programa; la fuente por ff_id. Permite excluir una rendición o un OIE (en edición)
+     * para no contarlos dos veces. Devuelve el desglose para construir mensajes claros.
      *
      * @return array{asignado:float, ingresos:float, egresos:float, rendiciones:float, disponible:float}
      */
-    public static function saldoSobre(int $programaId, int $ffId, ?int $excluirRendicionId = null): array
+    public static function saldoSobre(int $programaId, int $ffId, ?int $excluirRendicionId = null, ?int $excluirOieId = null): array
     {
         // 1) Monto asignado al sobre (0 si el vínculo no existe).
         $asignado = 0.0;
@@ -92,14 +92,19 @@ class DetalleFinanciamiento extends ActiveRecord
         // 3) OIE dirigidos a este sobre: ingresos (tipo 1) suman, egresos (tipo 2) restan.
         $ingresos = 0.0;
         $egresos  = 0.0;
-        if ($stmt = self::$db->prepare(
-            "SELECT oie.oie_tipo_id AS tipo, COALESCE(SUM(oc.monto), 0) AS total
+        $sqlOie = "SELECT oie.oie_tipo_id AS tipo, COALESCE(SUM(oc.monto), 0) AS total
              FROM otros_ingresos_egresos oie
              JOIN oie_comprobante oc ON oc.id = oie.oie_comprobante_id
-             WHERE oie.programa_id = ? AND oie.ff_id = ?
-             GROUP BY oie.oie_tipo_id"
-        )) {
-            $stmt->bind_param('ii', $programaId, $ffId);
+             WHERE oie.programa_id = ? AND oie.ff_id = ?"
+             . ($excluirOieId ? " AND oie.id <> ?" : "")
+             . " GROUP BY oie.oie_tipo_id";
+        if ($stmt = self::$db->prepare($sqlOie)) {
+            if ($excluirOieId) {
+                $exOie = (int) $excluirOieId;
+                $stmt->bind_param('iii', $programaId, $ffId, $exOie);
+            } else {
+                $stmt->bind_param('ii', $programaId, $ffId);
+            }
             $stmt->execute();
             $res = $stmt->get_result();
             while ($res && $row = $res->fetch_assoc()) {
@@ -120,6 +125,21 @@ class DetalleFinanciamiento extends ActiveRecord
             'rendiciones' => $rendiciones,
             'disponible'  => $disponible,
         ];
+    }
+
+    /**
+     * ¿Existe el vínculo (sobre) programa↔fuente? Los OIE dirigidos a un programa
+     * solo pueden usar fuentes vinculadas a él (igual que las rendiciones).
+     */
+    public static function existeVinculo(int $programaId, int $ffId): bool
+    {
+        $filas = self::consultarPreparado(
+            "SELECT id FROM " . static::$tabla
+            . " WHERE programa_id = ? AND fuente_financiamiento_id = ? LIMIT 1",
+            'ii',
+            [$programaId, $ffId]
+        );
+        return !empty($filas);
     }
 
     /**

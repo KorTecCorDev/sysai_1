@@ -14,7 +14,8 @@
 | `qa_poa_indicadores.ps1` | 3 | Flujo POA Indicadores 0→1→2→3, CSRF 419, rol, cross-tenant, bloqueo de jerarquía, observación. **18** |
 | `qa_poa_presupuestal.ps1` | 4 + 6 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación + **item 6** (al aprobar, la rendición pasa a Aprobada(1) y se descuenta del saldo contable). **21** |
 | `qa_rendicion.ps1` | 5 | Rendición imputada al rubro, límite Σ ≤ monto del rubro, cross-tenant, CSRF. **10** |
-| `qa_all.ps1` | — | **Runner**: corre los tres y resume (esperado: `TODOS LOS ARNESES OK`, 49 checks). |
+| `qa_oie.ps1` | 7 | OIE solo Contador (coordinador sin rutas), CSRF, ingreso híbrido (total de fuente = `programa_id` NULL / al sobre), egreso con programa obligatorio + sobre existente + tope por sobre (con exclusión del propio OIE al editar), sin comprobantes huérfanos, eliminar borra OIE+comprobante, saldos en vistas. **22** |
+| `qa_all.ps1` | — | **Runner**: corre los cuatro y resume (esperado: `TODOS LOS ARNESES OK`, 71 checks). |
 
 ## Cómo ejecutar (desde la raíz del proyecto)
 
@@ -40,6 +41,9 @@ pwsh -File database\qa_poa_presupuestal.ps1
   (esta última también es la del admin `robertokar97@gmail.com`).
 - Parámetros configurables por script (`-BaseUrl`, `-MysqlExe`, `-PassCoord`, `-PassConta`) con defaults para el
   setup XAMPP documentado → portables a otra máquina cambiando solo la ruta de `mysql.exe` si difiere.
+- ⚠️ Con la BD poblada por `seed_demo.sql` los usuarios son los `arcoiris.pe`; `qa_oie.ps1` acepta además
+  `-EmailCoord`/`-EmailConta` para eso (verificado 22/22 con `contador@arcoiris.pe` / `coordinador.comunidad@arcoiris.pe`).
+  Los otros tres arneses asumen datos del seed QA (`sysai.test`, programa 5, rubro 2) y no corren tal cual sobre el demo.
 
 > Detalle de qué valida cada flujo y hallazgos corregidos durante el QA: ver
 > `docs/historial-implementacion-items-2-6.md` (cada ítem tiene su bloque de QA).

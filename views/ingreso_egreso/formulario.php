@@ -3,39 +3,40 @@
     <!-- Tipo de OIE - Ingreso/Egreso -->
     <div class="mb-3 w-25">
         <label for="combo_oie_tipo_id" class="form-label">Tipo</label>
-        <?php
-        // Si el usuario es coordinador (cargo_id == 3), solo mostrar opción Egreso
-        if (isset($_SESSION['cargo_id']) && $_SESSION['cargo_id'] == 3) { ?>
-            <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp" disabled>
-                <option value="2" selected>Egreso</option>
-            </select>
-            <input type="hidden" name="oie[oie_tipo_id]" value="2">
-            <div id="tipoOieHelp" class="form-text">Solo puede registrar egresos</div>
-        <?php } else { ?>
-            <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp">
-                <option value="1" <?php echo $oie->oie_tipo_id == 1 ? 'selected' : ''; ?>>Ingreso</option>
-                <option value="2" <?php echo $oie->oie_tipo_id == 2 ? 'selected' : ''; ?>>Egreso</option>
-            </select>
-            <div id="tipoOieHelp" class="form-text">Seleccione si es un Ingreso o un Egreso</div>
-        <?php } ?>
+        <select class="form-select" id="combo_oie_tipo_id" name="oie[oie_tipo_id]" aria-describedby="tipoOieHelp">
+            <option value="" selected disabled>--Seleccione--</option>
+            <option value="1" <?php echo $oie->oie_tipo_id == 1 ? 'selected' : ''; ?>>Ingreso</option>
+            <option value="2" <?php echo $oie->oie_tipo_id == 2 ? 'selected' : ''; ?>>Egreso</option>
+        </select>
+        <div id="tipoOieHelp" class="form-text">Seleccione si es un Ingreso o un Egreso</div>
     </div>
     <!-- Tipo de OIE - Ingreso/Egreso -->
 
-
-    <!-- Combo_Programa - poa -->
+    <!-- Fuente de financiamiento -->
     <div class="mb-3 w-50">
-        <label for="combo_programa_poa" class="form-label">Programa-POA</label>
-        <select class="form-select" id="combo_programa_poa" name="oie[poa_id]" aria-describedby="PoaHelp">
-            <option value="0" selected disabled>--Seleccione--</option>
-            <?php foreach ($poas as $poa) { ?>
-                <option value="<?php echo s($poa->poa_id); ?>" <?php echo $oie->poa_id == $poa->poa_id ? 'selected' : '' ;?>><?php echo s("{$poa->programa_codigo} - {$poa->programa_nombre}"); ?></option>
+        <label for="combo_ff_id" class="form-label">Fuente de financiamiento</label>
+        <select class="form-select" id="combo_ff_id" name="oie[ff_id]" aria-describedby="ffHelp">
+            <option value="" selected disabled>--Seleccione--</option>
+            <?php foreach ($fuentes as $fuente) { ?>
+                <option value="<?php echo s($fuente->id); ?>" <?php echo $oie->ff_id == $fuente->id ? 'selected' : ''; ?>><?php echo s("{$fuente->codigo} - {$fuente->nombre}"); ?></option>
             <?php } ?>
         </select>
-        <div id="ProgramaPoaHelp" class="form-text">Seleccione el Programa/POA</div>
+        <div id="ffHelp" class="form-text">Fuente cuyo presupuesto contable se afecta</div>
     </div>
+    <!-- Fuente de financiamiento -->
 
-    <!-- Combo_Programa - poa -->
-
+    <!-- Programa destino (sobre) -->
+    <div class="mb-3 w-50">
+        <label for="combo_programa_id" class="form-label">Programa (destino)</label>
+        <select class="form-select" id="combo_programa_id" name="oie[programa_id]" aria-describedby="programaHelp">
+            <option value="" <?php echo !$oie->programa_id ? 'selected' : ''; ?>>— Al total de la fuente (sin programa) —</option>
+            <?php foreach ($programas as $programa) { ?>
+                <option value="<?php echo s($programa->id); ?>" <?php echo $oie->programa_id == $programa->id ? 'selected' : ''; ?>><?php echo s("{$programa->codigo} - {$programa->nombre}"); ?></option>
+            <?php } ?>
+        </select>
+        <div id="programaHelp" class="form-text">Los ingresos pueden ir al total de la fuente o al sobre de un programa; los egresos siempre descuentan del sobre de un programa vinculado a la fuente</div>
+    </div>
+    <!-- Programa destino (sobre) -->
 
     <!-- Codigo -->
     <div class="mb-3 w-25">
@@ -47,9 +48,9 @@
 
     <!-- Descripcion -->
     <div class="mb-3">
-        <label for="codigo" class="form-label">Descripción</label>
-        <input style="text-transform: uppercase" type="text" class="form-control" id="codigo" aria-describedby="codigoHelp" name="oie[descripcion]" value="<?php echo s($oie->descripcion); ?>">
-        <div id="codigoHelp" class="form-text">Ingrese la descripción</div>
+        <label for="oie_descripcion" class="form-label">Descripción</label>
+        <input style="text-transform: uppercase" type="text" class="form-control" id="oie_descripcion" aria-describedby="oieDescripcionHelp" name="oie[descripcion]" value="<?php echo s($oie->descripcion); ?>">
+        <div id="oieDescripcionHelp" class="form-text">Ingrese la descripción</div>
     </div>
     <!-- Descripcion -->
 
@@ -62,22 +63,22 @@
     <!-- Fecha -->
     <div class="mb-3 w-auto">
         <div class="col-12 w-25">
-            <label for="fecha" class="form-label">Fecha:</label>
-            <input style="text-transform: uppercase" type="date" class="form-control" id="oie_comprobante[fecha_original]" name="oie_comprobante[fecha_original]" placeholder="Fecha del comprobante" value="<?php echo s($oie_comprobante->fecha_original); ?>">
+            <label for="fecha_original" class="form-label">Fecha:</label>
+            <input style="text-transform: uppercase" type="date" class="form-control" id="fecha_original" name="oie_comprobante[fecha_original]" placeholder="Fecha del comprobante" value="<?php echo s($oie_comprobante->fecha_original); ?>">
         </div>
     </div>
     <!-- Fecha -->
 
     <!-- Tipo de COMPROBANTE OIE - Boleta/Factura/Recibo por Honorarios/DDJJ -->
     <div class="mb-3 w-50">
-        <label for="combo_oie_tipo_id" class="form-label">Tipo</label>
-        <select class="form-select" id="combo_oie_tipo_comprobante_id" name="oie_comprobante[oie_tipo_comprobante_id]" aria-describedby="tipoOieHelp">
-            <option value="0" selected disabled>--Seleccione--</option>
+        <label for="combo_oie_tipo_comprobante_id" class="form-label">Tipo</label>
+        <select class="form-select" id="combo_oie_tipo_comprobante_id" name="oie_comprobante[oie_tipo_comprobante_id]" aria-describedby="tipoComprobanteHelp">
+            <option value="" selected disabled>--Seleccione--</option>
             <?php foreach ($tipocomprobantes as $tipocomprobante) { ?>
                 <option value="<?php echo s($tipocomprobante->id); ?>" <?php echo $oie_comprobante->oie_tipo_comprobante_id == $tipocomprobante->id ? 'selected' : ''; ?>><?php echo s("{$tipocomprobante->codigo} - {$tipocomprobante->nombre}"); ?></option>
             <?php } ?>
         </select>
-        <div id="tipoOieHelp" class="form-text">Seleccione el tipo de Comprobante</div>
+        <div id="tipoComprobanteHelp" class="form-text">Seleccione el tipo de Comprobante</div>
     </div>
     <!-- Tipo de COMPROBANTE OIE - Boleta/Factura/Recibo por Honorarios/DDJJ -->
 
@@ -117,17 +118,13 @@
     </div>
     <!-- Número -->
 
-
-
     <!-- Descripcion -->
     <div class="mb-3">
         <label for="descripcion" class="form-label">Descripción</label>
-        <textarea type="text" class="form-control" id="descripcion" aria-describedby="descripcionHelp" name="oie_comprobante[descripcion]"><?php echo s($oie->descripcion); ?></textarea>
+        <textarea type="text" class="form-control" id="descripcion" aria-describedby="descripcionHelp" name="oie_comprobante[descripcion]"><?php echo s($oie_comprobante->descripcion); ?></textarea>
         <div id="descripcionHelp" class="form-text">Ingrese la descripción</div>
     </div>
     <!-- Descripcion -->
-
-
 
     <!-- Monto -->
     <div class="mb-3 w-25">
@@ -138,4 +135,3 @@
     <!-- Monto -->
     <!-- Comprobante -->
 </fieldset>
-

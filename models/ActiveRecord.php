@@ -22,6 +22,10 @@ class ActiveRecord
     // Los modelos pueden sobreescribir esta lista si lo necesitan.
     protected static $columnasSinMayuscula = ['password', 'reset_token', 'email'];
 
+    // Columnas que persisten NULL real cuando llegan vacías (el resto normaliza null → '').
+    // Opt-in por modelo, p. ej. otros_ingresos_egresos.programa_id (ingreso al total de la fuente).
+    protected static $columnasNull = [];
+
 
     //Definimos la conexión a la base de datos
     public static function setDB($database)
@@ -92,8 +96,9 @@ class ActiveRecord
         if (empty($columnas)) {
             return false;
         }
-        // null → '' para preservar el comportamiento previo (escape_string) en columnas NOT NULL.
-        $valores = array_map(fn($v) => $v ?? '', array_values($atributos));
+        // null → '' para preservar el comportamiento previo (escape_string) en columnas NOT NULL;
+        // las columnas en $columnasNull conservan NULL real (bind_param con null envía NULL).
+        $valores = $this->normalizarNulos($atributos);
         $stringcolumnas = implode(', ', $columnas);
         $placeholders = implode(', ', array_fill(0, count($columnas), '?'));
         $query = "INSERT INTO " . static::$tabla . " ($stringcolumnas) VALUES ($placeholders)";
@@ -125,12 +130,28 @@ class ActiveRecord
         if (empty($columnas)) {
             return false;
         }
-        // null → '' para preservar el comportamiento previo (escape_string).
-        $valores = array_map(fn($v) => $v ?? '', array_values($atributos));
+        // null → '' para preservar el comportamiento previo (escape_string);
+        // las columnas en $columnasNull conservan NULL real (bind_param con null envía NULL).
+        $valores = $this->normalizarNulos($atributos);
         $sets = implode(', ', array_map(fn($c) => "$c = ?", $columnas));
         $valores[] = $this->id; // valor para el WHERE id = ?
         $query = "UPDATE " . static::$tabla . " SET $sets WHERE id = ? LIMIT 1";
         return self::ejecutarPreparado($query, str_repeat('s', count($valores)), $valores);
+    }
+
+    // Mapea los atributos a la lista de valores del prepared statement: vacío/null pasa a
+    // NULL real en las columnas declaradas en $columnasNull y a '' en el resto.
+    private function normalizarNulos(array $atributos): array
+    {
+        $valores = [];
+        foreach ($atributos as $columna => $valor) {
+            if (($valor === null || $valor === '') && in_array($columna, static::$columnasNull, true)) {
+                $valores[] = null;
+            } else {
+                $valores[] = $valor ?? '';
+            }
+        }
+        return $valores;
     }
     //Funciones
 
