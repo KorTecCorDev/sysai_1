@@ -26,7 +26,7 @@
 - **Repositorio:** `KorTecCorDev/sysai_1` (privado, GitHub).
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
-- **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai_1`. BD local: `sysai`.
+- **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai`. BD local: `sysai`.
 - **Producción:** ⚠️ **DADA DE BAJA (2026-06-03).** Estuvo en Hostinger (BD `u612374195_sysai`), decomisionada.
   El próximo despliegue es **greenfield**: proyecto y BD nuevos, sin datos que preservar ni reconciliar.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
