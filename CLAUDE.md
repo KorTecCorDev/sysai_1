@@ -216,6 +216,16 @@ src/               → SCSS y JS fuente
 - Luego de aprobado: solo visible para el Coordinador; solo el Contador puede modificarlo (como **adenda**).
 - Máximo un POA Presupuestal activo por programa por año.
 - ⚠️ El `presupuesto_comprometido` **NO** se calcula al aprobar el POA; es **Σ de los sobres** (`monto_asignado`) de la fuente (ver *Fuentes*). El POA Presupuestal es solo planificación.
+- ⚠️ **TOPE DEL POA POR SOBRES — confirmado 2026-07-15 (🔴 NO IMPLEMENTADO, ver Backlog item 4):**
+  el POA **no puede exceder la suma de los sobres del programa**: `Σ rubro.monto ≤ Σ detalle_financiamiento.monto_asignado`
+  del programa. Es un **tope agregado**, no por fuente: `rubro` **no tiene `ff_id`** (verificado en esquema), así
+  que un rubro no sabe de qué sobre sale y el control sobre-por-sobre no es expresable sin migración. Un programa
+  con sobres de 600k (fuente A) y 400k (fuente B) tiene tope de POA = 1M, repartible como sea entre ambos.
+  Se valida en `enviar()` **y** en `aprobar()`. Descartadas: la variante por fuente (exigiría `rubro.ff_id`) y
+  la de no poner tope.
+  > **Brecha actual:** `PoaController::enviar()` congela `presupuesto = Poa::presupuestoCalculado()` sin comparar
+  > contra nada, y `::aprobar()` no valida: cambia estado y llama a `Rendicion::aprobarPorPrograma()`. Hoy se puede
+  > enviar y aprobar un POA de S/ 5M con sobres que suman S/ 1M.
 
 ### Rubros
 - Un rubro es un Bien o Servicio (`tipo_rubro`: TRB001=Bien, TRB002=Servicio).
@@ -313,7 +323,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 1 | Migración de BD | ✅ COMPLETADO (001-025) |
 | 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
 | 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
-| 4 | POA Presupuestal | ✅ COMPLETADO (QA 18/18) |
+| 4 | POA Presupuestal | 🟡 REABIERTO (2026-07-15) — QA 18/18, pero **falta el tope por Σ sobres** (ver Backlog) |
 | 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
 | 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
@@ -330,6 +340,16 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
+
+### 4 — POA Presupuestal · tope por Σ sobres *(reabierto 2026-07-15)*
+> Regla confirmada en *[SECCION: REGLAS DE NEGOCIO]* → *POA Presupuestal*. Sin migración: es un tope **agregado**.
+- [ ] `Poa::topeSobres(programaId): float` — `SELECT COALESCE(SUM(monto_asignado),0) FROM detalle_financiamiento WHERE programa_id = ?`.
+- [ ] `Poa::validarTopeSobres()` — compara `presupuestoCalculado()` contra `topeSobres()`; agrega a `self::$errores`.
+- [ ] `PoaController::enviar()` — bloquear si `Σ rubros > Σ sobres` (hoy congela el presupuesto sin comparar nada).
+- [ ] `PoaController::aprobar()` — revalidar (los sobres pueden haber bajado entre el envío y la aprobación; hoy no valida nada).
+- [ ] Decidir el caso **Σ sobres = 0** (programa sin fuentes vinculadas): ¿bloquea el envío o se permite POA en borrador?
+- [ ] UI: mostrar `Σ rubros` vs `Σ sobres` con el margen restante en `/poa/revisar` y en el listado.
+- [ ] QA: extender `database/qa_poa_presupuestal.ps1` — enviar bajo tope (pasa), sobre tope (bloquea), y bajar el sobre tras enviar → aprobar debe bloquear.
 
 ### 8 — Saldos
 - [ ] Calcular sobre `fuente_presupuesto_anual` (año vigente): contable = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
