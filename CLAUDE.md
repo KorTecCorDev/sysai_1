@@ -9,6 +9,11 @@
 > (proyecto + BD nuevos desde cero). Detalle en `docs/historial-seguridad.md`.
 
 ### Índice de referencia (`docs/`, leer bajo demanda)
+- **`docs/plan-comprometido-y-tope-poa.md`** — 🔵 **PLAN ACTIVO**: higiene del término "comprometido" (Fase A) +
+  item 4, tope del POA por Σ sobres y puerta de sobres (Fase B). Sin migraciones. Su §4 fija el orden respecto al
+  plan de montos.
+- **`docs/plan-montos-y-tipo-cambio.md`** — 🔵 **PLAN ACTIVO**: montos, tipo de cambio y conversión contable
+  (migr. 026-030). Su Fase 0 es el bloqueo real: `fuente_financiamiento.presupuesto` es `decimal(8,2)`.
 - `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
 - `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
