@@ -27,8 +27,10 @@
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
 - **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai`. BD local: `sysai`.
-- **Producción:** ⚠️ **DADA DE BAJA (2026-06-03).** Estuvo en Hostinger (BD `u612374195_sysai`), decomisionada.
-  El próximo despliegue es **greenfield**: proyecto y BD nuevos, sin datos que preservar ni reconciliar.
+- **Producción:** **Hostinger** (corre **PHP 8.2.12**, igual que el dev local — ver *Setup*).
+  ⚠️ La instancia anterior fue **dada de baja el 2026-06-03** (BD `u612374195_sysai`, decomisionada). El próximo
+  despliegue va **sobre Hostinger otra vez, pero greenfield**: proyecto y BD nuevos, sin datos que preservar ni
+  reconciliar.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
 - **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` ignorado en git (lee `.env` y conecta MySQL).
 - **Moneda base:** Sol peruano (PEN / S/). Conversiones a USD/EUR solo para reportes.
@@ -52,13 +54,25 @@
 ## [SECCION: SETUP / DEVSTACK]
 
 **Entorno real de la PC de desarrollo (verificado):**
-- **PHP CLI 8.3.x en `C:\php`** (standalone, **NO** el de XAMPP). Es el que usan `composer`, `php` y el servidor de desarrollo. `php.ini` en `C:\php\php.ini`. Extensión `zip` activada (la requiere PhpSpreadsheet para Excel).
+- **PHP 8.2.12 — versión oficial del proyecto (decisión 2026-07-15).** Es la de **XAMPP** (`C:\xampp\php\php.exe`,
+  la del `PATH`) y **la misma que corre Hostinger**, el servidor de producción → dev y prod alineados. `php.ini`
+  en `C:\xampp\php\php.ini`. Es la que usan `composer`, `php` y el servidor de desarrollo.
+  - ✅ Verificado bajo 8.2.12: `zip`, `openssl`, `curl`, `mysqli`, `mbstring`, `gd` activas, y PhpSpreadsheet,
+    PHPMailer e Intervention cargan y escriben un `.xlsx` real. `vendor/composer/platform_check.php` exige
+    `PHP_VERSION_ID >= 80200`; `composer.json` no fija versión de PHP. `intl` está **inactiva** (hoy nadie la usa).
+  - ⚠️ **Histórico:** hasta el 2026-07-15 este documento declaraba "PHP CLI 8.3.x en `C:\php` (standalone, NO el
+    de XAMPP)". **`C:\php` ya no existe.** Si algún script o permiso invoca `C:\php\php.exe`, está roto.
 - **MariaDB de XAMPP** en `127.0.0.1:3306` (binario `C:\xampp\mysql\bin\mysql.exe`, root sin contraseña).
 - **Composer 2.9**, **Node 24 / npm 11**.
 - **Servidor de desarrollo:** alias `local3000` = `php -S localhost:3000` ejecutado **desde la raíz del proyecto**. App en **http://localhost:3000**.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
   - ⚠️ **`php -S` NO procesa `.htaccess`** → en dev NO aplican los bloqueos de `controllers/`, `models/`, `*.sql`, `.env`, etc. Los `.htaccess` solo protegen en producción (Apache/Hostinger).
-  - ⚠️ **Requisito TLS (Windows)** para SMTP: `C:\php\php.ini` con `openssl.cafile` y `curl.cainfo` apuntando a `C:\xampp\apache\bin\curl-ca-bundle.crt`. Reiniciar el servidor tras cambiar `php.ini`.
+  - 🔴 **Requisito TLS (Windows) para SMTP — HOY SIN CUMPLIR.** Verificado el 2026-07-15: en
+    `C:\xampp\php\php.ini` tanto `openssl.cafile` como `curl.cainfo` están **vacíos**. La receta estaba escrita
+    para el desaparecido `C:\php\php.ini`, así que se perdió al migrar a la PHP de XAMPP. **No molesta mientras
+    `MAIL_USERNAME`/`MAIL_PASSWORD` sigan vacíos** (modo DEV: el token va a `includes/logs/mail.log` y no se envía
+    correo), pero **el día que se configure SMTP real, la verificación TLS fallará**. Arreglo: en
+    `C:\xampp\php\php.ini` apuntar ambas a `C:\xampp\apache\bin\curl-ca-bundle.crt` y reiniciar el servidor.
 
 **Pasos de arranque:**
 ```bash
@@ -226,6 +240,16 @@ src/               → SCSS y JS fuente
   > **Brecha actual:** `PoaController::enviar()` congela `presupuesto = Poa::presupuestoCalculado()` sin comparar
   > contra nada, y `::aprobar()` no valida: cambia estado y llama a `Rendicion::aprobarPorPrograma()`. Hoy se puede
   > enviar y aprobar un POA de S/ 5M con sobres que suman S/ 1M.
+- ⚠️ **SIN SOBRES NO HAY PRESUPUESTO — confirmado 2026-07-15 (🔴 NO IMPLEMENTADO, ver Backlog item 4):**
+  con **Σ sobres = 0** (programa sin fuentes vinculadas), el Coordinador **no puede registrar nada presupuestal**:
+  ni rubros, ni POA Presupuestal, ni rendiciones. El Contador debe asignar al menos un sobre primero
+  (`/dfinanciamiento/crear`); con **≥ 1 sobre** el Coordinador ya puede editar y registrar.
+  **El bloqueo NO alcanza al POA Indicadores** ni a la jerarquía Resultado→Producto→Actividad: no manejan dinero
+  y el POA Indicadores se elabora **antes** que el Presupuestal (ver *POA Indicadores*). El coordinador puede
+  planificar indicadores sin financiamiento; lo que no puede es presupuestar.
+  > Es el caso degenerado del tope agregado: con Σ sobres = 0 el tope es 0, así que **cualquier** rubro o
+  > rendición lo excede. Se implementa con la misma validación, pero el mensaje debe distinguir "aún no tienes
+  > sobres asignados" de "excediste el tope", o el coordinador no sabrá que debe esperar al Contador.
 
 ### Rubros
 - Un rubro es un Bien o Servicio (`tipo_rubro`: TRB001=Bien, TRB002=Servicio).
@@ -347,9 +371,19 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 - [ ] `Poa::validarTopeSobres()` — compara `presupuestoCalculado()` contra `topeSobres()`; agrega a `self::$errores`.
 - [ ] `PoaController::enviar()` — bloquear si `Σ rubros > Σ sobres` (hoy congela el presupuesto sin comparar nada).
 - [ ] `PoaController::aprobar()` — revalidar (los sobres pueden haber bajado entre el envío y la aprobación; hoy no valida nada).
-- [ ] Decidir el caso **Σ sobres = 0** (programa sin fuentes vinculadas): ¿bloquea el envío o se permite POA en borrador?
+- [ ] **Σ sobres = 0 → puerta cerrada** (regla confirmada, ver *POA Presupuestal*). Bloquear para el Coordinador:
+      `/rubro/crear|actualizar|eliminar`, `/poa/crear|enviar`, `/rendicion/crear|actualizar|eliminar`.
+      **NO** bloquear `/resultado`, `/producto`, `/actividad` ni `/poa_indicadores/*`.
+      Contador/Admin **no** pasan por esta puerta (adenda).
+- [ ] Mensajes distintos: "tu programa aún no tiene sobres asignados" (Σ=0) vs "excediste el tope" (Σ>0).
+      Con Σ=0 el tope es 0 y todo lo excede; sin distinguirlos el coordinador no sabe que debe esperar al Contador.
+- [ ] Helper de puerta reutilizable (p. ej. `exigirSobreAsignado($programaId)` en `includes/funciones.php`),
+      al estilo de `exigirProgramaPropio()` — son 8 rutas, no conviene repetir el chequeo en cada controlador.
 - [ ] UI: mostrar `Σ rubros` vs `Σ sobres` con el margen restante en `/poa/revisar` y en el listado.
-- [ ] QA: extender `database/qa_poa_presupuestal.ps1` — enviar bajo tope (pasa), sobre tope (bloquea), y bajar el sobre tras enviar → aprobar debe bloquear.
+      Ocultar/deshabilitar el acceso presupuestal en el sidebar del coordinador cuando Σ sobres = 0.
+- [ ] QA: extender `database/qa_poa_presupuestal.ps1` — enviar bajo tope (pasa), sobre tope (bloquea), bajar el
+      sobre tras enviar → aprobar debe bloquear, y **programa sin sobres → rubro/POA/rendición bloqueados pero
+      POA Indicadores permitido**.
 
 ### 8 — Saldos
 - [ ] Calcular sobre `fuente_presupuesto_anual` (año vigente): contable = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
