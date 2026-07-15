@@ -310,7 +310,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 | # | Módulo | Estado |
 |---|---|---|
-| 1 | Migración de BD | ✅ COMPLETADO (001-021) |
+| 1 | Migración de BD | ✅ COMPLETADO (001-025) |
 | 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
 | 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
 | 4 | POA Presupuestal | ✅ COMPLETADO (QA 18/18) |
