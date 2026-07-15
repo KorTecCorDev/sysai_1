@@ -226,7 +226,7 @@ class ReportePoaRubrosController
             exit;
         }
         $filename = $_GET['rprt'];
-        $rootPath = dirname(__DIR__); // /SysAi_1
+        $rootPath = dirname(__DIR__);
         $fullPath = $rootPath . "/views/reporte/storage/reports/" . $filename;
         if (file_exists($fullPath)) {
             // Limpia cualquier salida previa

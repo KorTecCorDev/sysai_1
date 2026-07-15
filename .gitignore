@@ -8,3 +8,5 @@ node_modules/
 views/reporte/storage/
 # Volcado de BD con datos reales (solo schema/seed de prueba se versionan)
 *sysai_schema_*.sql
+# Worktrees efimeros creados por sesiones de Claude Code
+.claude/worktrees/

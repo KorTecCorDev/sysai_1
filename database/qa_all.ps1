@@ -9,7 +9,7 @@
 # PRERREQUISITOS:
 #   - Servidor de desarrollo corriendo (local3000 = php -S localhost:3000 desde la raiz del proyecto).
 #     OJO: la app se sirve en la RAIZ del dominio (RewriteBase /); bajo Apache/XAMPP en un
-#     subdirectorio (/sysai_1) el ruteo se rompe. Usar php -S localhost:3000.
+#     subdirectorio (/sysai) el ruteo se rompe. Usar php -S localhost:3000.
 #   - MariaDB de XAMPP arriba; BD `sysai` con migraciones 001-025 aplicadas.
 #   - Por defecto este runner APLICA database/seed_qa.sql (fixture determinista y versionado),
 #     de modo que la suite corre igual en cualquier maquina (portatil). Esto RESETEA los datos
