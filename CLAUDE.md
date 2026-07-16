@@ -328,11 +328,24 @@ src/               → SCSS y JS fuente
 - ✅ La pantalla convierte el saldo total al **cierre** (TC **compra** vigente a hoy) mostrando siempre tasa,
   fecha de vigencia y origen; sin TC muestra "sin tipo de cambio registrado" — nunca revienta ni inventa.
 - Saldo **sobre** `(programa, fuente)` = monto_asignado + ingresos_al_sobre − egresos − rendiciones_aprobadas (`vista_saldo_sobre`, migr. 021).
-- Pantalla `/saldos_contables/saldos` (Admin/Contador): 4 niveles → KPIs globales · gráfico SVG por fuente · tarjetas por fuente (con comprometido = Σ sobres, y remanente sin asignar) · tabla por sobre.
+- Pantalla `/saldos_contables/saldos` (Admin/Contador): 5 niveles → KPIs globales · gráfico SVG por fuente · tarjetas por fuente (con comprometido = Σ sobres y capacidad asignable) · tabla por sobre · **histórico anual** (item 8).
+- ✅ **Saldo de programa visible solo con POA aprobado (item 8):** la fila del sobre siempre aparece, pero las
+  cifras solo se muestran si el POA Presupuestal del programa (año vigente) está **Aprobado**; si no, badge
+  "POA no aprobado" (las rendiciones pendientes no descuentan → el saldo aún no es firme).
 - Al registrar rendiciones aprobadas u OIE, los saldos se actualizan (las vistas calculan en vivo).
 
-### Cierre Anual
+### Cierre Anual (✅ IMPLEMENTADO 2026-07-16, item 8 — decisiones confirmadas ese día)
 - El saldo sobrante de cada fuente al cierre del año se registra en `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). Permite el histórico año a año.
+- **El cierre es un SNAPSHOT manual**: botón "Registrar cierre del año" en `/saldos_contables/saldos`
+  (Contador/Admin, `POST /cierre_anual/guardar` — sufijo `/guardar` para pasar el CSRF del Router).
+  Copia el desglose EN VIVO (`FuentePresupuestoAnual::cerrarAnio()` ← `desglosePorFuente()`): inicial =
+  `fuente.presupuesto`, **comprometido = Σ sobres**, contable = inicial + ingresos − rendiciones aprobadas −
+  otros egresos. **Nunca acumuladores por operación** (antipatrón descartado en el plan de montos §2.4).
+- **Re-cerrable con aviso**: upsert por `UNIQUE (fuente, anio)`; el confirm avisa que reemplaza el snapshot.
+- **Rendiciones pendientes advierten, no bloquean** (el confirm indica cuántas hay; no descuentan el contable).
+- La pantalla muestra el **Histórico Anual por Fuente** (bloque 5) leído de la tabla.
+- ⏸ El **rollover** (traspaso del sobrante al `monto_inicial` del año siguiente) sigue en v1.1, junto con las
+  preguntas de periodos del plan de montos §5.1.
 
 ---
 
@@ -399,7 +412,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
 | 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
-| 8 | Saldos (fuente + **sobre** + comprometido) | 🟡 EN CURSO — pantalla y vistas hechas; falta cierre anual/`fuente_presupuesto_anual` |
+| 8 | Saldos (fuente + **sobre** + comprometido + **cierre anual**) | ✅ COMPLETADO (2026-07-16) — cierre anual manual + histórico + visibilidad por POA (QA 16/16, suite 117/117) |
 | 9 | Reportes Excel | ⏸ diferido v1.1 |
 | 10 | Usuarios | ⬜ PENDIENTE |
 
@@ -412,11 +425,6 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
-
-### 8 — Saldos
-- [ ] Calcular sobre `fuente_presupuesto_anual` (año vigente): contable = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
-- [ ] Mostrar `presupuesto_comprometido` vs `presupuesto_contable`.
-- [ ] Saldo de programa visible solo con POA Presupuestal aprobado.
 
 ### 10 — Usuarios
 - [ ] Revisión/ajustes finales del CRUD de usuarios (el vínculo coordinador-programa ya está en item 2).

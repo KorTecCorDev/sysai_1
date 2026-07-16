@@ -149,6 +149,8 @@ $router->get('/reporte/ingresosdesc', [ReportePoaRubrosController::class, 'index
 
 //Rutas para los saldos contables
 $router->get('/saldos_contables/saldos', [SaldoContableController::class, 'index']);
+// Item 8 — cierre anual (snapshot por fuente): sufijo /guardar => protegido por CSRF.
+$router->post('/cierre_anual/guardar', [SaldoContableController::class, 'cerrar']);
 
 //Rutas para los Otros Ingresos y Egresos
 $router->get('/ingreso_egreso/admin', [Controllers\IngresoEgresoController::class, 'index']);

@@ -16,7 +16,8 @@
 | `qa_rendicion.ps1` | 5 | Rendición imputada al rubro, límite Σ ≤ monto del rubro, cross-tenant, CSRF. **10** |
 | `qa_oie.ps1` | 7 | OIE solo Contador (coordinador sin rutas), CSRF, ingreso híbrido (total de fuente = `programa_id` NULL / al sobre), egreso con programa obligatorio + sobre existente + tope por sobre (con exclusión del propio OIE al editar), sin comprobantes huérfanos, eliminar borra OIE+comprobante, saldos en vistas. **22** |
 | `qa_reportes.ps1` | reportes (plan de montos F4-5) | Las 7 rutas de reporte + `/saldos_contables/saldos` **con TC y sin ningún TC**: 200 sin fatal siempre (antes: `DivisionByZeroError` con las tablas de TC vacías); saldos muestra la conversión al cierre con tasa visible y "sin tipo de cambio registrado" cuando falta. **19** |
-| `qa_all.ps1` | — | **Runner**: corre los cinco y resume (esperado: `TODOS LOS ARNESES OK`, 101 checks). |
+| `qa_cierre_anual.ps1` | 8 | Cierre anual: rol (coordinador sin ruta), CSRF 419, snapshot correcto por fuente (inicial\|comprometido=Σ sobres\|contable), re-cierre upsert sin duplicar con cifras frescas y aviso de reemplazo, advertencia de rendiciones pendientes, y visibilidad del saldo de sobre solo con POA Aprobado (badge si no). **16** |
+| `qa_all.ps1` | — | **Runner**: corre los seis y resume (esperado: `TODOS LOS ARNESES OK`, 117 checks). |
 
 ## Cómo ejecutar (desde la raíz del proyecto)
 

@@ -1,6 +1,43 @@
 <body>
     <main>
         <div class="container mt-5">
+            <?php
+            if (!empty($resultado)) {
+                $mensaje = mostrarNotificacion(intval($resultado));
+                if ($mensaje) { ?>
+                    <p class="alert alert-info"><?php echo s($mensaje); ?></p>
+            <?php }
+            }
+            ?>
+
+            <!-- Item 8 — Cierre anual: snapshot por fuente en fuente_presupuesto_anual.
+                 Manual (lo dispara el Contador), re-cerrable con aviso, y las
+                 rendiciones pendientes advierten sin bloquear (decisiones 2026-07-16). -->
+            <div class="d-flex justify-content-end mb-3">
+                <?php
+                $avisos = [];
+                if (!empty($fechaCierre)) {
+                    $avisos[] = 'Ya existe un cierre del ' . date('d/m/Y H:i', strtotime($fechaCierre)) . ': se REEMPLAZARÁ con las cifras actuales.';
+                }
+                if (!empty($rendicionesPendientes)) {
+                    $avisos[] = 'Hay ' . (int) $rendicionesPendientes . ' rendición(es) PENDIENTE(S) (POAs sin aprobar) que aún no descuentan el contable.';
+                }
+                $confirmCierre = '¿Registrar el cierre del año ' . s($anio ?? date('Y')) . '? '
+                    . 'Se guardará el snapshot por fuente (inicial, comprometido y contable). '
+                    . implode(' ', array_map('s', $avisos));
+                ?>
+                <form method="POST" action="/cierre_anual/guardar"><?php echo csrf_input(); ?>
+                    <button type="submit" class="btn btn-outline-primary rounded-pill px-4"
+                            data-confirm="<?php echo $confirmCierre; ?>">
+                        <i class="bi bi-archive me-2"></i>
+                        Registrar cierre del año <?php echo s($anio ?? date('Y')); ?>
+                        <?php if (!empty($fechaCierre)) : ?>
+                            <span class="badge bg-secondary ms-1">re-cierre</span>
+                        <?php endif; ?>
+                    </button>
+                </form>
+            </div>
+
             <!-- Bloque 1: Saldos generales -->
             <div class="row mb-5">
                 <div class="col-12">
@@ -273,6 +310,11 @@
                                     </thead>
                                     <tbody>
                                         <?php foreach ($saldosobres as $sob) :
+                                            // Item 8 — regla confirmada: el saldo del programa solo es
+                                            // firme con su POA Presupuestal APROBADO (las rendiciones
+                                            // pendientes no descuentan). Sin POA aprobado: la fila se
+                                            // muestra, las cifras no.
+                                            $conPoaAprobado = ($poaAprobado ?? [])[(int) $sob->programa_id] ?? false;
                                             $asignado = (float) $sob->monto_asignado;
                                             $saldoSob = (float) $sob->saldo;
                                             $ratio    = $asignado > 0 ? ($saldoSob / $asignado) * 100 : ($saldoSob >= 0 ? 100 : 0);
@@ -287,11 +329,18 @@
                                             <tr>
                                                 <td><span class="fw-semibold"><?php echo s($sob->programa_codigo); ?></span> · <?php echo s($sob->programa_nombre); ?></td>
                                                 <td><span class="fw-semibold"><?php echo s($sob->fuente_codigo); ?></span> · <?php echo s($sob->fuente_nombre); ?></td>
-                                                <td class="text-end"><?php echo soles($asignado); ?></td>
-                                                <td class="text-end text-success"><?php echo soles($sob->ingresos); ?></td>
-                                                <td class="text-end text-danger"><?php echo soles($sob->egresos); ?></td>
-                                                <td class="text-end text-danger"><?php echo soles($sob->rendiciones_aprobadas); ?></td>
-                                                <td class="text-end fw-bold text-<?php echo $tonoSob; ?>"><?php echo soles($saldoSob); ?></td>
+                                                <?php if ($conPoaAprobado) : ?>
+                                                    <td class="text-end"><?php echo soles($asignado); ?></td>
+                                                    <td class="text-end text-success"><?php echo soles($sob->ingresos); ?></td>
+                                                    <td class="text-end text-danger"><?php echo soles($sob->egresos); ?></td>
+                                                    <td class="text-end text-danger"><?php echo soles($sob->rendiciones_aprobadas); ?></td>
+                                                    <td class="text-end fw-bold text-<?php echo $tonoSob; ?>"><?php echo soles($saldoSob); ?></td>
+                                                <?php else : ?>
+                                                    <td colspan="5" class="text-center text-muted">
+                                                        <span class="badge bg-warning text-dark">POA no aprobado</span>
+                                                        <small>el saldo se muestra cuando el POA Presupuestal del año esté aprobado</small>
+                                                    </td>
+                                                <?php endif; ?>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -301,6 +350,54 @@
                     <?php else : ?>
                         <div class="alert alert-info text-center">
                             No hay sobres registrados. Asigna presupuesto a las fuentes de cada programa (vínculo de financiamiento).
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Bloque 5 (item 8): Histórico anual por fuente — snapshots del cierre.
+                 Se escribe SOLO al registrar el cierre (botón de arriba); comprometido
+                 = Σ sobres al momento del corte; contable = sobrante al corte. -->
+            <div class="row mt-5 mb-5">
+                <div class="col-12">
+                    <h3 class="mb-2 text-center">Histórico Anual por Fuente</h3>
+                    <p class="text-muted text-center small mb-4">
+                        Snapshot registrado en cada cierre de año. Contable = inicial + ingresos − rendiciones aprobadas − otros egresos.
+                    </p>
+                    <?php if (!empty($historicoAnual)) : ?>
+                        <div class="card shadow-sm">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="font-variant-numeric: tabular-nums;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center">Año</th>
+                                            <th>Fuente</th>
+                                            <th class="text-end">Monto inicial</th>
+                                            <th class="text-end">Comprometido (Σ sobres)</th>
+                                            <th class="text-end">Contable (sobrante)</th>
+                                            <th class="text-center">Registrado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($historicoAnual as $h) : ?>
+                                            <tr>
+                                                <td class="text-center fw-semibold"><?php echo s($h['anio']); ?></td>
+                                                <td><span class="fw-semibold"><?php echo s($h['fuente_codigo']); ?></span> · <?php echo s($h['fuente_nombre']); ?></td>
+                                                <td class="text-end"><?php echo soles($h['monto_inicial']); ?></td>
+                                                <td class="text-end"><?php echo soles($h['presupuesto_comprometido']); ?></td>
+                                                <td class="text-end fw-bold <?php echo $h['presupuesto_contable'] < -0.001 ? 'text-danger' : 'text-success'; ?>">
+                                                    <?php echo soles($h['presupuesto_contable']); ?>
+                                                </td>
+                                                <td class="text-center text-muted small"><?php echo s(date('d/m/Y H:i', strtotime($h['fecha']))); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <?php else : ?>
+                        <div class="alert alert-info alert-persistente text-center">
+                            Aún no hay cierres registrados. El botón "Registrar cierre del año" guarda el snapshot por fuente.
                         </div>
                     <?php endif; ?>
                 </div>

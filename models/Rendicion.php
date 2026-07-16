@@ -240,6 +240,17 @@ class Rendicion extends ActiveRecord
         return (float) ($fila['total'] ?? 0);
     }
 
+    // Total de rendiciones PENDIENTES en todo el sistema (POAs sin aprobar). Alimenta
+    // la advertencia del cierre anual: las pendientes NO descuentan el contable, así
+    // que un cierre con pendientes es un snapshot "optimista" — se avisa, no se bloquea.
+    public static function contarPendientes(): int
+    {
+        $query = "SELECT COUNT(*) AS total FROM " . static::$tabla . " WHERE estado = " . self::PENDIENTE;
+        $res = self::$db->query($query);
+        $fila = ($res instanceof \mysqli_result) ? $res->fetch_assoc() : null;
+        return (int) ($fila['total'] ?? 0);
+    }
+
     // Aprueba (estado=APROBADA) todas las rendiciones PENDIENTES de un programa, derivando
     // el programa por la cadena rendicion → rubro → actividad → producto → resultado.
     // La llama PoaController::aprobar al aprobar el POA Presupuestal: congela las rendiciones

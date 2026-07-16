@@ -461,6 +461,14 @@ function mostrarNotificacion($codigo)
         case 22:
             $mensaje = 'No se puede aprobar: hay rendiciones sin tipo de cambio para su fecha de operación. Registra los TC (USD y EUR) de las fechas indicadas y vuelve a aprobar';
             break;
+        //CIERRE ANUAL REGISTRADO (item 8)
+        case 23:
+            $mensaje = 'Cierre anual registrado: se guardó el snapshot por fuente (inicial, comprometido y contable) en el histórico';
+            break;
+        //CIERRE ANUAL SIN FUENTES QUE REGISTRAR (item 8)
+        case 24:
+            $mensaje = 'No se registró el cierre: no hay fuentes de financiamiento con datos que guardar';
+            break;
         default:
             $mensaje = false;
             break;
