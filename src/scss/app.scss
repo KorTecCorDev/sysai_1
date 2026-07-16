@@ -1,12 +1,9 @@
-//Declaramos las librerías
-@use "sass:color";
-//Importamos las variables
-@import "base/variables";
-//Importando los estilos del sidebar
-@import "layout/sidebar";
-//Importando los estilos de las páginas
-@import "paginas/login";
-//Capa de tema SysAI sobre Bootstrap (debe ir al final para ganar en cascada)
-@import "base/tema";
-//Estandarización del sidebar (después del tema y del sidebar legacy)
-@import "base/sidebar-tema";
+//Carga de parciales con el sistema de módulos de Sass (@use — B7, 2026-07-16;
+//@import está deprecado en Dart Sass y se elimina en 3.0). El orden importa:
+//variables primero (emite los @import url() de Google Fonts al tope del CSS)
+//y la capa de tema al final para ganar en cascada.
+@use "base/variables";
+@use "layout/sidebar";
+@use "paginas/login";
+@use "base/tema";
+@use "base/sidebar-tema";

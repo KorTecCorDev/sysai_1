@@ -9,5 +9,7 @@
   `gulp build` (todo, sin watcher; para CI/prod), `gulp` / `npm run dev` (todo + watcher). `npm run css` → `gulp css`.
 - **Fixes ya aplicados:** eliminado `node-sass` muerto (el gulpfile usa Dart Sass `require('sass')`);
   `@use "sass:color";` añadido en `_variables.scss`/`_sidebar.scss`; `npm run css` exportada.
-- **Pendiente menor:** los `@import` de Sass están *deprecated* (migrar a `@use/@forward`); `build/css/`
-  contiene SVGs de bootstrap-icons commiteados (revisar/limpiar).
+- ✅ **B7 cerrado (2026-07-16):** SCSS migrado de `@import` a `@use` (CSS compilado byte-idéntico) y
+  `build/css/` depurado a lo que los layouts realmente cargan: `app.css`, `bootstrap.min.css`,
+  `bootstrap-icons.min.css` (+ maps) y `fonts/` con la fuente de iconos (woff/woff2). Se eliminaron
+  2.051 SVGs sueltos y las variantes bootstrap sin uso (~30 css/map).

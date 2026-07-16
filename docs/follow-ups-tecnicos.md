@@ -32,7 +32,13 @@
 - [x] ~~**B6 — `validarPropiedadArray()`** sin `isset`~~ — **HECHO 2026-07-16:** NO era función muerta
   (caller real: `UsuarioController.php:48`, detecta si se eligió programa al crear coordinador). Reescrita
   como `!empty($array[$propiedad][$subpropiedad])`: misma semántica, sin warnings cuando falta la clave.
-- [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
+- [x] ~~**B7 — Deuda de build**~~ — **HECHO 2026-07-16:** los 5 `@import` Sass de `app.scss` migrados a
+  `@use` (`_login.scss` ahora consume variables con prefijo `v.`; los `@import url()` de Google Fonts son
+  CSS y quedan). CSS compilado **byte-idéntico** tras la migración. Limpieza de `build/css/`: eliminados
+  2.081 archivos no referenciados (2.051 SVGs sueltos de bootstrap-icons, 15 css + 15 map de variantes
+  bootstrap sin uso, y el dir `font/` duplicado). Quedan solo los 3 CSS que cargan los layouts
+  (`app.css`, `bootstrap.min.css`, `bootstrap-icons.min.css`), sus maps y `fonts/` (woff/woff2, la fuente
+  real de los iconos). Smoke HTTP 200 en todos + suite QA 131/131.
 - [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
   gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
   **Documento de consulta listo (2026-07-16): `docs/confirmar-tc-contador.md`** — mapeo implementado,

@@ -6,10 +6,11 @@
 //   display: flex;
 // }
 @use "sass:color";
+@use "../base/variables" as v;
 
 //LOGIN
 .logo-login {
-  border: $naranja, solid 1px;
+  border: v.$naranja, solid 1px;
   border-radius: 5px;
   margin-bottom: 10px;
   padding: 1rem;
@@ -17,40 +18,40 @@
 
 .login {
   width: 30%;
-  background-color: $grisOscuro;
+  background-color: v.$grisOscuro;
   padding: 1rem;
   border-radius: 0.5rem;
   label {
-    font-family: $fuente_login;
+    font-family: v.$fuente_login;
     font-weight: 600;
     text-transform: uppercase;
     font-size: 1rem;
-    color: $azul;
+    color: v.$azul;
   }
 }
 
 .titulo-login {
   text-transform: uppercase;
-  font-family: $fuente_login;
+  font-family: v.$fuente_login;
   font-size: 2.5rem;
 }
 
 .subtitulo-login {
   text-transform: uppercase;
-  font-family: $fuente_login;
+  font-family: v.$fuente_login;
   font-size: 2rem;
-  color: $amarillo_claro;
+  color: v.$amarillo_claro;
   margin-top: 2rem;
 }
 
 .footer {
   font-size: 14px;
-  color: $grisOscuro;
-  font-family: $fuente_principal;
+  color: v.$grisOscuro;
+  font-family: v.$fuente_principal;
 }
 // Clase raíz para encapsular los estilos
 .page-login {
-  background-color: $gris;
+  background-color: v.$gris;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -59,7 +60,7 @@
 
   // Contenedor del login
   .login-container {
-    background: $blanco;
+    background: v.$blanco;
     padding: 30px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -71,14 +72,14 @@
       margin-bottom: 20px;
 
       h2 {
-        color: $azul;
-        font-family: $fuente_titulo;
+        color: v.$azul;
+        font-family: v.$fuente_titulo;
         margin-bottom: 5px;
       }
 
       p {
-        color: $grisOscuro;
-        font-family: $fuente_login;
+        color: v.$grisOscuro;
+        font-family: v.$fuente_login;
         font-size: 16px;
       }
     }
@@ -98,9 +99,9 @@
   //   }
   // }
   .btn-login {
-    background-color: $azul;
-    color: $negro;
-    font-family: $fuente_boton_formulario;
+    background-color: v.$azul;
+    color: v.$negro;
+    font-family: v.$fuente_boton_formulario;
     border: none;
     padding: 10px;
     font-size: 16px;
@@ -110,7 +111,7 @@
     margin-bottom: 0.5rem;
     width: 100%;
     &:hover {
-      background-color: $azul_oscuro;
+      background-color: v.$azul_oscuro;
     }
   }
 }
@@ -134,7 +135,7 @@
 //LOGO DEL LOGIN
 
 .page-change-password {
-  background-color: $gris;
+  background-color: v.$gris;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -146,7 +147,7 @@
     flex-grow: 1;
 
     .login-container {
-      background: $blanco;
+      background: v.$blanco;
       padding: 30px;
       border-radius: 8px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -154,34 +155,34 @@
       max-width: 500px; // Límite máximo para pantallas grandes
 
       .titulo-login {
-        color: $azul;
-        font-family: $fuente_titulo;
+        color: v.$azul;
+        font-family: v.$fuente_titulo;
         margin-bottom: 20px;
       }
 
       .texto-login,
       .texto-advertencia {
-        color: $grisOscuro;
-        font-family: $fuente_login;
+        color: v.$grisOscuro;
+        font-family: v.$fuente_login;
         font-size: 16px;
         margin-bottom: 20px;
       }
 
       .form-control {
-        border: 1px solid $grisOscuro;
+        border: 1px solid v.$grisOscuro;
         padding: 10px;
-        font-family: $fuente_principal;
+        font-family: v.$fuente_principal;
         border-radius: 8px;
 
         &::placeholder {
-          color: $grisOscuro;
+          color: v.$grisOscuro;
         }
       }
 
       .btn-login {
-        background-color: $azul;
-        color: $negro;
-        font-family: $fuente_boton_formulario;
+        background-color: v.$azul;
+        color: v.$negro;
+        font-family: v.$fuente_boton_formulario;
         border: none;
         padding: 10px;
         font-size: 16px;
@@ -190,7 +191,7 @@
         transition: background-color 0.3s ease;
         margin-bottom: 1rem;
         &:hover {
-          background-color: $azul_oscuro;
+          background-color: v.$azul_oscuro;
         }
       }
     }
