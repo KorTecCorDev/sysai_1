@@ -40,10 +40,13 @@
    La nota "decimal(2,2)" venía de un dump anterior al baseline versionado. Tablas de uso futuro (v1.1).
 5. ~~`rendicion.fecha_original` `varchar(500)`~~ — **CERRADO:** ya es `date` (verificado 2026-07-15).
 6. ~~`usuario.email` sin UNIQUE~~ — **CERRADO:** migr. 032 (item 10, 2026-07-16).
-7. `reporte_poa_rubros_sumas` usaba `SUM(DISTINCT u.monto)` y joins con fan-out cartesiano por fuentes →
-   posible **bug de reporte** (inflado). = **B2**: la cifra correcta libre de fan-out ya existe
-   (`comprometido` = Σ sobres); falta que los reportes Excel la consuman (item 9, v1.1). (La verificación
-   "en producción" ya no aplica: Hostinger fue dado de baja; el despliegue siguiente es greenfield.)
+7. ~~`reporte_poa_rubros_sumas` con `SUM(DISTINCT)` + fan-out~~ — **CERRADO 2026-07-16 (item 9 = B2):**
+   el `SUM(DISTINCT)` ya no existía en la vista vigente y ningún consumidor la usaba (modelo huérfano
+   eliminado; la vista SQL queda sin consumidores). El residuo real —sumas de rendición agrupadas a nivel
+   actividad y desalineadas en el Excel— se resolvió con `reporte_poa_rendicion` por **rubro×fuente**
+   (migr. 034: solo aprobadas, ejercicio vigente) + `ReporteRendicionXlsxBuilder`. Nueva tabla
+   `transferencia_institucional` (migr. 033): transferencias al programa Institucional, UNIQUE
+   (fuente, programa origen); su Σ se materializa como sobre del Institucional en `detalle_financiamiento`.
 
 ## Notas técnicas puntuales (misceláneas, ya reflejadas en migraciones)
 - `cantidad_fuentes_rendicion`: vista eliminada (migr. 009). Una rendición solo tiene una fuente.

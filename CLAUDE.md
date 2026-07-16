@@ -90,7 +90,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-032
+php database/migrate.php                                                       # aplica migrations/001-034
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -199,7 +199,7 @@ src/               → SCSS y JS fuente
 | **POA** | `/poa/*`, `/reporte/guardarpoa`, `/reporte/modificarpoa` | Plan Operativo Anual; vincula coordinador↔programa. |
 | **Resultados / Productos / Actividades** | `/resultado/*`, `/producto/*`, `/actividad/*` | Jerarquía: Resultado → Producto → Actividad. |
 | **Rubros / Categorías** | `/rubro/*`, `/categoria_rubro/*` | Partidas presupuestarias (tipo rubro Bien/Servicio). |
-| **Fuentes de financiamiento** | `/fuente_financiamiento/*`, `/dfinanciamiento/*` | Fuentes (donantes) y su detalle. |
+| **Fuentes de financiamiento** | `/fuente_financiamiento/*`, `/dfinanciamiento/*` | Fuentes (donantes) y sus sobres por programa; en `/dfinanciamiento/crear` se captura también la **transferencia al programa Institucional** (migr. 033). |
 | **Rendiciones** | `/rendicion/*`, `/rendicionff/*` | Rendición de cuentas con comprobantes (RUC, serie, número, monto) por fuente. |
 | **Otros Ingresos/Egresos (OIE)** | `/ingreso_egreso/*` | Movimientos no ligados a rendición, con comprobantes. |
 | **Tipos de cambio** | `/tcambio/*?moneda=USD\|EUR` | TC unificado (migr. 028): compra/venta por `fecha_vigencia`; el vigente a una fecha se resuelve por fecha, no por orden de registro. `/tcambio/sbs` = consulta informativa que pre-llena el formulario. |
@@ -308,6 +308,47 @@ src/               → SCSS y JS fuente
 - **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** siempre lleva programa y descuenta del sobre `(programa, fuente)`.
 - ✅ **Item 7 COMPLETADO (2026-07-14, QA 22/22):** CRUD en un solo paso (se eliminó el flujo en dos pasos `/ingreso_egreso/ff`). Validaciones en `OtrosIngresosEgresos`: egreso exige programa, el par (programa, fuente) debe tener sobre (`DetalleFinanciamiento::existeVinculo()`), y el egreso no puede exceder el disponible del sobre (`validarTopeSobre()` → `saldoSobre()`, que ahora acepta excluir un OIE en edición). Eliminar borra el OIE **y su comprobante**. `programa_id` NULL real vía `ActiveRecord::$columnasNull` (opt-in). Vista de listado recreada con LEFT JOIN (migr. 025).
 
+### Programa Institucional y transferencias (✅ IMPLEMENTADO 2026-07-16, item 9 — migr. 033)
+- El programa **INSTITUCIONAL** (código reservado `PRG000`, flag **`programa.es_institucional`**) concentra los
+  gastos de oficina/administrativos. **Nace con el sistema** (lo crea la migr. 033 con `INSERT IGNORE`; los
+  fixtures QA/demo lo re-siembran) y está **protegido contra eliminación** (`resultado=28`). Identificación
+  SIEMPRE por el flag (`Programa::institucional()`, cacheado) — nunca por nombre/id.
+- **Se comporta como un programa normal** (jerarquía, POA, rendiciones, saldos) con dos diferencias:
+  1. **No recibe sobres directos** (`resultado=26` como destino en `/dfinanciamiento`): su sobre
+     `(Institucional, fuente)` es **derivado** = Σ transferencias de esa fuente, materializado como fila normal
+     de `detalle_financiamiento` gestionada solo por `TransferenciaInstitucional::sincronizarSobreInstitucional()`
+     (recalcula, no incrementa; con Σ=0 el sobre se elimina). Así todas las vistas de saldo, la puerta de
+     sobres y el tope del POA funcionan sin tocarse.
+  2. **Lo opera el Contador directamente**: `iconta.php` tiene `POST /poa/crear|enviar` con guarda — el
+     Contador solo ELABORA el POA del Institucional (`resultado=26` en programas normales; en ellos sigue
+     siendo revisor/adenda). Panel de elaboración en la rama contador de `views/poa/admin.php`. La
+     auto-aprobación de su propio POA es aceptada (decisión 2026-07-16). Sus rendiciones sobre POA aprobado
+     nacen Aprobadas (adenda existente).
+- **Transferencia** (`transferencia_institucional`, UNIQUE por (fuente, programa origen), **monto fijo**):
+  se captura al asignar sobres en `/dfinanciamiento/crear` (campo opcional al crear; edición inline en
+  fuentes vinculadas, monto 0 = quitarla). Es **partición en el origen**: el monto transferido NO vive en el
+  sobre del programa origen — la invariante Σ sobres ≤ presupuesto se mantiene sin doble conteo, y
+  `validarLimiteAsignacion` valida sobre + transferencia JUNTOS contra la capacidad asignable.
+- **Guardas de edición**: aumento → el delta cabe en la capacidad asignable; reducción/eliminación → el sobre
+  del Institucional nunca queda bajo lo ya comprometido por él en esa fuente (`resultado=27`). "Quitar" un
+  vínculo arrastra su transferencia (con la misma guarda).
+- **En los reportes Excel**, el bloque del programa origen muestra la fila
+  **"TRANSFERENCIA A PROGRAMA INSTITUCIONAL"** (última antes del TOTAL): el total del bloque =
+  Σ rubros + transferencia (el cargo completo al grant que ve el donante).
+
+### Reportes Excel de rendición (✅ REESCRITOS 2026-07-16, item 9 — migr. 034)
+- `models/ReporteRendicionXlsxBuilder.php` genera `/reporte/poarendicion` y `/reporte/poarubros`
+  (las vistas quedaron como orquestadores delgados), **conservando el diseño visual** (bloques por programa,
+  BIENES/SERVICIOS, totales por actividad en G/H/I, tripletas S//USD/EUR por fuente desde K).
+- **Grano por RUBRO** (migr. 034): la vista `reporte_poa_rendicion` agrupa por rubro×fuente — cada suma cae
+  **en la fila de su rubro** (antes: fila del último rubro de la actividad, fósil pre-migr. 017). Cuenta
+  **solo rendiciones Aprobadas** y **solo el ejercicio vigente** (`YEAR(fecha_original)`, decisiones 2026-07-16).
+- Columnas **calculadas** (`Coordinate::stringFromColumnIndex`) — sin arrays K..Z hardcodeados: soporta N
+  fuentes (antes con ≥6 las sumas desaparecían). Columnas "TOTAL RENDIDO" con encabezado; fila TOTAL
+  **etiquetada**; `combinarCeldasRepetidas` solo en columnas de etiquetas A/B (fusionar montos iguales
+  adyacentes hacía desaparecer importes). `/reporte/poa` conserva su layout + fila de transferencia + TOTAL.
+- QA: `qa_reportes.ps1` asserta el contenido **celda a celda** del xlsx generado (helper `qa_leer_xlsx.php`).
+
 ### Tipo de Cambio (✅ reescrito 2026-07-15, plan de montos — migr. 028-030)
 - Tabla única `tipo_cambio` (moneda USD/EUR, `fecha_vigencia`, **compra** y **venta**, origen MANUAL/SBS,
   `decimal(12,6)`). UNIQUE (moneda, fecha_vigencia).
@@ -369,6 +410,8 @@ programa (tipo_programa)
                  └─ rubro  (categoria_rubro → subcategoria_rubro; tipo_rubro: TRB001=Bien, TRB002=Servicio)
 poa (programa, anio, presupuesto, estado, usuario_id→coordinador)
 detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado` = sobre, migr. 020)
+transferencia_institucional  (migr. 033: monto que cada programa destina al Institucional por fuente;
+                              UNIQUE (fuente, origen); su Σ se materializa como sobre del Institucional)
 ```
 > `detalle_actividad` es la tabla base de los indicadores del POA Indicadores (`indicador_medido`,
 > `medio_verificacion`, `supuesto`, `responsable`). Las tablas `*_detalle`, `indicador_*` y `avance_*`
@@ -398,9 +441,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-032** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3).
-- **BD local `sysai`:** migraciones aplicadas hasta 032. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-032 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Migraciones vigentes: **001-034** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3); **033** Programa Institucional: flag `es_institucional`, tabla `transferencia_institucional` y siembra de `PRG000` (item 9); **034** `reporte_poa_rendicion` por rubro×fuente, solo aprobadas del ejercicio vigente (item 9).
+- **BD local `sysai`:** migraciones aplicadas hasta 034. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-034 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
   Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
 - **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 
@@ -418,7 +461,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
 | 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
 | 8 | Saldos (fuente + **sobre** + comprometido + **cierre anual**) | ✅ COMPLETADO (2026-07-16) — cierre anual manual + histórico + visibilidad por POA (QA 16/16, suite 117/117) |
-| 9 | Reportes Excel | ⏸ diferido v1.1 |
+| 9 | Reportes Excel + **Programa Institucional** | ✅ COMPLETADO (2026-07-16) — builder por rubro×fuente (migr. 034), transferencias al Institucional operado por el Contador (migr. 033), fila de transferencia en los Excel. QA 15/15 institucional + 8 asserts de celdas (suite **154/154**) |
 | 10 | Usuarios | ✅ COMPLETADO (2026-07-16) — revisión + fixes del CRUD, email UNIQUE (migr. 032), QA 14/14 (suite 131/131) |
 
 > Detalle de construcción + QA de los items **completados (2-6)**: `docs/historial-implementacion-items-2-6.md`.
@@ -428,9 +471,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 ## [SECCION: BACKLOG PENDIENTE]
 
-> ✅ **El backlog de negocio del MVP está COMPLETO** (items 1-8 y 10; el 9 —Reportes Excel nuevos— quedó en
-> v1.1 por decisión). Lo abierto vive en *[SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]* (deuda técnica y
-> confirmaciones de negocio) y en *[SECCION: DIFERIDO A v1.1]*.
+> ✅ **El backlog está COMPLETO: items 1-10** (el 9 —Reportes Excel + Programa Institucional— se completó el
+> 2026-07-16 como primer entregable de v1.1). Lo abierto vive en *[SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]*
+> (confirmación del TC con el contador) y en *[SECCION: DIFERIDO A v1.1]*.
 
 ### Item 10 — Usuarios (✅ completado 2026-07-16, QA `qa_usuarios.ps1` 14/14)
 La revisión final del CRUD corrigió: `eliminar()` no limpiaba `poa_indicadores`/`poa_rendicion` (FK) y el
@@ -460,7 +503,8 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 
 - **Re-apertura del POA Rendición** por el Contador (MVP = ciclo enviar→aprobar una vez).
 - **Rollover de cierre anual** — traspaso de saldo entre años (`fuente_presupuesto_anual` ya existe).
-- **Reportes Excel nuevos/ampliados** — se conserva lo existente; no se agregan nuevos en MVP.
+- ~~Reportes Excel nuevos/ampliados~~ — ✅ el item 9 se completó el 2026-07-16 (builder por rubro×fuente +
+  Programa Institucional); nuevos formatos adicionales se evaluarán bajo demanda.
 - **Auditoría con triggers** (decisión 2026-07-16) — la infraestructura existe (tabla `auditoria`,
   `setUsuarioActual()` en ~20 controladores) pero nadie consume `@usuario_actual`. Al implementarla:
   redimensionar `auditoria.usuario` (`varchar(8)` → no cabe el email) y revisar `auditoria.id` AUTO_INCREMENT.
@@ -474,7 +518,10 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 > Detalle completo (hechos + pendientes) en `docs/follow-ups-tecnicos.md`. Abiertos, en resumen:
 - [x] ~~Bloqueo por intentos en `Login.php`~~ — **resuelto en `main`** (migr. 011 `login_intentos`; `models/Login.php` la usa). Cerrado 2026-07-15.
 - [x] ~~Retirar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (modelo y llamadas eliminados; `$ffnro` no se usaba en ninguna vista).
-- [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
+- [x] ~~B2 — reportes POA/Excel inflados por fan-out de fuentes~~ — **CERRADO 2026-07-16 (item 9):** al
+  verificar, el `SUM(DISTINCT)` histórico ya no existía y `/reporte/poa` no imprime fuentes; el residuo real
+  (sumas de rendición desalineadas por agrupar a nivel actividad) quedó resuelto por el re-anclaje a
+  rubro×fuente (migr. 034) y el builder nuevo. Los reportes ya no repiten `fuente.presupuesto` por actividad.
 - [x] ~~B3 — esquema desalineado~~ — **CERRADO 2026-07-16** (barrido contra BD viva): overflow de montos,
   `fecha_original`, `email` UNIQUE y `avance` (ya era `decimal(5,2)`/`(7,2)`, admite 100% — la nota
   "decimal(2,2)" era de un dump viejo) todos verificados OK. La **auditoría sin triggers** se difiere a

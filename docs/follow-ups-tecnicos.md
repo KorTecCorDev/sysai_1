@@ -11,9 +11,12 @@
 ## Pendientes abiertos
 - [x] ~~`usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia~~ — **CERRADO 2026-07-15:** resuelto en `main` (migr. 011 creó `login_intentos`; `models/Login.php` la usa).
 - [x] ~~Retirar/limpiar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (plan de montos §5.4): modelo eliminado junto con sus llamadas en `ReportePoaRubrosController`; `$ffnro` no se usaba en ninguna vista.
-- [ ] **B2 — Reportes POA/Excel inflados** (fan-out por fuentes) — ya existe la cifra correcta libre de
-  fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes
-  Excel** (item 9, diferido a v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
+- [x] ~~**B2 — Reportes POA/Excel inflados** (fan-out por fuentes)~~ — **CERRADO 2026-07-16 (item 9):** al
+  verificar, el `SUM(DISTINCT)` histórico ya no existía en la vista y `/reporte/poa` no imprime fuentes.
+  El residuo real era otro: las sumas de rendición se agrupaban a nivel ACTIVIDAD y caían desalineadas en la
+  fila del último rubro. Resuelto con la vista por rubro×fuente (migr. 034, solo aprobadas del ejercicio) y
+  `ReporteRendicionXlsxBuilder` (columnas calculadas, TOTAL etiquetado, fila de transferencia al
+  Institucional). QA celda a celda en `qa_reportes.ps1` + `qa_leer_xlsx.php`.
 - [x] ~~**B3 — Esquema desalineado**~~ — **CERRADO 2026-07-16** (barrido de verificación contra la BD viva,
   detalle en `docs/modelo-datos-detalle.md`): overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`),
   `rendicion.fecha_original` (`date`), `usuario.email` UNIQUE (migr. 032) y `avance` (ya era
