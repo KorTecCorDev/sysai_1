@@ -28,6 +28,9 @@
 - [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
 - [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
   gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
+  **Documento de consulta listo (2026-07-16): `docs/confirmar-tc-contador.md`** — mapeo implementado,
+  5 preguntas concretas y los puntos exactos del código a tocar si el contador contradice. Resolver ANTES
+  de registrar transacciones reales (el TC congelado se copia por valor y no se recalcula).
 - [x] ~~**`sql_mode` sin `STRICT_TRANS_TABLES`**~~ — **HECHO 2026-07-16:** `conectarDB()` fija
   `SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'` (por sesión →
   portable a Hostinger sin `my.cnf`; cubre app + `migrate.php`). También se hizo explícito

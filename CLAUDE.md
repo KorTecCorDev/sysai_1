@@ -476,7 +476,7 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - [ ] B3 — esquema desalineado. ✅ Resueltos: overflow de montos (migr. 026), `fecha_original` (ya era `date`) y `email` UNIQUE (migr. 032, item 10). **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
-- [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
+- [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna. **Documento de consulta listo: `docs/confirmar-tc-contador.md`** (mapeo, preguntas y puntos exactos del código). ⚠️ Resolver ANTES de registrar transacciones reales en el greenfield (el TC congelado no se recalcula).
 - [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
   (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.
 
