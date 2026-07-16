@@ -36,13 +36,17 @@ if (-not $SkipSeed) {
 }
 
 $scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1', 'qa_cierre_anual.ps1', 'qa_usuarios.ps1')
-$fail = 0
+# OJO: NO llamar $fail a este acumulador. Con `pwsh -File` el runner corre en el
+# scope GLOBAL, y cada arnés hace `$global:fail = 0` al arrancar: un arnés
+# pisaba el conteo del runner y una suite con fallos reportaba "TODOS OK"
+# (bug real detectado 2026-07-16).
+$arnesesFallidos = 0
 foreach ($s in $scripts) {
     Write-Host "`n########## $s ##########" -ForegroundColor Magenta
     & (Join-Path $dir $s) -BaseUrl $BaseUrl -MysqlExe $MysqlExe -PassCoord $PassCoord -PassConta $PassConta
-    if ($LASTEXITCODE -ne 0) { $fail++ }
+    if ($LASTEXITCODE -ne 0) { $arnesesFallidos++ }
 }
 Write-Host "`n==================================" -ForegroundColor Magenta
-if ($fail -eq 0) { Write-Host "TODOS LOS ARNESES OK" -ForegroundColor Green }
-else { Write-Host "$fail arnes(es) con FALLOS" -ForegroundColor Red }
-exit $fail
+if ($arnesesFallidos -eq 0) { Write-Host "TODOS LOS ARNESES OK" -ForegroundColor Green }
+else { Write-Host "$arnesesFallidos arnes(es) con FALLOS" -ForegroundColor Red }
+exit $arnesesFallidos

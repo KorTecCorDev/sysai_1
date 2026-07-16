@@ -91,8 +91,12 @@ Assert ($r.Status -eq 419) "POST /poa/crear sin token -> 419 ($($r.Status))"
 Write-Host "`n=== 3) AUTORIZACION POR ROL (-> /error) ===" -ForegroundColor Cyan
 $r = Post-Raw $coord.Sess '/poa/aprobar' @{ id = 1; csrf_token = $coord.Token }
 Assert ($r.Status -eq 302 -and $r.Location -eq '/error') "Coordinador NO tiene ruta /poa/aprobar"
-$r = Post-Raw $conta.Sess '/poa/crear' @{ csrf_token = $conta.Token }
-Assert ($r.Status -eq 302 -and $r.Location -eq '/error') "Contador NO tiene ruta /poa/crear"
+# Migr. 033: el Contador SÍ tiene /poa/crear, pero SOLO para el programa Institucional;
+# en un programa normal la guarda redirige con resultado=26 (sin crear documento).
+$nDocsAntes = Q "SELECT COUNT(*) FROM poa WHERE programa_id=1 AND anio=$anio;"
+$r = Post-Raw $conta.Sess '/poa/crear' @{ programa_id = 1; csrf_token = $conta.Token }
+$nDocsDespues = Q "SELECT COUNT(*) FROM poa WHERE programa_id=1 AND anio=$anio;"
+Assert ($r.Status -eq 302 -and $r.Location -like '*resultado=26*' -and $nDocsAntes -eq $nDocsDespues) "Contador con /poa/crear solo para el Institucional (programa normal -> resultado=26, sin documento)"
 
 Write-Host "`n=== 4) CROSS-TENANT (coordinador prog.1 vs doc prog.5) ===" -ForegroundColor Cyan
 & $mysql -u root sysai -e "INSERT INTO poa (programa_id,usuario_id,anio,presupuesto,estado,fecha) VALUES (5,6,$anio,0,1,NOW());" | Out-Null

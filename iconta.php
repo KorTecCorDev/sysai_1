@@ -56,6 +56,11 @@ $router->get('/poa/admin', [PoaController::class, 'index']);
 $router->get('/poa/revisar', [PoaController::class, 'revisar']);
 $router->post('/poa/observar', [PoaController::class, 'observar']);
 $router->post('/poa/aprobar', [PoaController::class, 'aprobar']);
+//El Contador ELABORA el POA del programa Institucional (migr. 033): iniciar y
+//enviar SOLO de ese programa (guarda en el controlador); en los demás sigue
+//siendo revisor/adenda.
+$router->post('/poa/crear', [PoaController::class, 'crear']);
+$router->post('/poa/enviar', [PoaController::class, 'enviar']);
 
 
 

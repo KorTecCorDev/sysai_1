@@ -49,6 +49,18 @@ class PoaController
         }
         $topeSobres = esCoordinador() && !empty($programaId) ? Poa::topeSobres((int) $programaId) : 0.0;
 
+        // Panel de elaboración del Programa Institucional (migr. 033): el Contador
+        // lo opera directamente — espejo del panel del coordinador.
+        $institucional = esContador() ? Programa::institucional() : null;
+        $docInstitucional = null;
+        $presupuestoVivoInst = 0.0;
+        $topeSobresInst = 0.0;
+        if ($institucional) {
+            $docInstitucional = Poa::porProgramaAnio((int) $institucional->id, $anio);
+            $presupuestoVivoInst = Poa::presupuestoCalculado((int) $institucional->id);
+            $topeSobresInst = Poa::topeSobres((int) $institucional->id);
+        }
+
         $router->render('poa/admin', [
             'documentos'      => $documentos,
             'programas'       => $programas,
@@ -57,6 +69,10 @@ class PoaController
             'presupuestoVivo' => $presupuestoVivo,
             'topeSobres'      => $topeSobres,
             'topesSobres'     => $topesSobres,
+            'institucional'        => $institucional,
+            'docInstitucional'     => $docInstitucional,
+            'presupuestoVivoInst'  => $presupuestoVivoInst,
+            'topeSobresInst'       => $topeSobresInst,
             'resultado'       => $resultado
         ]);
     }
@@ -79,6 +95,16 @@ class PoaController
         if (!$programaId) {
             header('Location: /poa/admin?resultado=10');
             exit();
+        }
+
+        // El Contador solo ELABORA el POA del programa Institucional (migr. 033);
+        // en los demás programas su papel sigue siendo revisor/adenda.
+        if (esContador()) {
+            $prog = Programa::find($programaId);
+            if (!$prog || !$prog->esInstitucional()) {
+                header('Location: /poa/admin?resultado=26');
+                exit();
+            }
         }
 
         // Puerta de sobres (item 4): sin sobres asignados el coordinador no inicia
@@ -134,6 +160,15 @@ class PoaController
 
         // El coordinador solo opera sobre el documento de su propio programa.
         exigirProgramaPropio($doc->programa_id);
+
+        // El Contador solo ENVÍA el POA del Institucional (migr. 033).
+        if (esContador()) {
+            $prog = Programa::find($doc->programa_id);
+            if (!$prog || !$prog->esInstitucional()) {
+                header('Location: /poa/admin?resultado=26');
+                exit();
+            }
+        }
 
         // Puerta de sobres (item 4): sin sobres, el coordinador no envía (19).
         exigirSobreAsignado($doc->programa_id);

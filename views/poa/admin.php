@@ -140,6 +140,72 @@
     <?php else : ?>
         <!-- ===================== VISTA CONTADOR / ADMIN ===================== -->
         <div class="container">
+
+            <?php if (!empty($institucional)) : ?>
+                <!-- Panel de elaboración del Programa Institucional (migr. 033): el
+                     Contador lo opera directamente — espejo del panel del coordinador. -->
+                <?php $sinSobresInst = (float) ($topeSobresInst ?? 0) <= 0; ?>
+                <div class="border rounded-3 shadow-sm p-4 mb-4" style="background:#fff;">
+                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Programa Institucional
+                        <span class="badge bg-info text-dark ms-1">a tu cargo</span></h5>
+                    <?php if ($sinSobresInst) : ?>
+                        <div class="alert alert-secondary mb-2">
+                            El Institucional aún no tiene presupuesto: registra transferencias al asignar
+                            los sobres de cada programa en <a href="/dfinanciamiento/crear">Fuentes ↔ Programas</a>.
+                        </div>
+                    <?php else : ?>
+                        <?php $margenInst = (float) $topeSobresInst - (float) $presupuestoVivoInst; ?>
+                        <p class="mb-1"><strong>Presupuesto (Σ transferencias):</strong>
+                            <?php echo s($soles($topeSobresInst)); ?>
+                            <span class="badge <?php echo $margenInst < 0 ? 'bg-danger' : 'bg-success'; ?> ms-2">
+                                <?php echo $margenInst < 0
+                                    ? 'Rubros exceden por ' . s($soles(-$margenInst))
+                                    : 'Margen: ' . s($soles($margenInst)); ?>
+                            </span>
+                        </p>
+                        <p class="mb-2"><strong>Total de rubros actual:</strong> <?php echo s($soles($presupuestoVivoInst)); ?></p>
+                        <?php if (!$docInstitucional) : ?>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="/resultado/admin?programa_id=<?php echo s($institucional->id); ?>"
+                                   class="btn btn-outline-primary rounded-pill px-4">
+                                    <i class="bi bi-diagram-3 me-2"></i> Gestionar jerarquía y rubros
+                                </a>
+                                <form method="POST" action="/poa/crear" class="d-inline"><?php echo csrf_input(); ?>
+                                    <input type="hidden" name="programa_id" value="<?php echo s($institucional->id); ?>">
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                        <i class="bi bi-journal-plus me-2"></i> Iniciar POA Institucional <?php echo s($anio); ?>
+                                    </button>
+                                </form>
+                            </div>
+                        <?php else : ?>
+                            <p class="mb-2"><strong>Documento <?php echo s($docInstitucional->anio); ?>:</strong>
+                                <?php echo $badge($docInstitucional->estado); ?>
+                                <span class="text-muted ms-2">Presupuesto del documento:
+                                    <?php echo s($soles($docInstitucional->presupuesto)); ?></span></p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="/resultado/admin?programa_id=<?php echo s($institucional->id); ?>"
+                                   class="btn btn-outline-primary rounded-pill px-4">
+                                    <i class="bi bi-diagram-3 me-2"></i> Gestionar jerarquía y rubros
+                                </a>
+                                <a href="/poa/revisar?id=<?php echo s($docInstitucional->id); ?>"
+                                   class="btn btn-outline-secondary rounded-pill px-4">
+                                    <i class="bi bi-eye me-2"></i> Previsualizar
+                                </a>
+                                <?php if (in_array((int) $docInstitucional->estado, [Poa::BORRADOR, Poa::OBSERVADO], true)) : ?>
+                                    <form method="POST" action="/poa/enviar" class="d-inline"><?php echo csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?php echo s($docInstitucional->id); ?>">
+                                        <button type="submit" class="btn btn-primary rounded-pill px-4"
+                                            data-confirm="¿Enviar el POA Institucional a revisión? El presupuesto se congela con los rubros vigentes.">
+                                            <i class="bi bi-send me-2"></i> Enviar a revisión
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="table-responsive rounded-3 shadow-sm">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table">
