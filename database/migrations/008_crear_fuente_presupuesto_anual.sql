@@ -3,6 +3,12 @@
 -- presupuesto_comprometido = suma de POAs Presupuestales aprobados que usan la
 -- fuente (se recalcula en la app). Una fila por fuente y año.
 -- `fuente_financiamiento.presupuesto` queda como monto de referencia inicial.
+--
+-- ⚠️ DEFINICIÓN SUPERADA (enmienda 2026-07-09, migr. 020): el comprometido de una
+-- fuente es la Σ de sus SOBRES (detalle_financiamiento.monto_asignado), NO la suma
+-- de POAs aprobados (que nunca llegó a calcularse). Quien implemente el cierre anual
+-- (item 8) debe poblar esta columna con Σ sobres. Ver CLAUDE.md → [REGLAS DE
+-- NEGOCIO] → Fuentes. El SQL de abajo no se modifica: la migración ya se ejecutó.
 
 CREATE TABLE `fuente_presupuesto_anual` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

@@ -42,7 +42,9 @@ class RendicionController
 
         $rendiciones    = RendicionAdminVista::findxatributo('rubro_id', $rubro_id);
         $totalRendido   = Rendicion::totalImputadoAlRubro($rubro_id);
-        $disponible     = max(0, (float) $rubro->monto - $totalRendido);
+        // Saldo del rubro CON SIGNO (plan de montos §2.3): negativo = sobregasto.
+        // El rubro no limita el gasto (el tope real es el sobre); esto es visibilidad.
+        $disponible     = (float) $rubro->monto - $totalRendido;
         $resultado      = is_array($resultado) ? ($resultado[1] ?? null) : null;
         $tipocomprobante = TipoComprobante::all();
         // Candado: el coordinador no registra rendiciones si su POA Presupuestal está Enviado/Aprobado.
@@ -74,6 +76,8 @@ class RendicionController
         if (self::poaPresupuestalBloqueaRendicion($rubro_id, $rubro->actividad_id)) {
             exit();
         }
+        // Puerta de sobres (item 4): sin sobres asignados no hay contra qué rendir.
+        exigirSobreAsignado(programaIdPorActividad($rubro->actividad_id));
 
         $tipocomprobantes = TipoComprobante::all();
         // Fuentes disponibles: las vinculadas al programa del rubro (vía su actividad).
@@ -96,6 +100,9 @@ class RendicionController
             if (empty($errores)) {
                 //El código se autogenera (correlativo REN###); el usuario no lo teclea.
                 $rendicion->codigo = Rendicion::siguienteCodigo();
+                // Congela el TC vigente a la fecha del comprobante (migr. 029, §2.2).
+                // Sin cobertura queda NULL ("pendiente de TC") y NO se bloquea el registro.
+                $rendicion->congelarTipoCambio();
                 $vali = Rendicion::setUsuarioActual();
                 if ($vali) {
                     $rendicion->guardarsinRedireccion();
@@ -109,7 +116,10 @@ class RendicionController
                     if ($docPoa && (int) $docPoa->estado === \Model\Poa::APROBADO) {
                         Rendicion::aprobarPorPrograma($programaId);
                     }
-                    header("Location: /rendicion/admin?rubro_id={$rubro_id}&resultado=1");
+                    // Advertencia sin bloqueo (plan de montos §2.3): si con esta rendición
+                    // el rubro queda sobregirado, se avisa (resultado=21) pero se guarda.
+                    $sobregasto = Rendicion::totalImputadoAlRubro($rubro_id) > (float) $rubro->monto + 0.001;
+                    header("Location: /rendicion/admin?rubro_id={$rubro_id}&resultado=" . ($sobregasto ? 21 : 1));
                     exit();
                 }
             }
@@ -120,6 +130,8 @@ class RendicionController
             'tipocomprobantes' => $tipocomprobantes,
             'rubro' => $rubro,
             'rubro_id' => $rubro_id,
+            // Saldo del rubro con signo (§2.3): referencial, no bloquea.
+            'saldoRubro' => (float) $rubro->monto - Rendicion::totalImputadoAlRubro($rubro_id),
             'errores' => $errores
         ]);
     }
@@ -145,15 +157,22 @@ class RendicionController
         if (self::poaPresupuestalBloqueaRendicion($rubro_id, $rubro->actividad_id)) {
             exit();
         }
+        // Puerta de sobres (item 4): sin sobres asignados no hay contra qué rendir.
+        exigirSobreAsignado(programaIdPorActividad($rubro->actividad_id));
 
         $tipocomprobantes = TipoComprobante::all();
         $fuentesfinanciamiento = FuenteActividadVista::findxatributo('actividad_id', $rubro->actividad_id);
 
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             $rubroOriginal = $rendicion->rubro_id;
+            $fechaOriginalPrev = (string) $rendicion->fecha_original;
+            $tcPrev = [$rendicion->tc_usd, $rendicion->tc_eur, $rendicion->tipo_cambio_usd_id, $rendicion->tipo_cambio_eur_id];
             $rendicion->sincronizar($_POST);
             // A2: el rubro padre no se reasigna vía POST.
             $rendicion->rubro_id = $rubroOriginal;
+            // A2: el TC congelado tampoco se reasigna vía POST (se restaura y se
+            // recalcula abajo solo si corresponde).
+            [$rendicion->tc_usd, $rendicion->tc_eur, $rendicion->tipo_cambio_usd_id, $rendicion->tipo_cambio_eur_id] = $tcPrev;
             $errores = $rendicion->validar();
             // Tope por SOBRE (sub-presupuesto de la fuente para el programa) — migr. 020.
             if (empty($errores)) {
@@ -162,6 +181,12 @@ class RendicionController
                 $errores = Rendicion::getErrores();
             }
             if (empty($errores)) {
+                // El TC congelado NO se recalcula al editar, salvo que cambie la fecha
+                // de operación (§5.2) o que siga pendiente (NULL) y ya haya cobertura.
+                if ((string) $rendicion->fecha_original !== $fechaOriginalPrev
+                    || $rendicion->tc_usd === null || $rendicion->tc_eur === null) {
+                    $rendicion->congelarTipoCambio();
+                }
                 $vali = Rendicion::setUsuarioActual();
                 if ($vali) {
                     $rendicion->guardarsinRedireccion();
@@ -169,7 +194,9 @@ class RendicionController
                     $errores[] = "Error al asignar el usuario actual.";
                 }
                 if (empty($errores)) {
-                    header("Location: /rendicion/admin?rubro_id=" . $rubro_id . "&resultado=2");
+                    // Advertencia sin bloqueo (plan de montos §2.3): sobregasto del rubro.
+                    $sobregasto = Rendicion::totalImputadoAlRubro($rubro_id) > (float) $rubro->monto + 0.001;
+                    header("Location: /rendicion/admin?rubro_id=" . $rubro_id . "&resultado=" . ($sobregasto ? 21 : 2));
                     exit();
                 }
             }
@@ -180,7 +207,9 @@ class RendicionController
             'fuentesfinanciamiento' => $fuentesfinanciamiento,
             'tipocomprobantes' => $tipocomprobantes,
             'rubro' => $rubro,
-            'rubro_id' => $rubro_id
+            'rubro_id' => $rubro_id,
+            // Saldo del rubro con signo, excluyendo esta rendición (§2.3).
+            'saldoRubro' => (float) $rubro->monto - Rendicion::totalImputadoAlRubro($rubro_id, $rendicion->id)
         ]);
     }
 
@@ -199,6 +228,10 @@ class RendicionController
             $rubro = Rubro::find($rendicion->rubro_id);
             if ($rubro && self::poaPresupuestalBloqueaRendicion($rendicion->rubro_id, $rubro->actividad_id)) {
                 exit();
+            }
+            // Puerta de sobres (item 4): sin sobres asignados no hay contra qué rendir.
+            if ($rubro) {
+                exigirSobreAsignado(programaIdPorActividad($rubro->actividad_id));
             }
             $vali = Rendicion::setUsuarioActual();
             if ($vali) {

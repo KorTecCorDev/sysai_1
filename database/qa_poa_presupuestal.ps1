@@ -3,6 +3,12 @@
 # congelado del presupuesto, bloqueo de rubros (Enviado/Aprobado). Verificacion en BD.
 # Item 6: al aprobar el POA, las rendiciones del programa pasan a Aprobada(1) y recien
 # entonces se descuentan del saldo contable (vista_total_egresos filtra estado=1).
+# Item 4 (tope por sobres, 2026-07-15): enviar bajo tope pasa / sobre tope bloquea
+# (resultado=20); bajar el sobre tras enviar hace que aprobar bloquee; programa SIN
+# sobres (programa 5): rubro/POA/rendicion bloqueados (resultado=19) pero POA
+# Indicadores y jerarquia permitidos; Contador no pasa por la puerta.
+# Plan de montos (Fase 3): sin cobertura de TC la aprobacion bloquea (resultado=22)
+# y al reponer las tasas el aprobar recongela la rendicion pendiente.
 param(
     [string]$BaseUrl   = 'http://localhost:3000',          # URL del servidor de desarrollo
     [string]$MysqlExe  = 'C:/xampp/mysql/bin/mysql.exe',   # ruta a mysql.exe de XAMPP
@@ -62,7 +68,9 @@ function New-Login($email, $pwd) {
     $r = Post-Raw $s '/login' @{ email = $email; password = $pwd; csrf_token = $login }
     $token = $null
     if ($r.Status -eq 302) {
-        foreach ($p in @('/fuente_financiamiento/crear', '/programa/crear', '/poa/admin')) {
+        # /resultado/crear como fallback: el /poa/admin de un coordinador SIN sobres ya
+        # no muestra el formulario "Iniciar POA" (puerta del item 4) y no trae token.
+        foreach ($p in @('/fuente_financiamiento/crear', '/programa/crear', '/poa/admin', '/resultado/crear')) {
             $token = Get-Csrf $s $p
             if ($token) { break }
         }
@@ -104,10 +112,17 @@ Assert ($r.Location -like '*resultado=17*') "Reintentar crear -> resultado=17 (n
 
 $docId = Q "SELECT id FROM poa WHERE programa_id=1 AND anio=$anio;"
 
-# Enviar (Borrador->Enviado), congela presupuesto
+# Item 4 — tope por sobres: con sobres reducidos (10000+5000=15000 < 28000) enviar bloquea
+& $mysql -u root sysai -e "UPDATE detalle_financiamiento SET monto_asignado=10000 WHERE id=1; UPDATE detalle_financiamiento SET monto_asignado=5000 WHERE id=2;" | Out-Null
 $r = Post-Raw $coord.Sess '/poa/enviar' @{ id = $docId; csrf_token = $coord.Token }
 $est = Q "SELECT estado FROM poa WHERE id=$docId;"
-Assert ($est -eq '1') "Enviar -> Enviado(1) en BD (estado=$est)"
+Assert ($r.Location -like '*resultado=20*' -and $est -eq '0') "Enviar SOBRE el tope (28000 > 15000) -> resultado=20, sigue Borrador (estado=$est)"
+& $mysql -u root sysai -e "UPDATE detalle_financiamiento SET monto_asignado=100000 WHERE id=1; UPDATE detalle_financiamiento SET monto_asignado=50000 WHERE id=2;" | Out-Null
+
+# Enviar BAJO el tope (28000 <= 150000) -> Enviado(1), congela presupuesto
+$r = Post-Raw $coord.Sess '/poa/enviar' @{ id = $docId; csrf_token = $coord.Token }
+$est = Q "SELECT estado FROM poa WHERE id=$docId;"
+Assert ($est -eq '1') "Enviar bajo el tope -> Enviado(1) en BD (estado=$est)"
 
 # Bloqueo de rubros con doc Enviado: coordinador POST /rubro/crear -> resultado=16, no inserta
 $nAntes = Q "SELECT COUNT(*) FROM rubro WHERE actividad_id=1;"
@@ -144,10 +159,31 @@ $estRend = Q "SELECT estado FROM rendicion WHERE id=$rendId;"
 $egresosConPend = Q "SELECT total_egresos FROM vista_total_egresos;"
 Assert ($estRend -eq '0' -and $egresosConPend -eq $egresosAntes) "Rendicion Pendiente(0) NO afecta el saldo contable ($egresosAntes==$egresosConPend)"
 
+# Item 4 — bajar el sobre TRAS el envio: aprobar debe revalidar el tope y bloquear
+& $mysql -u root sysai -e "UPDATE detalle_financiamiento SET monto_asignado=10000 WHERE id=1; UPDATE detalle_financiamiento SET monto_asignado=5000 WHERE id=2;" | Out-Null
+$r = Post-Raw $conta.Sess '/poa/aprobar' @{ id=$docId; csrf_token=$conta.Token }
+$est = Q "SELECT estado FROM poa WHERE id=$docId;"
+Assert ($r.Location -like '/poa/revisar*resultado=20*' -and $est -eq '1') "Sobres bajados tras enviar: aprobar revalida y bloquea (resultado=20, sigue Enviado)"
+& $mysql -u root sysai -e "UPDATE detalle_financiamiento SET monto_asignado=100000 WHERE id=1; UPDATE detalle_financiamiento SET monto_asignado=50000 WHERE id=2;" | Out-Null
+
+# Plan de montos (Fase 3) — sin cobertura de TC, aprobar bloquea (resultado=22):
+# la rendicion QAIT6 quedo con tc NULL (INSERT directo) y sin filas de tipo_cambio
+# no se puede recongelar.
+& $mysql -u root sysai -e "DELETE FROM tipo_cambio;" | Out-Null
+$r = Post-Raw $conta.Sess '/poa/aprobar' @{ id=$docId; csrf_token=$conta.Token }
+$est = Q "SELECT estado FROM poa WHERE id=$docId;"
+Assert ($r.Location -like '/poa/revisar*resultado=22*' -and $est -eq '1') "Sin TC que cubra la rendicion: aprobar bloquea (resultado=22, sigue Enviado)"
+# Reponer la cobertura del fixture: al aprobar se recongela la rendicion pendiente
+& $mysql -u root sysai -e "INSERT INTO tipo_cambio (moneda, fecha_vigencia, compra, venta, origen, usuario_id, fecha) VALUES ('USD','2020-01-01',3.700,3.750,'MANUAL',1,NOW()),('EUR','2020-01-01',4.000,4.050,'MANUAL',1,NOW());" | Out-Null
+
 # Contador aprueba (Enviado->Aprobado)
 $r = Post-Raw $conta.Sess '/poa/aprobar' @{ id=$docId; csrf_token=$conta.Token }
 $est = Q "SELECT estado FROM poa WHERE id=$docId;"
 Assert ($est -eq '3') "Aprobar -> Aprobado(3) en BD (estado=$est)"
+
+# Plan de montos (Fase 3) — al aprobar, la rendicion pendiente quedo recongelada
+$tcRend = Q "SELECT CONCAT(tc_usd, '/', tc_eur) FROM rendicion WHERE id=$rendId;"
+Assert ($tcRend -eq '3.750000/4.050000') "La rendicion recongelo su TC al aprobar (venta USD/EUR: $tcRend)"
 
 # Item 6: la rendicion del programa quedo Aprobada(1) y el saldo contable la descuenta
 $estRend = Q "SELECT estado FROM rendicion WHERE id=$rendId;"
@@ -161,7 +197,45 @@ Assert ($cmp -eq '1') "El saldo contable descuenta la rendicion al aprobar (egre
 $r = Post-Raw $coord.Sess '/rubro/crear?actividad_id=1' @{ nombre='QA2'; monto='5'; categoria_rubro_id='1'; tipo_rubro_id='1'; csrf_token=$coord.Token }
 Assert ($r.Location -like '*resultado=16*') "Rubros bloqueados tambien con doc Aprobado (resultado=16)"
 
-Write-Host "`n=== 6) ACCIONES RECHAZAN GET ===" -ForegroundColor Cyan
+Write-Host "`n=== 6) PUERTA DE SOBRES (programa 5, SIN sobres — item 4) ===" -ForegroundColor Cyan
+$coord5 = New-Login 'coordinador5@sysai.test' $passCoord
+Assert ($coord5.Resp.Status -eq 302 -and $coord5.Token) "Coordinador5 (programa 5, sin sobres) login OK + token"
+
+# POA Presupuestal bloqueado: crear -> resultado=19, no crea documento
+$r = Post-Raw $coord5.Sess '/poa/crear' @{ csrf_token = $coord5.Token }
+$nDocs = Q "SELECT COUNT(*) FROM poa WHERE programa_id=5 AND anio=$anio;"
+Assert ($r.Location -like '/poa/admin?resultado=19*' -and $nDocs -eq '0') "Sin sobres: /poa/crear bloqueado (resultado=19, sin documento)"
+
+# Rubros bloqueados: crear en actividad 2 (programa 5) -> resultado=19, no inserta
+$nAntes = Q "SELECT COUNT(*) FROM rubro WHERE actividad_id=2;"
+$r = Post-Raw $coord5.Sess '/rubro/crear?actividad_id=2' @{ nombre='QA P5'; monto='5'; categoria_rubro_id='1'; tipo_rubro_id='1'; csrf_token=$coord5.Token }
+$nDespues = Q "SELECT COUNT(*) FROM rubro WHERE actividad_id=2;"
+Assert ($r.Location -like '/poa/admin?resultado=19*' -and $nAntes -eq $nDespues) "Sin sobres: /rubro/crear bloqueado (resultado=19, sin insertar)"
+
+# Rendiciones bloqueadas: rubro temporal en programa 5 (via BD) -> crear rendicion -> resultado=19
+& $mysql -u root sysai -e "INSERT INTO rubro (actividad_id, categoria_rubro_id, tipo_rubro_id, codigo, nombre, descripcion, monto, fecha) VALUES (2,1,1,'1.1.1.99','RUBRO QA PUERTA',NULL,1000,NOW());" | Out-Null
+$rubroP5 = Q "SELECT id FROM rubro WHERE codigo='1.1.1.99' AND actividad_id=2 LIMIT 1;"
+$nAntes = Q "SELECT COUNT(*) FROM rendicion;"
+$r = Post-Raw $coord5.Sess "/rendicion/crear?rubro_id=$rubroP5" @{ csrf_token = $coord5.Token }
+$nDespues = Q "SELECT COUNT(*) FROM rendicion;"
+Assert ($r.Location -like '/poa/admin?resultado=19*' -and $nAntes -eq $nDespues) "Sin sobres: /rendicion/crear bloqueado (resultado=19, sin insertar)"
+
+# El POA Indicadores y la jerarquia NO pasan por la puerta (no manejan dinero)
+$r = Get-Raw $coord5.Sess '/poa_indicadores/admin'
+Assert ($r.Status -eq 200) "Sin sobres: POA Indicadores PERMITIDO (200)"
+$r = Get-Raw $coord5.Sess '/resultado/admin'
+Assert ($r.Status -eq 200) "Sin sobres: jerarquia Resultado->Producto->Actividad PERMITIDA (200)"
+
+# El Contador NO pasa por la puerta (adenda): crea rubro en programa 5 sin sobres
+$nAntes = Q "SELECT COUNT(*) FROM rubro WHERE actividad_id=2;"
+$r = Post-Raw $conta.Sess '/rubro/crear?actividad_id=2' @{ nombre='QA CONTA P5'; monto='7'; categoria_rubro_id='1'; tipo_rubro_id='1'; csrf_token=$conta.Token }
+$nDespues = Q "SELECT COUNT(*) FROM rubro WHERE actividad_id=2;"
+Assert ($r.Location -like '*resultado=1*' -and ([int]$nDespues) -eq ([int]$nAntes + 1)) "Contador NO pasa por la puerta: crea rubro sin sobres (resultado=1)"
+
+# Limpieza de la seccion: rubros de prueba del programa 5
+& $mysql -u root sysai -e "DELETE FROM rubro WHERE actividad_id=2;" | Out-Null
+
+Write-Host "`n=== 7) ACCIONES RECHAZAN GET ===" -ForegroundColor Cyan
 $r = Get-Raw $coord.Sess '/poa/enviar'
 Assert ($r.Status -eq 302 -and $r.Location -eq '/error') "GET /poa/enviar no registrado como GET (-> /error)"
 

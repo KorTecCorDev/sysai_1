@@ -50,6 +50,7 @@ $bloqueado = esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad(
                         <th scope="col">Nombre</th>
                         <th scope="col">Descripción</th>
                         <th scope="col">Monto</th>
+                        <th scope="col">Saldo</th>
                         <th scope="col" class="text-center rounded-end">Acciones</th>
                     </tr>
                 </thead>
@@ -65,6 +66,11 @@ $bloqueado = esCoordinador() && !poaPresupuestalEditable(programaIdPorActividad(
                             <td> <?php echo s($rubro->nombre); ?> </td>
                             <td> <?php echo s($rubro->descripcion); ?> </td>
                             <td><?php echo 'S./ ' . number_format($rubro->monto, 2, '.', ','); ?></td>
+                            <?php $saldoRubro = ($saldosRubros ?? [])[(int) $rubro->id] ?? (float) $rubro->monto; ?>
+                            <td class="<?php echo $saldoRubro < -0.001 ? 'fw-bold text-danger' : ''; ?>"
+                                <?php if ($saldoRubro < -0.001) : ?>title="Sobregasto: las rendiciones superan el monto planificado del rubro"<?php endif; ?>>
+                                <?php echo 'S./ ' . number_format($saldoRubro, 2, '.', ','); ?>
+                            </td>
                             <td class="td-acciones">
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="/rendicion/admin?rubro_id=<?php echo s($rubro->id); ?>"

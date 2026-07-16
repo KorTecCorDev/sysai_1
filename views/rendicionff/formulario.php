@@ -19,7 +19,7 @@
     <div class="row mb-3">
         <div class="col-12 w-25">
             <label for="monto" class="form-label">Monto:</label>
-            <input type="text" class="form-control" id="monto" name="rendicion_ff[monto]" placeholder="Monto" value="<?php echo s($rendi->monto); ?>">
+            <input type="number" step="0.01" min="0" max="<?php echo s(MONTO_MAXIMO); ?>" class="form-control" id="monto" name="rendicion_ff[monto]" placeholder="0.00" value="<?php echo s($rendi->monto); ?>">
         </div>
     </div>
 

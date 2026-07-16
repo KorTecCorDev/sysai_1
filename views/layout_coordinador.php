@@ -67,12 +67,20 @@ $cargo = $_SESSION['cargo'] ?? false;
                                         <span>POA de Indicadores</span>
                                     </a>
                                 </li>
-                                <li class="sidebar-item">
-                                    <a href="/poa/admin" class="sidebar-link">
-                                        <i class="bi bi-cash-coin"></i>
-                                        <span>POA Presupuestal</span>
-                                    </a>
-                                </li>
+                                <?php
+                                // Puerta de sobres (item 4): sin sobres asignados el acceso
+                                // presupuestal se oculta (la explicación vive en /poa/admin,
+                                // adonde redirigen las rutas bloqueadas con resultado=19).
+                                $conSobres = \Model\Poa::topeSobres((int) (programaIdCoordinador() ?? 0)) > 0;
+                                ?>
+                                <?php if ($conSobres) : ?>
+                                    <li class="sidebar-item">
+                                        <a href="/poa/admin" class="sidebar-link">
+                                            <i class="bi bi-cash-coin"></i>
+                                            <span>POA Presupuestal</span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
 

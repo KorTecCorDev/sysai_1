@@ -41,12 +41,22 @@ class PoaController
             $programas[$p->id] = $p->nombre;
         }
 
+        // Tope por sobres (item 4): Σ monto_asignado por programa, para mostrar el
+        // margen Σ rubros vs Σ sobres en el panel del coordinador y en el listado.
+        $topesSobres = [];
+        foreach ($documentos as $d) {
+            $topesSobres[$d->programa_id] = Poa::topeSobres((int) $d->programa_id);
+        }
+        $topeSobres = esCoordinador() && !empty($programaId) ? Poa::topeSobres((int) $programaId) : 0.0;
+
         $router->render('poa/admin', [
             'documentos'      => $documentos,
             'programas'       => $programas,
             'programa'        => $programa,
             'anio'            => $anio,
             'presupuestoVivo' => $presupuestoVivo,
+            'topeSobres'      => $topeSobres,
+            'topesSobres'     => $topesSobres,
             'resultado'       => $resultado
         ]);
     }
@@ -70,6 +80,10 @@ class PoaController
             header('Location: /poa/admin?resultado=10');
             exit();
         }
+
+        // Puerta de sobres (item 4): sin sobres asignados el coordinador no inicia
+        // el POA Presupuestal (Contador/Admin pasan).
+        exigirSobreAsignado($programaId);
 
         // Uno solo por programa/año: si ya existe, no se duplica.
         if (Poa::porProgramaAnio($programaId, $anio)) {
@@ -121,8 +135,19 @@ class PoaController
         // El coordinador solo opera sobre el documento de su propio programa.
         exigirProgramaPropio($doc->programa_id);
 
+        // Puerta de sobres (item 4): sin sobres, el coordinador no envía (19).
+        exigirSobreAsignado($doc->programa_id);
+
         if (!in_array((int) $doc->estado, [Poa::BORRADOR, Poa::OBSERVADO], true)) {
             header('Location: /poa/admin?resultado=13');
+            exit();
+        }
+
+        // Tope por sobres (item 4): Σ rubros ≤ Σ sobres del programa; si excede,
+        // no se envía (19 = sin sobres, 20 = sobre el tope).
+        $tope = Poa::validarTopeSobres((int) $doc->programa_id);
+        if (!$tope['ok']) {
+            header('Location: /poa/admin?resultado=' . ($tope['sobres'] <= 0 ? 19 : 20));
             exit();
         }
 
@@ -180,8 +205,9 @@ class PoaController
     }
 
     // Contador/Admin: Enviado -> Aprobado.
-    // (El presupuesto_comprometido NO se calcula aquí: se acumula desde rendiciones +
-    //  otros egresos por fuente — ver items 5/6/8.)
+    // (El presupuesto_comprometido NO se calcula aquí: es la Σ de los sobres de la
+    //  fuente — detalle_financiamiento.monto_asignado, migr. 020 — y las vistas de
+    //  saldo lo calculan en vivo. Ver CLAUDE.md → [REGLAS DE NEGOCIO] → Fuentes.)
     // Item 6 ("POA Rendición" = este mismo documento): al aprobar, las rendiciones del
     // programa se APRUEBAN (estado=1) y se congelan; recién entonces descuentan el saldo
     // contable (las vistas de saldo filtran estado=1 — migr. 018).
@@ -207,6 +233,25 @@ class PoaController
 
         if ((int) $doc->estado !== Poa::ENVIADO) {
             header('Location: /poa/admin?resultado=13');
+            exit();
+        }
+
+        // Tope por sobres (item 4): se REVALIDA al aprobar — los sobres pueden
+        // haber bajado entre el envío y la aprobación. Vuelve a la pantalla de
+        // revisión, donde el Contador ve Σ rubros vs Σ sobres.
+        $tope = Poa::validarTopeSobres((int) $doc->programa_id);
+        if (!$tope['ok']) {
+            header('Location: /poa/revisar?id=' . $doc->id . '&resultado=' . ($tope['sobres'] <= 0 ? 19 : 20));
+            exit();
+        }
+
+        // Cobertura de tipo de cambio (migr. 029, plan de montos Fase 3): las
+        // rendiciones "pendientes de TC" se reintentan (quizá ya se cargaron las
+        // tasas); si alguna sigue sin cobertura, la aprobación se bloquea — la
+        // pantalla de revisión detalla qué fechas faltan.
+        Rendicion::recongelarPendientesPorPrograma($doc->programa_id);
+        if (Rendicion::fechasSinTcPorPrograma($doc->programa_id)) {
+            header('Location: /poa/revisar?id=' . $doc->id . '&resultado=22');
             exit();
         }
 
@@ -260,11 +305,15 @@ class PoaController
 
         $resultado = $_GET['resultado'] ?? null;
         $router->render('poa/revisar', [
-            'doc'       => $doc,
-            'programa'  => $programa,
-            'arbol'     => $arbol,
-            'total'     => $total,
-            'resultado' => $resultado
+            'doc'        => $doc,
+            'programa'   => $programa,
+            'arbol'      => $arbol,
+            'total'      => $total,
+            // Tope por sobres (item 4): el revisor decide viendo el margen.
+            'topeSobres' => Poa::topeSobres((int) $doc->programa_id),
+            // Fechas de rendiciones sin TC congelado (Fase 3): si hay, no se puede aprobar.
+            'fechasSinTc' => Rendicion::fechasSinTcPorPrograma((int) $doc->programa_id),
+            'resultado'  => $resultado
         ]);
     }
 }

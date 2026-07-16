@@ -28,12 +28,19 @@ class FuenteFinanciamiento extends ActiveRecord
 
     public function validar()
     {
+        // Normalización única de dinero (plan de montos, Fase 0): tolera "S/", comas de
+        // miles y espacios; lo no numérico se vuelve null => error visible, nunca un
+        // clampeo silencioso de MariaDB (antes "1,500,000" se guardaba como 1.00).
+        $this->presupuesto = montoNumerico($this->presupuesto);
         // El código ya no lo ingresa el usuario: se autogenera (ver siguienteCodigo()).
         if (!$this->nombre) {
             self::$errores[] = 'Debes añadir un nombre válido';
         }
-        if (!$this->presupuesto) {
-            self::$errores[] = 'Debes añadir un monto de presupuesto válido';
+        if ($this->presupuesto === null || $this->presupuesto <= 0) {
+            self::$errores[] = 'Debes añadir un monto de presupuesto válido (solo números, mayor a 0)';
+        } elseif ($this->presupuesto > MONTO_MAXIMO) {
+            self::$errores[] = 'El presupuesto excede el tope permitido (S/. '
+                . number_format(MONTO_MAXIMO, 2, '.', ',') . ')';
         }
         return self::$errores;
     }

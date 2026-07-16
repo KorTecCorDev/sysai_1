@@ -9,11 +9,13 @@
 > (proyecto + BD nuevos desde cero). Detalle en `docs/historial-seguridad.md`.
 
 ### Índice de referencia (`docs/`, leer bajo demanda)
-- **`docs/plan-comprometido-y-tope-poa.md`** — 🔵 **PLAN ACTIVO**: higiene del término "comprometido" (Fase A) +
-  item 4, tope del POA por Σ sobres y puerta de sobres (Fase B). Sin migraciones. Su §4 fija el orden respecto al
-  plan de montos.
-- **`docs/plan-montos-y-tipo-cambio.md`** — 🔵 **PLAN ACTIVO**: montos, tipo de cambio y conversión contable
-  (migr. 026-030). Su Fase 0 es el bloqueo real: `fuente_financiamiento.presupuesto` es `decimal(8,2)`.
+- **`docs/plan-comprometido-y-tope-poa.md`** — ✅ **IMPLEMENTADO (2026-07-15, Fases A y B, QA 30/30)**: higiene
+  del término "comprometido" + item 4 (tope del POA por Σ sobres y puerta de sobres). Se conserva como registro
+  de decisiones. (El techo `decimal(8,2)` que heredaba el tope quedó resuelto por la migr. 026.)
+- **`docs/plan-montos-y-tipo-cambio.md`** — ✅ **IMPLEMENTADO (2026-07-15, Fases 0-6, migr. 026-031, suite QA
+  101/101)**: montos a escala real, `montoNumerico()`, capacidad asignable, tabla `tipo_cambio` unificada
+  (compra/venta por `fecha_vigencia`), TC congelado en transacciones, reportes que nunca revientan y consulta
+  SBS informativa. Se conserva como registro de decisiones.
 - `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
 - `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
@@ -88,7 +90,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-025
+php database/migrate.php                                                       # aplica migrations/001-031
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -195,7 +197,7 @@ src/               → SCSS y JS fuente
 | **Fuentes de financiamiento** | `/fuente_financiamiento/*`, `/dfinanciamiento/*` | Fuentes (donantes) y su detalle. |
 | **Rendiciones** | `/rendicion/*`, `/rendicionff/*` | Rendición de cuentas con comprobantes (RUC, serie, número, monto) por fuente. |
 | **Otros Ingresos/Egresos (OIE)** | `/ingreso_egreso/*` | Movimientos no ligados a rendición, con comprobantes. |
-| **Tipos de cambio** | `/tcambio/dolar/*`, `/tcambio/euro/*` | TC para convertir S/ → USD/EUR en reportes. |
+| **Tipos de cambio** | `/tcambio/*?moneda=USD\|EUR` | TC unificado (migr. 028): compra/venta por `fecha_vigencia`; el vigente a una fecha se resuelve por fecha, no por orden de registro. `/tcambio/sbs` = consulta informativa que pre-llena el formulario. |
 | **Reportes** | `/reporte/poa`, `/reporte/rendiciones`, `/reporte/ingresos`, `/descargar`, … | Exportación Excel con PhpSpreadsheet, con conversión de moneda. |
 | **Saldos contables** | `/saldos_contables/saldos` | Saldos por fuente de financiamiento. |
 
@@ -212,6 +214,15 @@ src/               → SCSS y JS fuente
 - **Dos tipos de presupuesto por fuente:**
   - `presupuesto_comprometido` = **Σ de los sobres asignados** (`detalle_financiamiento.monto_asignado`) de esa fuente (enmienda 2026-07-09; antes era "Σ POAs aprobados que usan la fuente", que nunca se calculó). Lo expone `SaldoFuenteFinanciamientoVista::desglosePorFuente()`.
   - `presupuesto_contable`: monto inicial + ingresos − rendiciones aprobadas − otros egresos.
+- ✅ **TRES CIFRAS DE PRESUPUESTO (migr. 027, plan de montos §2.4):** `presupuesto` (inicial) **no se muta** con
+  los ingresos; se calculan en vivo: **vigente** = inicial + TODOS los ingresos OIE; **capacidad asignable** =
+  inicial + ingresos **sin programa** (`programa_id NULL`) − Σ sobres. Un ingreso dirigido a un sobre **no**
+  amplía la capacidad asignable (ya es asignación — evita contar el dinero dos veces).
+  `DetalleFinanciamiento::validarLimiteAsignacion()` compara contra la **capacidad asignable**.
+- ✅ **Saneamiento de montos (migr. 026):** `presupuesto` es `decimal(14,2)` (antes `decimal(8,2)` ≈ S/ 1M de
+  techo con truncamiento SILENCIOSO). Todo campo de dinero pasa por **`montoNumerico()`** (helper único en
+  `includes/funciones.php`: tolera "S/", comas de miles y coma decimal; lo no numérico ⇒ error visible) y por el
+  tope de cordura **`MONTO_MAXIMO` = S/ 50M**. Inputs `type="number" step="0.01"`.
 - ⚠️ **SUB-PRESUPUESTOS ("sobres") — enmienda 2026-07-09 (migr. 020, REVIERTE la regla previa):** el presupuesto de la fuente **SÍ se reparte por programa** en "sobres" exclusivos (`detalle_financiamiento.monto_asignado`). Invariante: **Σ sobres por fuente ≤ presupuesto** (se permite remanente sin asignar). El sobre `(programa, fuente)` es la unidad contra la que se gasta. Se captura al vincular fuente↔programa (`/dfinanciamiento/crear`), validado por `DetalleFinanciamiento::validarLimiteAsignacion()`.
 - El saldo contable sobrante al cierre del año se traslada al siguiente periodo (`fuente_presupuesto_anual`).
 
@@ -235,30 +246,38 @@ src/               → SCSS y JS fuente
 - Luego de aprobado: solo visible para el Coordinador; solo el Contador puede modificarlo (como **adenda**).
 - Máximo un POA Presupuestal activo por programa por año.
 - ⚠️ El `presupuesto_comprometido` **NO** se calcula al aprobar el POA; es **Σ de los sobres** (`monto_asignado`) de la fuente (ver *Fuentes*). El POA Presupuestal es solo planificación.
-- ⚠️ **TOPE DEL POA POR SOBRES — confirmado 2026-07-15 (🔴 NO IMPLEMENTADO, ver Backlog item 4):**
+- ⚠️ **TOPE DEL POA POR SOBRES — confirmado 2026-07-15 (✅ IMPLEMENTADO 2026-07-15, QA 30/30):**
   el POA **no puede exceder la suma de los sobres del programa**: `Σ rubro.monto ≤ Σ detalle_financiamiento.monto_asignado`
   del programa. Es un **tope agregado**, no por fuente: `rubro` **no tiene `ff_id`** (verificado en esquema), así
   que un rubro no sabe de qué sobre sale y el control sobre-por-sobre no es expresable sin migración. Un programa
   con sobres de 600k (fuente A) y 400k (fuente B) tiene tope de POA = 1M, repartible como sea entre ambos.
-  Se valida en `enviar()` **y** en `aprobar()`. Descartadas: la variante por fuente (exigiría `rubro.ff_id`) y
-  la de no poner tope.
-  > **Brecha actual:** `PoaController::enviar()` congela `presupuesto = Poa::presupuestoCalculado()` sin comparar
-  > contra nada, y `::aprobar()` no valida: cambia estado y llama a `Rendicion::aprobarPorPrograma()`. Hoy se puede
-  > enviar y aprobar un POA de S/ 5M con sobres que suman S/ 1M.
-- ⚠️ **SIN SOBRES NO HAY PRESUPUESTO — confirmado 2026-07-15 (🔴 NO IMPLEMENTADO, ver Backlog item 4):**
+  Se valida en `enviar()` **y** en `aprobar()` — revalidar al aprobar no es redundante: los sobres pueden bajar
+  entre el envío y la aprobación. Implementación: `Poa::topeSobres()` + `Poa::validarTopeSobres()`; al fallar
+  redirige con `resultado=20` (tope excedido) o `19` (Σ sobres = 0). La UI muestra `Σ rubros` vs `Σ sobres` con
+  el margen en `/poa/admin` y `/poa/revisar`. Descartadas: la variante por fuente (exigiría `rubro.ff_id`) y la
+  de no poner tope.
+  > ✅ El techo `decimal(8,2)` que heredaba el tope quedó resuelto: la **migr. 026** ensanchó
+  > `fuente_financiamiento.presupuesto` a `decimal(14,2)` — el tope ya opera con montos reales (S/ 1M-10M).
+- ⚠️ **SIN SOBRES NO HAY PRESUPUESTO — confirmado 2026-07-15 (✅ IMPLEMENTADO 2026-07-15, QA 30/30):**
   con **Σ sobres = 0** (programa sin fuentes vinculadas), el Coordinador **no puede registrar nada presupuestal**:
   ni rubros, ni POA Presupuestal, ni rendiciones. El Contador debe asignar al menos un sobre primero
   (`/dfinanciamiento/crear`); con **≥ 1 sobre** el Coordinador ya puede editar y registrar.
   **El bloqueo NO alcanza al POA Indicadores** ni a la jerarquía Resultado→Producto→Actividad: no manejan dinero
   y el POA Indicadores se elabora **antes** que el Presupuestal (ver *POA Indicadores*). El coordinador puede
   planificar indicadores sin financiamiento; lo que no puede es presupuestar.
-  > Es el caso degenerado del tope agregado: con Σ sobres = 0 el tope es 0, así que **cualquier** rubro o
-  > rendición lo excede. Se implementa con la misma validación, pero el mensaje debe distinguir "aún no tienes
-  > sobres asignados" de "excediste el tope", o el coordinador no sabrá que debe esperar al Contador.
+  Implementación: helper `exigirSobreAsignado()` (`includes/funciones.php`) en las 8 rutas presupuestales del
+  Coordinador (`/rubro/crear|actualizar|eliminar`, `/poa/crear|enviar`, `/rendicion/crear|actualizar|eliminar`);
+  redirige a `/poa/admin?resultado=19` con banner **persistente** que distingue "aún no tienes sobres" (esperar
+  al Contador) de "excediste el tope". El sidebar del coordinador oculta "POA Presupuestal" con Σ sobres = 0.
+  Contador/Admin **no** pasan por la puerta (adenda).
 
 ### Rubros
 - Un rubro es un Bien o Servicio (`tipo_rubro`: TRB001=Bien, TRB002=Servicio).
 - Tiene un monto de **planificación**. ⚠️ **Enmienda 2026-07-09 (migr. 020, decisión "solo el sobre"):** el rubro **ya NO limita el gasto** — el tope de una rendición es el **saldo del sobre** `(programa, fuente)`, no `rubro.monto`. El rubro queda como clasificación/imputación. Pueden registrarse múltiples rendiciones por rubro.
+- ✅ **Saldo con signo (migr. 027, §2.3):** `vista_saldo_rubro` (`saldo = monto − Σ rendiciones`; negativo =
+  **sobregasto**). Al registrar una rendición que cruza el monto del rubro se **avisa sin impedir**
+  (`resultado=21`); el saldo con signo se muestra en `rubro/admin`, `rendicion/admin` y el formulario de
+  rendición. No revierte la enmienda: el tope duro sigue siendo el sobre.
 
 ### Rendiciones
 - Las elaboran Coordinador y Contador. Siempre vinculadas a un **rubro** (la actividad se deriva por rubro→actividad).
@@ -267,6 +286,9 @@ src/               → SCSS y JS fuente
 - Datos obligatorios: **RUC** + **razón social / nombre** (identifica a cualquier proveedor, empresa o persona natural). **No se usa DNI.**
 - El monto no puede exceder el **saldo disponible del sobre** `(programa, fuente)` (`Rendicion::validarLimiteSobre()` → `DetalleFinanciamiento::saldoSobre()`). El "disponible para comprometer" cuenta rendiciones de **todo estado** (evita sobre-comprometer); el saldo **contable** solo las aprobadas.
 - Nace **Pendiente (estado=0)** y NO afecta el saldo contable hasta que se aprueba.
+- ✅ **TC congelado (migr. 029):** al registrar, copia el TC de **venta** vigente a su `fecha_original`
+  (`Rendicion::congelarTipoCambio()`); sin cobertura queda "pendiente de TC" (no bloquea el registro, pero sí
+  la aprobación del POA — ver *Tipo de Cambio*).
 
 ### POA Rendición (= el mismo POA Presupuestal)
 - ⚠️ **Reencuadre 2026-06-05:** el "POA Rendición" **NO es un documento aparte**: es el **mismo POA Presupuestal** (`poa`). Lo que el usuario llama "POA Rendición" es el **reporte Excel** (`/reporte/poarendicion`). La tabla `poa_rendicion` (migr. 005) y `rendicion.poa_rendicion_id` (migr. 006) quedan **vestigiales**; solo se usa `rendicion.estado`.
@@ -281,11 +303,30 @@ src/               → SCSS y JS fuente
 - **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** siempre lleva programa y descuenta del sobre `(programa, fuente)`.
 - ✅ **Item 7 COMPLETADO (2026-07-14, QA 22/22):** CRUD en un solo paso (se eliminó el flujo en dos pasos `/ingreso_egreso/ff`). Validaciones en `OtrosIngresosEgresos`: egreso exige programa, el par (programa, fuente) debe tener sobre (`DetalleFinanciamiento::existeVinculo()`), y el egreso no puede exceder el disponible del sobre (`validarTopeSobre()` → `saldoSobre()`, que ahora acepta excluir un OIE en edición). Eliminar borra el OIE **y su comprobante**. `programa_id` NULL real vía `ActiveRecord::$columnasNull` (opt-in). Vista de listado recreada con LEFT JOIN (migr. 025).
 
-### Tipo de Cambio
-- Registro de USD y EUR. Se usa el **tipo de cambio vigente** (último registrado) para toda conversión. No hay cálculo con TC histórico.
+### Tipo de Cambio (✅ reescrito 2026-07-15, plan de montos — migr. 028-030)
+- Tabla única `tipo_cambio` (moneda USD/EUR, `fecha_vigencia`, **compra** y **venta**, origen MANUAL/SBS,
+  `decimal(12,6)`). UNIQUE (moneda, fecha_vigencia).
+- **El TC vigente a una fecha** = registro con `fecha_vigencia` máxima ≤ esa fecha (convención contable para
+  feriados/fines de semana). **Nunca por id/orden de tecleo** (`TipoCambio::vigente()`).
+- **El TC aplicado a una transacción es el vigente a su FECHA DE OPERACIÓN, congelado al registrar** (migr. 029):
+  rendición (gasto) → **venta**; OIE ingreso → **compra**; OIE egreso → **venta**. Se copia el **valor** (no un
+  FK): editar/borrar un TC después no reescribe la contabilidad. Sin cobertura ⇒ `tc_usd`/`tc_eur` quedan `NULL`
+  ("pendiente de TC", el registro no se bloquea); **el Contador no puede aprobar el POA** con rendiciones
+  pendientes de TC (`resultado=22`; al aprobar se reintenta el congelamiento por si ya cargó las tasas).
+- Al editar una transacción, el TC congelado **no se recalcula** salvo que cambie la fecha de operación (o el
+  tipo ingreso↔egreso en OIE), o que siga pendiente y ya haya cobertura.
+- **Planificación** (rubros/POA, sin fecha de operación) → **venta al cierre** (vigente al generar el reporte);
+  **saldos** (partida monetaria) → **compra al cierre** (NIC 21), siempre mostrando tasa/fecha/origen.
+  ⚠️ El mapeo compra/venta está derivado por lógica, no por norma: **confirmar con el contador** (§5.3 del plan).
+- **La tasa SBS es informativa**: botón "Consultar SBS" pre-llena el formulario (endpoint configurable
+  `SBS_API_URL` en `.env`, timeout 5 s, degradación limpia) y `database/importar_tc_sbs.php` hace el backfill en
+  lote (origen='SBS', `INSERT IGNORE`). Nunca corre en la ruta de un reporte; nunca se guarda sin el Contador.
 
 ### Saldos
-- Saldo **fuente** = presupuesto + ingresos − rendiciones_aprobadas − otros_egresos (`vista_saldo_fuente_financiamiento`).
+- Saldo **fuente** = presupuesto + ingresos − rendiciones_aprobadas − otros_egresos (`vista_saldo_fuente_financiamiento`,
+  que desde la migr. 027 expone además `presupuesto_inicial` / `presupuesto_vigente` / `capacidad_asignable`).
+- ✅ La pantalla convierte el saldo total al **cierre** (TC **compra** vigente a hoy) mostrando siempre tasa,
+  fecha de vigencia y origen; sin TC muestra "sin tipo de cambio registrado" — nunca revienta ni inventa.
 - Saldo **sobre** `(programa, fuente)` = monto_asignado + ingresos_al_sobre − egresos − rendiciones_aprobadas (`vista_saldo_sobre`, migr. 021).
 - Pantalla `/saldos_contables/saldos` (Admin/Contador): 4 niveles → KPIs globales · gráfico SVG por fuente · tarjetas por fuente (con comprometido = Σ sobres, y remanente sin asignar) · tabla por sobre.
 - Al registrar rendiciones aprobadas u OIE, los saldos se actualizan (las vistas calculan en vivo).
@@ -321,7 +362,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
   monto, fecha_original). Sin DNI. Tiene `estado` (0=Pendiente, 1=Aprobada) y `poa_rendicion_id` (vestigial).
 - **`otros_ingresos_egresos` (OIE)** — vinculado a `programa_id` (migr. 007; antes `poa_id`), `oie_comprobante_id`,
   `oie_tipo_id` (1=Ingreso, 2=Egreso), `ff_id`. El **monto vive en `oie_comprobante.monto`**.
-- **`tipo_cambio_dolar` / `tipo_cambio_euro`** — TC por usuario y fecha (se usa el último registro).
+- **`tipo_cambio`** — unificada (migr. 028; reemplaza `tipo_cambio_dolar`/`tipo_cambio_euro`, eliminadas):
+  moneda, `fecha_vigencia`, compra, venta `decimal(12,6)`, origen. `rendicion` y `oie_comprobante` llevan el
+  TC **congelado** por fila (`tc_usd`/`tc_eur` + `tipo_cambio_*_id` como rastro, migr. 029; NULL = pendiente).
 
 ### Catálogos
 `cargo` (1 Administrador, 2 Contador, 3 Coordinador), `tipo_programa`, `tipo_rubro`, `tipo_comprobante`,
@@ -337,9 +380,9 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-025** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7).
-- **BD local `sysai`:** migraciones aplicadas hasta 025. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-025 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Migraciones vigentes: **001-031** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`).
+- **BD local `sysai`:** migraciones aplicadas hasta 031. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-031 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
   Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
 - **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 
@@ -352,7 +395,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 1 | Migración de BD | ✅ COMPLETADO (001-025) |
 | 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
 | 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
-| 4 | POA Presupuestal | 🟡 REABIERTO (2026-07-15) — QA 18/18, pero **falta el tope por Σ sobres** (ver Backlog) |
+| 4 | POA Presupuestal | ✅ COMPLETADO (2026-07-15) — flujo QA 18/18 + **tope por Σ sobres y puerta de sobres** (QA 30/30) |
 | 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
 | 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
 | 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
@@ -369,26 +412,6 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 > Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
 > Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
-
-### 4 — POA Presupuestal · tope por Σ sobres *(reabierto 2026-07-15)*
-> Regla confirmada en *[SECCION: REGLAS DE NEGOCIO]* → *POA Presupuestal*. Sin migración: es un tope **agregado**.
-- [ ] `Poa::topeSobres(programaId): float` — `SELECT COALESCE(SUM(monto_asignado),0) FROM detalle_financiamiento WHERE programa_id = ?`.
-- [ ] `Poa::validarTopeSobres()` — compara `presupuestoCalculado()` contra `topeSobres()`; agrega a `self::$errores`.
-- [ ] `PoaController::enviar()` — bloquear si `Σ rubros > Σ sobres` (hoy congela el presupuesto sin comparar nada).
-- [ ] `PoaController::aprobar()` — revalidar (los sobres pueden haber bajado entre el envío y la aprobación; hoy no valida nada).
-- [ ] **Σ sobres = 0 → puerta cerrada** (regla confirmada, ver *POA Presupuestal*). Bloquear para el Coordinador:
-      `/rubro/crear|actualizar|eliminar`, `/poa/crear|enviar`, `/rendicion/crear|actualizar|eliminar`.
-      **NO** bloquear `/resultado`, `/producto`, `/actividad` ni `/poa_indicadores/*`.
-      Contador/Admin **no** pasan por esta puerta (adenda).
-- [ ] Mensajes distintos: "tu programa aún no tiene sobres asignados" (Σ=0) vs "excediste el tope" (Σ>0).
-      Con Σ=0 el tope es 0 y todo lo excede; sin distinguirlos el coordinador no sabe que debe esperar al Contador.
-- [ ] Helper de puerta reutilizable (p. ej. `exigirSobreAsignado($programaId)` en `includes/funciones.php`),
-      al estilo de `exigirProgramaPropio()` — son 8 rutas, no conviene repetir el chequeo en cada controlador.
-- [ ] UI: mostrar `Σ rubros` vs `Σ sobres` con el margen restante en `/poa/revisar` y en el listado.
-      Ocultar/deshabilitar el acceso presupuestal en el sidebar del coordinador cuando Σ sobres = 0.
-- [ ] QA: extender `database/qa_poa_presupuestal.ps1` — enviar bajo tope (pasa), sobre tope (bloquea), bajar el
-      sobre tras enviar → aprobar debe bloquear, y **programa sin sobres → rubro/POA/rendición bloqueados pero
-      POA Indicadores permitido**.
 
 ### 8 — Saldos
 - [ ] Calcular sobre `fuente_presupuesto_anual` (año vigente): contable = monto_inicial + ingresos − rendiciones_aprobadas − otros_egresos.
@@ -425,12 +448,14 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 ## [SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]
 
 > Detalle completo (hechos + pendientes) en `docs/follow-ups-tecnicos.md`. Abiertos, en resumen:
-- [ ] Confirmar si el código de bloqueo por intentos (`Login.php` referencia `intentos`/`estado` inexistentes) es muerto o falta migración (la rama de seguridad lo resolvió con `login_intentos`; verificar en la actual).
-- [ ] Retirar modelo `RendicionFuentesCantidadVista` (vista `cantidad_fuentes_rendicion` eliminada en migr. 009).
+- [x] ~~Bloqueo por intentos en `Login.php`~~ — **resuelto en `main`** (migr. 011 `login_intentos`; `models/Login.php` la usa). Cerrado 2026-07-15.
+- [x] ~~Retirar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (modelo y llamadas eliminados; `$ffnro` no se usaba en ninguna vista).
 - [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
-- [ ] B3 — esquema desalineado (overflow de montos, `avance decimal(2,2)`, `fecha_original varchar`, `email` no UNIQUE, auditoría sin triggers).
+- [ ] B3 — esquema desalineado. ✅ Resueltos 2026-07-15: overflow de montos (migr. 026) y `fecha_original` (ya era `date`). **Quedan:** `avance decimal(2,2)`, `email` no UNIQUE (riesgo login `LIMIT 1`), auditoría sin triggers.
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
+- [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
+- [ ] `sql_mode` sin `STRICT_TRANS_TABLES` — evaluar activarlo en el greenfield (convertiría todo truncamiento futuro en error ruidoso); requiere probar la app entera antes.
 
 ---
 

@@ -4,6 +4,7 @@ namespace Controllers;
 
 use Model\SaldoFuenteFinanciamientoVista;
 use MVC\Router;
+use Model\TipoCambio;
 use Model\VistaTotalIngresos;
 use Model\VistaTotalEgresos;
 use Model\VistaSaldoContable;
@@ -33,6 +34,13 @@ class SaldoContableController
         // Nivel sobre (programa, fuente): saldo contable de cada sub-presupuesto.
         $saldosobres = SaldoSobreVista::all();
 
+        // Conversión al CIERRE (plan de montos, Fase 4): un saldo es partida monetaria
+        // => TC de COMPRA vigente a hoy (NIC 21). null sin cobertura: la vista muestra
+        // "sin tipo de cambio registrado" — nunca revienta ni inventa.
+        $hoy = date('Y-m-d');
+        $tcUsdCierre = TipoCambio::vigente('USD', $hoy);
+        $tcEurCierre = TipoCambio::vigente('EUR', $hoy);
+
         $router->render('saldos_contables/saldos', [
             'ingresos'        => $ingresos,
             'egresos'         => $egresos,
@@ -40,6 +48,8 @@ class SaldoContableController
             'saldofuentes'    => $saldofuentes,
             'desglosefuentes' => $desglosefuentes,
             'saldosobres'     => $saldosobres,
+            'tcUsdCierre'     => $tcUsdCierre,
+            'tcEurCierre'     => $tcEurCierre,
         ]);
     }
 }

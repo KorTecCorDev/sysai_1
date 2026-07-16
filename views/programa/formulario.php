@@ -1,10 +1,14 @@
 <fieldset>
+    <?php // El código lo asigna el sistema al crear; solo se muestra al EDITAR
+          // (en creación era un campo gris vacío: puro ruido). ?>
+    <?php if (!empty($programa->codigo)) : ?>
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código</label>
         <input type="text" class="form-control shadow-sm bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
                value="<?php echo s($programa->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
         <div id="codigoHelp" class="form-text">Se genera automáticamente (p. ej. PRG001).</div>
     </div>
+    <?php endif; ?>
 
     <div class="mb-3">
         <label for="nombre" class="form-label">Nombre</label>

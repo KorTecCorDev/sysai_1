@@ -1,4 +1,4 @@
-# Runner de todos los arneses de QA HTTP automatizado (items 3, 4, 5 y 7).
+# Runner de todos los arneses de QA HTTP automatizado (items 3, 4, 5 y 7 + reportes).
 # Pasa los mismos parametros a cada script y resume el resultado global.
 #
 # USO (desde cualquier carpeta):
@@ -35,7 +35,7 @@ if (-not $SkipSeed) {
     Write-Host "Fixture de QA instalado." -ForegroundColor DarkGray
 }
 
-$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1')
+$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1')
 $fail = 0
 foreach ($s in $scripts) {
     Write-Host "`n########## $s ##########" -ForegroundColor Magenta

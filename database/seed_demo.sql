@@ -33,8 +33,7 @@ SET NAMES utf8;
 -- 0) Limpieza de datos de demo previos (preserva admin id=1 y catálogos)
 -- ---------------------------------------------------------------------------
 SET FOREIGN_KEY_CHECKS = 0;
-DELETE FROM tipo_cambio_dolar;
-DELETE FROM tipo_cambio_euro;
+DELETE FROM tipo_cambio;
 DELETE FROM otros_ingresos_egresos;
 DELETE FROM oie_comprobante;
 DELETE FROM fuente_presupuesto_anual;
@@ -94,19 +93,19 @@ INSERT INTO coordinador_programa (id, usuario_id, programa_id, activo, fecha) VA
 
 -- ---------------------------------------------------------------------------
 -- 4) FUENTES DE FINANCIAMIENTO (organizaciones reales; presupuesto en S/)
---    OJO: fuente_financiamiento.presupuesto es decimal(8,2) => máx 999,999.99
+--    Presupuestos a escala real S/ 1M-10M (decimal(14,2) desde la migr. 026)
 -- ---------------------------------------------------------------------------
 INSERT INTO fuente_financiamiento (id, codigo, nombre, descripcion, presupuesto, fecha) VALUES
   (1, 'FF001', 'ALIANZA SOLIDARIA',
-      'RED MISIONERA DE APOYO A FAMILIAS Y COMUNIDADES EN AMÉRICA LATINA', 450000.00, NOW()),
+      'RED MISIONERA DE APOYO A FAMILIAS Y COMUNIDADES EN AMÉRICA LATINA', 4500000.00, NOW()),
   (2, 'FF002', 'LATIN LINK',
-      'ORGANIZACIÓN INTERNACIONAL DE DESARROLLO COMUNITARIO EN LATINOAMÉRICA', 220000.00, NOW()),
+      'ORGANIZACIÓN INTERNACIONAL DE DESARROLLO COMUNITARIO EN LATINOAMÉRICA', 2200000.00, NOW()),
   (3, 'FF003', 'COMPASSION INTERNATIONAL',
-      'PROGRAMA DE APADRINAMIENTO Y DESARROLLO INTEGRAL DE LA NIÑEZ', 380000.00, NOW()),
+      'PROGRAMA DE APADRINAMIENTO Y DESARROLLO INTEGRAL DE LA NIÑEZ', 3800000.00, NOW()),
   (4, 'FF004', 'VISIÓN MUNDIAL',
-      'ORGANIZACIÓN HUMANITARIA DE AYUDA A LA NIÑEZ Y FAMILIAS (WORLD VISION)', 300000.00, NOW()),
+      'ORGANIZACIÓN HUMANITARIA DE AYUDA A LA NIÑEZ Y FAMILIAS (WORLD VISION)', 3000000.00, NOW()),
   (5, 'FF005', 'TEARFUND',
-      'ORGANIZACIÓN DE AYUDA HUMANITARIA Y DESARROLLO COMUNITARIO', 180000.00, NOW());
+      'ORGANIZACIÓN DE AYUDA HUMANITARIA Y DESARROLLO COMUNITARIO', 1800000.00, NOW());
 
 -- ---------------------------------------------------------------------------
 -- 5) DETALLE FINANCIAMIENTO (N:M programa <-> fuente) + SUB-PRESUPUESTO ("sobre")
@@ -116,11 +115,11 @@ INSERT INTO fuente_financiamiento (id, codigo, nombre, descripcion, presupuesto,
 --    (migración 020)
 -- ---------------------------------------------------------------------------
 INSERT INTO detalle_financiamiento (id, programa_id, fuente_financiamiento_id, monto_asignado, fecha) VALUES
-  (1, 1, 1, 300000.00, NOW()),   -- COMUNIDAD  <- Alianza Solidaria      (sobre 300k de 450k; remanente 150k)
-  (2, 1, 3, 250000.00, NOW()),   -- COMUNIDAD  <- Compassion International (sobre 250k de 380k; remanente 130k)
-  (3, 2, 2, 150000.00, NOW()),   -- CASA HOGAR <- Latin Link             (sobre 150k de 220k; remanente 70k)
-  (4, 2, 4, 200000.00, NOW()),   -- CASA HOGAR <- Visión Mundial         (sobre 200k de 300k; remanente 100k)
-  (5, 2, 5, 120000.00, NOW());   -- CASA HOGAR <- Tearfund               (sobre 120k de 180k; remanente 60k)
+  (1, 1, 1, 3000000.00, NOW()),   -- COMUNIDAD  <- Alianza Solidaria       (sobre 3M de 4.5M; remanente 1.5M)
+  (2, 1, 3, 2500000.00, NOW()),   -- COMUNIDAD  <- Compassion International (sobre 2.5M de 3.8M; remanente 1.3M)
+  (3, 2, 2, 1500000.00, NOW()),   -- CASA HOGAR <- Latin Link              (sobre 1.5M de 2.2M; remanente 700k)
+  (4, 2, 4, 2000000.00, NOW()),   -- CASA HOGAR <- Visión Mundial          (sobre 2M de 3M; remanente 1M)
+  (5, 2, 5, 1200000.00, NOW());   -- CASA HOGAR <- Tearfund                (sobre 1.2M de 1.8M; remanente 600k)
 
 -- ===========================================================================
 --  6) JERARQUÍA POA — PROGRAMA 1: COMUNIDAD
@@ -242,12 +241,28 @@ INSERT INTO otros_ingresos_egresos (id, programa_id, oie_comprobante_id, oie_tip
   (2, 1, 2, 2, 3, 'OIE002', 'EGRESO ADMINISTRATIVO FUERA DEL POA',                     NOW());
 
 -- ---------------------------------------------------------------------------
--- 13) TIPOS DE CAMBIO (se usa el último registrado). Los registra el Contador.
+-- 13) TIPOS DE CAMBIO (tabla unificada, migr. 028). El vigente a una fecha =
+--     fecha_vigencia máxima <= esa fecha. Varias fechas para ejercitar la
+--     resolución por fecha; tasas reales con 3 decimales, compra/venta.
 -- ---------------------------------------------------------------------------
-INSERT INTO tipo_cambio_dolar (id, usuario_id, tipo_cambio, fecha) VALUES
-  (1, 2, 3.75, NOW());
-INSERT INTO tipo_cambio_euro (id, usuario_id, tipo_cambio, fecha) VALUES
-  (1, 2, 4.05, NOW());
+INSERT INTO tipo_cambio (id, moneda, fecha_vigencia, compra, venta, origen, usuario_id, fecha) VALUES
+  (1, 'USD', '2026-01-02', 3.702, 3.712, 'MANUAL', 2, NOW()),
+  (2, 'USD', '2026-07-01', 3.735, 3.744, 'MANUAL', 2, NOW()),
+  (3, 'USD', '2026-07-14', 3.748, 3.751, 'MANUAL', 2, NOW()),
+  (4, 'EUR', '2026-01-02', 4.011, 4.052, 'MANUAL', 2, NOW()),
+  (5, 'EUR', '2026-07-01', 4.043, 4.087, 'MANUAL', 2, NOW()),
+  (6, 'EUR', '2026-07-14', 4.051, 4.102, 'MANUAL', 2, NOW());
+
+-- Congelamiento retroactivo (migr. 029): las transacciones sembradas copian el TC
+-- vigente a su fecha de operación, como lo haría la app al registrarlas.
+UPDATE rendicion r SET
+  r.tc_usd = (SELECT tc.venta FROM tipo_cambio tc WHERE tc.moneda='USD' AND tc.fecha_vigencia <= r.fecha_original ORDER BY tc.fecha_vigencia DESC LIMIT 1),
+  r.tc_eur = (SELECT tc.venta FROM tipo_cambio tc WHERE tc.moneda='EUR' AND tc.fecha_vigencia <= r.fecha_original ORDER BY tc.fecha_vigencia DESC LIMIT 1);
+UPDATE oie_comprobante c
+  JOIN otros_ingresos_egresos o ON o.oie_comprobante_id = c.id
+SET
+  c.tc_usd = (SELECT IF(o.oie_tipo_id = 1, tc.compra, tc.venta) FROM tipo_cambio tc WHERE tc.moneda='USD' AND tc.fecha_vigencia <= c.fecha_original ORDER BY tc.fecha_vigencia DESC LIMIT 1),
+  c.tc_eur = (SELECT IF(o.oie_tipo_id = 1, tc.compra, tc.venta) FROM tipo_cambio tc WHERE tc.moneda='EUR' AND tc.fecha_vigencia <= c.fecha_original ORDER BY tc.fecha_vigencia DESC LIMIT 1);
 
 -- ---------------------------------------------------------------------------
 -- 14) SNAPSHOT ANUAL DE FUENTES (histórico / cierre anual — uso futuro v1.1)
@@ -256,11 +271,11 @@ INSERT INTO tipo_cambio_euro (id, usuario_id, tipo_cambio, fecha) VALUES
 --     Saldos (item 8); las vistas de saldo actuales leen en vivo de las tablas.
 -- ---------------------------------------------------------------------------
 INSERT INTO fuente_presupuesto_anual (id, fuente_financiamiento_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable, fecha) VALUES
-  (1, 1, '2026', 450000.00, 0.00, 0.00, NOW()),
-  (2, 2, '2026', 220000.00, 0.00, 0.00, NOW()),
-  (3, 3, '2026', 380000.00, 0.00, 0.00, NOW()),
-  (4, 4, '2026', 300000.00, 0.00, 0.00, NOW()),
-  (5, 5, '2026', 180000.00, 0.00, 0.00, NOW());
+  (1, 1, '2026', 4500000.00, 0.00, 0.00, NOW()),
+  (2, 2, '2026', 2200000.00, 0.00, 0.00, NOW()),
+  (3, 3, '2026', 3800000.00, 0.00, 0.00, NOW()),
+  (4, 4, '2026', 3000000.00, 0.00, 0.00, NOW()),
+  (5, 5, '2026', 1800000.00, 0.00, 0.00, NOW());
 
 -- ============================================================================
 --  FIN — Resumen del escenario cargado:

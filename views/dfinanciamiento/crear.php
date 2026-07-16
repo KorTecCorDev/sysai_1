@@ -46,13 +46,16 @@
     <!-- Grilla de fuentes de financiamiento -->
     <div class="row g-3 mt-1 <?php echo $tienePrograma ? '' : 'opacity-50 pe-none'; ?>">
         <?php foreach ($fuentesfinanciamiento as $ff) :
-            $d            = ($desglose ?? [])[(int) $ff->id] ?? ['presupuesto' => 0.0, 'comprometido' => 0.0];
-            $presupuesto  = (float) $d['presupuesto'];
+            $d            = ($desglose ?? [])[(int) $ff->id] ?? ['presupuesto' => 0.0, 'comprometido' => 0.0, 'vigente' => 0.0, 'capacidad_asignable' => 0.0];
+            $vigente      = (float) ($d['vigente'] ?? $d['presupuesto']);
             $comprometido = (float) $d['comprometido'];
-            $disponible   = $presupuesto - $comprometido;
+            // Capacidad asignable (migr. 027, §2.4): inicial + ingresos libres − Σ sobres.
+            // Los ingresos dirigidos a un sobre no amplían la capacidad (ya son asignación).
+            $disponible   = (float) ($d['capacidad_asignable'] ?? ($d['presupuesto'] - $comprometido));
             $vinculada    = array_key_exists((int) $ff->id, ($vinculos ?? []));
             $montoSobre   = $vinculada ? (float) $vinculos[(int) $ff->id] : 0.0;
-            $uso          = $presupuesto > 0 ? min(100, max(0, ($comprometido / $presupuesto) * 100)) : 0;
+            $baseAsignable = $comprometido + $disponible; // total repartible de la fuente
+            $uso          = $baseAsignable > 0 ? min(100, max(0, ($comprometido / $baseAsignable) * 100)) : 0;
             $usoTono      = $uso >= 100 ? 'danger' : ($uso >= 80 ? 'warning' : 'success');
         ?>
             <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
@@ -70,15 +73,15 @@
                         <!-- Desglose del presupuesto de la fuente -->
                         <ul class="list-group list-group-flush small mb-2">
                             <li class="list-group-item d-flex justify-content-between px-0 py-1">
-                                <span class="text-muted">Presupuesto</span>
-                                <span class="fw-semibold"><?php echo soles($presupuesto); ?></span>
+                                <span class="text-muted">Presupuesto vigente</span>
+                                <span class="fw-semibold"><?php echo soles($vigente); ?></span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between px-0 py-1">
-                                <span class="text-muted">Comprometido</span>
+                                <span class="text-muted">Comprometido (Σ sobres)</span>
                                 <span class="fw-semibold"><?php echo soles($comprometido); ?></span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between px-0 py-1 border-top">
-                                <span class="fw-semibold">Disponible</span>
+                                <span class="fw-semibold">Capacidad asignable</span>
                                 <span class="fw-bold text-<?php echo $disponible > 0 ? 'success' : 'danger'; ?>"><?php echo soles($disponible); ?></span>
                             </li>
                         </ul>

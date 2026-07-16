@@ -25,6 +25,65 @@ function s($html): string
 }
 
 /**
+ * Tope de cordura para TODO campo de dinero (plan de montos, Fase 0): 5× el máximo
+ * declarado por el negocio (S/ 10M) para dejar margen de crecimiento. Atrapa el cero
+ * de más y los absurdos tipo 999999999; si un día queda corto, el fallo es ruidoso y
+ * recuperable (error en pantalla, una constante que se sube).
+ */
+define('MONTO_MAXIMO', 50000000.00);
+
+/**
+ * Convierte un monto en soles a otra moneda con guarda contra TC ausente o cero
+ * (plan de montos, Fase 4). Devuelve null si no hay tasa válida: el llamador
+ * muestra "—" — nunca un DivisionByZeroError ni un cero mentiroso.
+ */
+function convertirMoneda($monto, $tasa): ?float
+{
+    $tasa = (float) ($tasa ?? 0);
+    if ($tasa <= 0) {
+        return null;
+    }
+    return round(((float) ($monto ?? 0)) / $tasa, 2);
+}
+
+/**
+ * Normaliza un monto tecleado por el usuario a float (UN solo punto de sanitización
+ * para todos los campos de dinero — plan de montos, Fase 0). Tolera el símbolo de
+ * moneda ("S/", "S/.", "S./"), espacios, comas de miles ("1,500,000.50") y la coma
+ * decimal simple ("1234,56"). Devuelve null si no es un número válido: null NUNCA
+ * debe llegar a la BD — la validación del modelo lo convierte en error visible.
+ * (Antes: "1,500,000.00" se guardaba como 1.00 y "S/ 450000" como 0.00, en silencio.)
+ */
+function montoNumerico($valor): ?float
+{
+    if ($valor === null) {
+        return null;
+    }
+    if (is_int($valor) || is_float($valor)) {
+        return (float) $valor;
+    }
+    $t = trim((string) $valor);
+    if ($t === '') {
+        return null;
+    }
+    // Símbolo de moneda al inicio: "S/", "S/.", "S./", con o sin espacio.
+    $t = preg_replace('/^s\.?\/\.?\s*/i', '', $t);
+    // Espacios internos (incluye NBSP) usados como separador de miles.
+    $t = str_replace([' ', "\xC2\xA0"], '', $t);
+    if (preg_match('/^\d{1,3}(,\d{3})+(\.\d+)?$/', $t)) {
+        // Comas de miles con punto decimal opcional: "1,500,000.50".
+        $t = str_replace(',', '', $t);
+    } elseif (preg_match('/^\d+,\d{1,2}$/', $t)) {
+        // Una sola coma como separador decimal: "1234,56".
+        $t = str_replace(',', '.', $t);
+    }
+    if (!is_numeric($t)) {
+        return null;
+    }
+    return (float) $t;
+}
+
+/**
  * Formatea un monto como moneda en Soles: "S/ 1,234.56".
  * Null-safe (null o cadena vacía => "S/ 0.00"). Centraliza el formato de
  * moneda para no repetir number_format() por las vistas. La salida es segura
@@ -303,6 +362,25 @@ function exigirPoaPresupuestalEditablePorActividad($actividadId): void
     }
 }
 
+/**
+ * Puerta de sobres (item 4): con Σ sobres = 0 (programa sin fuentes vinculadas) el
+ * Coordinador no puede registrar nada PRESUPUESTAL — rubros, POA Presupuestal ni
+ * rendiciones. NO alcanza al POA Indicadores ni a la jerarquía Resultado→Producto→
+ * Actividad (no manejan dinero). Contador/Admin pasan (adenda). Redirige a
+ * /poa/admin con flash persistente (?resultado=19): el coordinador debe saber que
+ * le toca ESPERAR al Contador, no recortar nada.
+ */
+function exigirSobreAsignado($programaId): void
+{
+    if (!esCoordinador()) {
+        return;
+    }
+    if ($programaId === null || \Model\Poa::topeSobres((int) $programaId) <= 0) {
+        header('Location: /poa/admin?resultado=19');
+        exit();
+    }
+}
+
 //Validar tipo de Contenido
 function validarTipoContenido($tipo)
 {
@@ -366,6 +444,22 @@ function mostrarNotificacion($codigo)
         //RENDICIONES BLOQUEADAS — POA PRESUPUESTAL ENVIADO/APROBADO
         case 18:
             $mensaje = 'El POA Presupuestal está enviado o aprobado: no se pueden registrar rendiciones';
+            break;
+        //PUERTA DE SOBRES — PROGRAMA SIN SOBRES ASIGNADOS (item 4)
+        case 19:
+            $mensaje = 'Tu programa aún no tiene sobres asignados. El Contador debe asignar el presupuesto antes de que puedas registrar rubros, el POA Presupuestal o rendiciones';
+            break;
+        //TOPE DEL POA — Σ RUBROS EXCEDE Σ SOBRES (item 4)
+        case 20:
+            $mensaje = 'El presupuesto del POA supera la suma de los sobres asignados al programa: no se puede enviar ni aprobar hasta ajustar los rubros o ampliar los sobres';
+            break;
+        //RENDICIÓN GUARDADA CON SOBREGASTO DEL RUBRO (advertencia, no bloqueo — plan de montos §2.3)
+        case 21:
+            $mensaje = 'Guardado correctamente. Atención: las rendiciones del rubro ya superan su monto planificado (sobregasto). El tope real sigue siendo el sobre';
+            break;
+        //APROBACIÓN DEL POA BLOQUEADA — RENDICIONES SIN TIPO DE CAMBIO (plan de montos, Fase 3)
+        case 22:
+            $mensaje = 'No se puede aprobar: hay rendiciones sin tipo de cambio para su fecha de operación. Registra los TC (USD y EUR) de las fechas indicadas y vuelve a aprobar';
             break;
         default:
             $mensaje = false;

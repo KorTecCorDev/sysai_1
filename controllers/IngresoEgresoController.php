@@ -70,6 +70,9 @@ class IngresoEgresoController
             $errores = OtrosIngresosEgresos::getErrores();
 
             if (empty($errores)) {
+                // Congela el TC a la fecha del comprobante (migr. 029, §2.5): COMPRA si
+                // es ingreso, VENTA si es egreso. Sin cobertura queda NULL (pendiente).
+                $oie_comprobante->congelarTipoCambio((int) $oie->oie_tipo_id);
                 //Insertando la accion de audi para el usuario actual
                 if (OieComprobante::setUsuarioActual()) {
                     //Guardamos el comprobante y luego el OIE apuntando a él
@@ -135,9 +138,15 @@ class IngresoEgresoController
 
         //En caso se hay enviado el formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fechaOriginalPrev = (string) $oie_comprobante->fecha_original;
+            $oieTipoPrev = (int) $oie->oie_tipo_id;
+            $tcPrev = [$oie_comprobante->tc_usd, $oie_comprobante->tc_eur, $oie_comprobante->tipo_cambio_usd_id, $oie_comprobante->tipo_cambio_eur_id];
             // Sincronizamos los valores del post con los objetos a actualizar
             $oie_comprobante->sincronizar($_POST['oie_comprobante'] ?? []);
             $oie->sincronizar($_POST['oie'] ?? []);
+            // A2: el TC congelado no se reasigna vía POST (se restaura; abajo se
+            // recalcula solo si cambió la fecha o el tipo, o si sigue pendiente).
+            [$oie_comprobante->tc_usd, $oie_comprobante->tc_eur, $oie_comprobante->tipo_cambio_usd_id, $oie_comprobante->tipo_cambio_eur_id] = $tcPrev;
             // El select de programa envía '' cuando el ingreso va al total de la fuente
             if (($oie->programa_id ?? '') === '') {
                 $oie->programa_id = null;
@@ -150,6 +159,14 @@ class IngresoEgresoController
             $errores = OtrosIngresosEgresos::getErrores();
 
             if (empty($errores)) {
+                // El TC congelado no se recalcula al editar, salvo que cambie la fecha
+                // de operación o el tipo (ingreso↔egreso usa compra↔venta), o que siga
+                // pendiente (NULL) y ya exista cobertura (§5.2).
+                if ((string) $oie_comprobante->fecha_original !== $fechaOriginalPrev
+                    || (int) $oie->oie_tipo_id !== $oieTipoPrev
+                    || $oie_comprobante->tc_usd === null || $oie_comprobante->tc_eur === null) {
+                    $oie_comprobante->congelarTipoCambio((int) $oie->oie_tipo_id);
+                }
                 //Insertando la accion de audi para el usuario actual
                 if (OieComprobante::setUsuarioActual()) {
                     $resultadoComprobante = $oie_comprobante->guardarsinRedireccion();

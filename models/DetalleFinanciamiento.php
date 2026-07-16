@@ -26,23 +26,31 @@ class DetalleFinanciamiento extends ActiveRecord
 
     public function validar()
     {
+        // Normalización única de dinero (plan de montos, Fase 0). El tope de negocio
+        // real es la capacidad asignable de la fuente (validarLimiteAsignacion).
+        $this->monto_asignado = montoNumerico($this->monto_asignado);
         if (!$this->programa_id) {
             self::$errores[] = 'Debes seleccionar un programa válido';
         }
         if (!$this->fuente_financiamiento_id) {
             self::$errores[] = 'Debes seleccionar una fuente de financiamiento válida';
         }
-        if (!$this->monto_asignado || (float) $this->monto_asignado <= 0) {
-            self::$errores[] = 'Debes ingresar un monto a asignar (sobre) válido';
+        if ($this->monto_asignado === null || $this->monto_asignado <= 0) {
+            self::$errores[] = 'Debes ingresar un monto a asignar (sobre) válido (solo números, mayor a 0)';
+        } elseif ($this->monto_asignado > MONTO_MAXIMO) {
+            self::$errores[] = 'El monto asignado excede el tope permitido (S/. '
+                . number_format(MONTO_MAXIMO, 2, '.', ',') . ')';
         }
         return self::$errores;
     }
 
     /**
      * Saldo del "sobre" (programa, fuente): la capacidad disponible para gasto.
-     *   capacidad    = monto_asignado + Σ ingresos OIE dirigidos a este sobre
-     *   comprometido = Σ rendiciones del sobre (todos los estados) + Σ egresos OIE del sobre
-     *   disponible   = capacidad − comprometido
+     *   capacidad  = monto_asignado + Σ ingresos OIE dirigidos a este sobre
+     *   ejecutado  = Σ rendiciones del sobre (todos los estados) + Σ egresos OIE del sobre
+     *   disponible = capacidad − ejecutado
+     * ("ejecutado", no "comprometido": esa palabra queda reservada al nivel de FUENTE,
+     *  donde significa Σ de los sobres asignados — decisión 2026-07-15.)
      * Las rendiciones se derivan por la cadena rubro → actividad → producto → resultado
      * → programa; la fuente por ff_id. Permite excluir una rendición o un OIE (en edición)
      * para no contarlos dos veces. Devuelve el desglose para construir mensajes claros.
@@ -144,20 +152,28 @@ class DetalleFinanciamiento extends ActiveRecord
 
     /**
      * Valida que la suma de los sobres de una fuente (incluido el nuevo monto que se
-     * intenta asignar) no exceda el presupuesto de la fuente: Σ monto_asignado ≤
-     * fuente.presupuesto. Se usará al capturar el monto del sobre en el formulario del
-     * vínculo (Fase UI). Agrega el error a self::$errores; devuelve true si está OK.
+     * intenta asignar) no exceda la CAPACIDAD ASIGNABLE de la fuente (migr. 027,
+     * plan de montos §2.4): Σ monto_asignado ≤ presupuesto + ingresos OIE sin
+     * programa (los dirigidos a un sobre no amplían la capacidad: ya son asignación).
+     * Agrega el error a self::$errores; devuelve true si está OK.
      */
     public static function validarLimiteAsignacion(int $ffId, float $montoAsignado, ?int $excluirId = null): bool
     {
-        // Presupuesto de la fuente.
-        $presupuesto = 0.0;
-        if ($stmt = self::$db->prepare("SELECT presupuesto FROM fuente_financiamiento WHERE id = ? LIMIT 1")) {
+        // Base asignable: presupuesto inicial + ingresos al total de la fuente (NULL).
+        $base = 0.0;
+        $sqlBase = "SELECT ff.presupuesto
+                         + COALESCE((SELECT SUM(oc.monto)
+                                     FROM otros_ingresos_egresos oie
+                                     JOIN oie_comprobante oc ON oc.id = oie.oie_comprobante_id
+                                     WHERE oie.ff_id = ff.id AND oie.oie_tipo_id = 1
+                                       AND oie.programa_id IS NULL), 0) AS base
+                    FROM fuente_financiamiento ff WHERE ff.id = ? LIMIT 1";
+        if ($stmt = self::$db->prepare($sqlBase)) {
             $stmt->bind_param('i', $ffId);
             $stmt->execute();
             $res = $stmt->get_result();
             $row = $res ? $res->fetch_assoc() : null;
-            $presupuesto = (float) ($row['presupuesto'] ?? 0);
+            $base = (float) ($row['base'] ?? 0);
             $stmt->close();
         }
 
@@ -179,11 +195,11 @@ class DetalleFinanciamiento extends ActiveRecord
             $stmt->close();
         }
 
-        if ($otros + $montoAsignado > $presupuesto + 0.001) {
-            $disponible = max(0, $presupuesto - $otros);
-            self::$errores[] = 'El monto asignado excede el presupuesto disponible de la fuente. '
+        if ($otros + $montoAsignado > $base + 0.001) {
+            $disponible = max(0, $base - $otros);
+            self::$errores[] = 'El monto asignado excede la capacidad asignable de la fuente. '
                 . 'Disponible para asignar: S/. ' . number_format($disponible, 2, '.', ',')
-                . ' (presupuesto de la fuente S/. ' . number_format($presupuesto, 2, '.', ',') . ').';
+                . ' (capacidad asignable de la fuente S/. ' . number_format($base, 2, '.', ',') . ').';
             return false;
         }
         return true;

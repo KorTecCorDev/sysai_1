@@ -10,8 +10,13 @@
     <?php
     if ($resultado) {
         $mensaje = mostrarNotificacion(intval($resultado));
+        // 19/20 (puerta y tope de sobres) y 22 (TC faltantes) persisten; los demás
+        // flash se auto-ocultan.
+        $clasealerta = in_array(intval($resultado), [19, 20, 22], true)
+            ? 'alert alert-warning alert-persistente'
+            : 'alert alert-warning';
         if ($mensaje) { ?>
-            <p class="alert alert-warning"><?php echo s($mensaje); ?></p>
+            <p class="<?php echo $clasealerta; ?>"><?php echo s($mensaje); ?></p>
     <?php }
     }
 
@@ -26,18 +31,49 @@
     ?>
 
     <div class="container">
+        <?php $margen = (float) ($topeSobres ?? 0) - (float) $total; ?>
         <div class="border rounded-3 shadow-sm p-3 my-3" style="background:#fff;">
             <div class="row">
-                <div class="col-md-5"><strong>Programa:</strong>
+                <div class="col-md-4"><strong>Programa:</strong>
                     <?php echo s($programa->nombre ?? ('#' . $doc->programa_id)); ?></div>
                 <div class="col-md-2"><strong>Año:</strong> <?php echo s($doc->anio); ?></div>
-                <div class="col-md-3"><strong>Total rubros:</strong>
+                <div class="col-md-2"><strong>Total rubros:</strong>
                     <span class="fw-bold text-success"><?php echo s($soles($total)); ?></span></div>
+                <div class="col-md-2"><strong>Σ sobres (tope):</strong>
+                    <span class="fw-bold"><?php echo s($soles($topeSobres ?? 0)); ?></span></div>
                 <div class="col-md-2"><strong>Estado:</strong>
                     <span class="badge <?php echo $clase; ?>"><?php echo s(Poa::etiquetaEstado($doc->estado)); ?></span>
                 </div>
             </div>
+            <div class="mt-2">
+                <span class="badge <?php echo $margen < -0.001 ? 'bg-danger' : 'bg-success'; ?>">
+                    <?php echo $margen < -0.001
+                        ? 'Excede el tope de sobres por ' . s($soles(-$margen))
+                        : 'Margen contra los sobres: ' . s($soles($margen)); ?>
+                </span>
+            </div>
         </div>
+
+        <?php if ($margen < -0.001) : ?>
+            <div class="alert alert-warning alert-persistente">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                El total de rubros (<?php echo s($soles($total)); ?>) supera la suma de los sobres
+                asignados al programa (<?php echo s($soles($topeSobres ?? 0)); ?>).
+                <?php echo ((float) ($topeSobres ?? 0)) <= 0
+                    ? 'El programa aún no tiene sobres asignados: primero asigna presupuesto en fuente↔programa.'
+                    : 'Este documento no se puede enviar ni aprobar hasta ajustar los rubros o ampliar los sobres.'; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($fechasSinTc)) : ?>
+            <div class="alert alert-warning alert-persistente">
+                <i class="bi bi-currency-exchange me-2"></i>
+                <strong>Rendiciones pendientes de tipo de cambio.</strong>
+                Falta TC (USD y/o EUR) que cubra estas fechas de operación:
+                <strong><?php echo s(implode(', ', array_map(fn($f) => date('d/m/Y', strtotime($f)), $fechasSinTc))); ?></strong>.
+                La aprobación queda bloqueada hasta <a href="/tcambio/admin?moneda=USD" class="alert-link">registrarlos</a>.
+            </div>
+        <?php endif; ?>
 
         <?php if (!empty($doc->observacion)) : ?>
             <div class="alert alert-warning alert-persistente">

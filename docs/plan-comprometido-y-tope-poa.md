@@ -1,10 +1,17 @@
 # Plan — El "comprometido" y el tope del POA por sobres
 
-> **Estado:** definido y confirmado (2026-07-15). Cubre la **higiene del término "comprometido"** y la
-> reapertura del **item 4** (tope del POA + puerta de sobres). **Sin migraciones**: ninguna fase de este plan
-> toca el esquema.
+> **Estado: ✅ IMPLEMENTADO (2026-07-15, Fases A y B, QA 30/30 + suite completa 80/80).** Cubre la **higiene del
+> término "comprometido"** y la reapertura del **item 4** (tope del POA + puerta de sobres). **Sin migraciones**:
+> ninguna fase de este plan tocó el esquema.
 > Complementa `docs/plan-montos-y-tipo-cambio.md` (migr. 026-030). El orden entre ambos está en **§4**.
 > Las decisiones de §2 están **confirmadas por el usuario**. No volver a preguntar.
+> ⚠️ **La Fase B se ejecutó ANTES de la migr. 026** (decisión del usuario, "Vamos con el Plan 1"): el tope
+> funciona y está testeado, pero hereda el techo `decimal(8,2)` (~S/ 1M) hasta la Fase 0 del plan de montos
+> (§4.1 lo anticipaba: "no es incorrecto — es prematuro").
+> Notas de implementación: la memoria `project_arcoiris.md` (paso 1 de la Fase A) **ya no existía** — nada que
+> corregir. Los flashes 19/20 usan `mostrarNotificacion()` con textos fijos; los montos exactos (S/ X vs S/ Y y
+> el margen) los muestra la UI de `/poa/admin` y `/poa/revisar`, y `Poa::validarTopeSobres()` además deja el
+> mensaje detallado en `self::$errores` y devuelve el desglose.
 
 ## 1. Por qué
 
@@ -107,58 +114,58 @@ rendiciones contra un presupuesto que no existe. Nada lo impide.
 
 > Solo comentarios, docblocks y un nombre interno. **Ningún cálculo cambia.** Es seguro y desbloquea §4.
 
-1. [ ] **Memoria del proyecto** (`~/.claude/.../memory/project_arcoiris.md:21`) — dice
+1. [x] **Memoria del proyecto** (`~/.claude/.../memory/project_arcoiris.md:21`) — dice
        `comprometido (al aprobar POA)`: la definición **1**, superada dos veces. Corregir a Σ sobres.
        > ⚠️ Esa memoria tiene 43 días y **está obsoleta de punta a punta**, no solo en esta línea: la línea 23
        > dice `rendiciones ≤ monto del rubro` (revertido el 2026-07-09), la 24 y la 19 hablan del *POA Rendición*
        > como documento aparte (reencuadrado el 2026-06-05), y las líneas 26-34 listan como "brechas de BD"
        > cosas ya resueltas por las migraciones 001-025. **Reescribirla entera o borrarla**, no parchear la 21.
-2. [ ] **`controllers/PoaController.php:183-184`** — el comentario enuncia la definición **2**. Reescribir:
+2. [x] **`controllers/PoaController.php:183-184`** — el comentario enuncia la definición **2**. Reescribir:
        el comprometido no se calcula al aprobar porque **es Σ de los sobres** (`monto_asignado`), no una
        acumulación de rendiciones. Remitir a `CLAUDE.md` → *Fuentes*.
-3. [ ] **`database/migrations/008_crear_fuente_presupuesto_anual.sql:3-4`** — enuncia la definición **1**.
+3. [x] **`database/migrations/008_crear_fuente_presupuesto_anual.sql:3-4`** — enuncia la definición **1**.
        **No tocar el SQL** (ya se ejecutó; el runner registra 008 en `schema_migrations`). Añadir **solo un
        comentario** advirtiendo que la definición fue superada por la migr. 020 y remitiendo a `CLAUDE.md`.
        > Es la trampa de §1.3: quien implemente el item 8 leerá este archivo primero.
-4. [ ] **`docs/historial-implementacion-items-2-6.md:57`** — es un documento **histórico**, así que registrar la
+4. [x] **`docs/historial-implementacion-items-2-6.md:57`** — es un documento **histórico**, así que registrar la
        decisión del 2026-06-04 es correcto *como historia*. Añadir solo la marca de que fue **superada el
        2026-07-09**, sin reescribir el registro.
-5. [ ] **`models/DetalleFinanciamiento.php:44-45`** — renombrar el concepto del sobre:
+5. [x] **`models/DetalleFinanciamiento.php:44-45`** — renombrar el concepto del sobre:
        `comprometido` → **`ejecutado`** en el docblock. `disponible = capacidad − ejecutado`.
        El array devuelto **no cambia** (`asignado/ingresos/egresos/rendiciones/disponible`): no hay API que tocar.
-6. [ ] **Verificación:** `grep -rn "comprometido"` sobre `models/ controllers/ views/ database/migrations/` →
+6. [x] **Verificación:** `grep -rn "comprometido"` sobre `models/ controllers/ views/ database/migrations/` →
        toda aparición restante debe ser **nivel fuente = Σ sobres**. Cualquier otra es un residuo.
 
 ### Fase B — Item 4: tope del POA + puerta de sobres *(~3-4 h · cambia comportamiento)*
 
-7. [ ] **`Poa::topeSobres(int $programaId): float`** —
+7. [x] **`Poa::topeSobres(int $programaId): float`** —
        `SELECT COALESCE(SUM(monto_asignado),0) FROM detalle_financiamiento WHERE programa_id = ?`.
        Leer el escalar con **mysqli directo**: `consultarPreparado()` pasa las filas por `crearObjeto()`, que
        descarta columnas fuera de `$columnasDB` (el alias de la agregación se perdería). Mismo patrón que
        `Poa::presupuestoCalculado()` (`models/Poa.php:81-103`), que ya lo documenta.
-8. [ ] **`Poa::validarTopeSobres(int $programaId): bool`** — compara `presupuestoCalculado()` contra
+8. [x] **`Poa::validarTopeSobres(int $programaId): bool`** — compara `presupuestoCalculado()` contra
        `topeSobres()`; agrega a `self::$errores`. **Devuelve el desglose** (Σ rubros, Σ sobres, margen) para poder
        construir el mensaje: el patrón de `saldoSobre()`, que ya devuelve el desglose "para construir mensajes claros".
-9. [ ] **Dos mensajes distintos** — con Σ sobres = 0 el tope es 0 y **todo** lo excede, así que el mensaje
+9. [x] **Dos mensajes distintos** — con Σ sobres = 0 el tope es 0 y **todo** lo excede, así que el mensaje
        genérico de tope mentiría por omisión:
        - Σ sobres **= 0** → *"Tu programa aún no tiene sobres asignados. El Contador debe asignar el presupuesto
          antes de que puedas registrar rubros, el POA o rendiciones."*
        - Σ sobres **> 0** y excedido → *"El POA (S/ X) supera la suma de tus sobres (S/ Y). Excede por S/ Z."*
        > Sin distinguirlos, el coordinador no sabe que debe **esperar al Contador** en vez de recortar su POA.
-10. [ ] **`exigirSobreAsignado(int $programaId)`** en `includes/funciones.php`, al estilo del
+10. [x] **`exigirSobreAsignado(int $programaId)`** en `includes/funciones.php`, al estilo del
         `exigirProgramaPropio()` existente. Son **8 rutas**; repetir el chequeo suelto en cada controlador
         garantiza que alguna quede fuera.
         **No aplica a Contador/Admin** (decisión 6) — la puerta es solo del Coordinador.
-11. [ ] **Cerrar la puerta** en las rutas del Coordinador (verificadas en `icoordi.php`):
+11. [x] **Cerrar la puerta** en las rutas del Coordinador (verificadas en `icoordi.php`):
         `/rubro/crear|actualizar|eliminar` · `/poa/crear|enviar` · `/rendicion/crear|actualizar|eliminar`.
         **NO tocar:** `/resultado/*`, `/producto/*`, `/actividad/*`, `/poa_indicadores/*`.
-12. [ ] **`PoaController::enviar()`** — bloquear si `Σ rubros > Σ sobres`. Hoy congela el presupuesto sin comparar.
-13. [ ] **`PoaController::aprobar()`** — revalidar antes de aprobar (decisión 4). Hoy no valida nada.
-14. [ ] **UI** — `Σ rubros` vs `Σ sobres` con el margen restante en `/poa/revisar` y en el listado de POA.
+12. [x] **`PoaController::enviar()`** — bloquear si `Σ rubros > Σ sobres`. Hoy congela el presupuesto sin comparar.
+13. [x] **`PoaController::aprobar()`** — revalidar antes de aprobar (decisión 4). Hoy no valida nada.
+14. [x] **UI** — `Σ rubros` vs `Σ sobres` con el margen restante en `/poa/revisar` y en el listado de POA.
         Sidebar del coordinador: ocultar/deshabilitar el acceso presupuestal con Σ sobres = 0.
         Banner de "sin sobres" con clase **`.alert-persistente`** (los flash normales se auto-ocultan a los 3 s
         vía `src/js/app.js`) — y si se toca el JS, recompilar con `npx gulp js`.
-15. [ ] **QA** — extender `database/qa_poa_presupuestal.ps1`:
+15. [x] **QA** — extender `database/qa_poa_presupuestal.ps1`:
         - enviar **bajo** tope → pasa
         - enviar **sobre** tope → bloquea
         - **bajar el sobre tras enviar** → aprobar debe bloquear *(el caso que justifica la decisión 4)*

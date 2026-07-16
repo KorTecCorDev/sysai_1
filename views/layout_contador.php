@@ -118,13 +118,13 @@ $cargo = $_SESSION['cargo'] ?? false;
               </a>
               <ul id="tcambios" class="padre sidebar-dropdown list-unstyled collapse" data-bs-parent="#sidebar">
                 <li class="sidebar-item">
-                  <a href="/tcambio/dolar/admin" class="sidebar-link">
+                  <a href="/tcambio/admin?moneda=USD" class="sidebar-link">
                     <i class="bi bi-currency-dollar"></i>
                     <span>Dólares</span>
                   </a>
                 </li>
                 <li class="sidebar-item">
-                  <a href="/tcambio/euro/admin" class="sidebar-link">
+                  <a href="/tcambio/admin?moneda=EUR" class="sidebar-link">
                     <i class="bi bi-currency-euro"></i>
                     <span>Euros</span>
                   </a>

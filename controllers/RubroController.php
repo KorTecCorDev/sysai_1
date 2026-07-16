@@ -37,7 +37,9 @@ class RubroController
             'resultado' => $resultado,
             'actividadid' => $actividadid,
             'objactividad' => $objactividad,
-            'productoid' => $productoid
+            'productoid' => $productoid,
+            // Saldo con signo por rubro (§2.3): negativo = sobregasto (no bloquea).
+            'saldosRubros' => Rubro::saldosPorActividad((int) $actividadid)
         ]);
     }
 
@@ -49,6 +51,8 @@ class RubroController
         exigirProgramaPropioPorActividad($idactividad);
         // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
         exigirPoaPresupuestalEditablePorActividad($idactividad);
+        // Puerta de sobres (item 4): sin sobres asignados no se presupuesta.
+        exigirSobreAsignado(programaIdPorActividad($idactividad));
         $categoriarubros = CategoriaRubro::all();
         $tiporubros = TipoRubro::all();
         $rubro = new Rubro();
@@ -97,6 +101,8 @@ class RubroController
             exigirProgramaPropioPorActividad($rubro->actividad_id);
             // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
             exigirPoaPresupuestalEditablePorActividad($rubro->actividad_id);
+            // Puerta de sobres (item 4): sin sobres asignados no se presupuesta.
+            exigirSobreAsignado(programaIdPorActividad($rubro->actividad_id));
             $actividad = Actividad::find($id[1]);
             $categoriarubros = CategoriaRubro::all();
             $tiporubros = TipoRubro::all();
@@ -145,6 +151,8 @@ class RubroController
             exigirProgramaPropioPorActividad($rubro->actividad_id);
             // Bloqueo de rubros si el POA Presupuestal ya fue enviado/aprobado.
             exigirPoaPresupuestalEditablePorActividad($rubro->actividad_id);
+            // Puerta de sobres (item 4): sin sobres asignados no se presupuesta.
+            exigirSobreAsignado(programaIdPorActividad($rubro->actividad_id));
             //Insertando la acción de audi para el usuario actual
             //Enviamos el codigo de usuario a la base de datos
             $vali = Rubro::setUsuarioActual();

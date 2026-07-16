@@ -1,8 +1,26 @@
 # Plan — Montos, tipo de cambio y conversión contable
 
-> **Estado:** definido y confirmado (2026-07-15). Cubre las migraciones **026-030**.
+> **Estado: ✅ IMPLEMENTADO (2026-07-15, Fases 0-6 completas, suite QA 101/101).** Cubre las migraciones
+> **026-031** (la 031 se sumó durante la implementación, ver notas). Se conserva como registro de decisiones.
 > Reemplaza el follow-up genérico "B3 — overflow de montos" de `docs/follow-ups-tecnicos.md`.
 > Todas las decisiones de negocio de §2 están **confirmadas por el usuario**. No volver a preguntar.
+>
+> **Notas de implementación (2026-07-15):**
+> - **Migr. 031 (no prevista):** `reporte_fuentes` exponía `fecha/codigo/descripcion/monto` pero su modelo
+>   (`ReporteFuentesVista`) y `findporRango('fuente_fecha', …)` esperaban alias `fuente_*` →
+>   `/reporte/ingresosdesc` reventaba con "Unknown column". Lo destapó el arnés nuevo `qa_reportes.ps1`
+>   (la ruta no tenía cobertura, como anticipaba §1.4). Se alineó la vista al modelo.
+> - Las rutas `/reporte/rendicionesdesc` y `/reporte/ingresosdesc` solo estaban registradas para el **admin**:
+>   el formulario del contador redirigía a un 404. Se registraron también en `iconta.php`.
+> - Los convertidos agregados pueden ser **parciales** cuando hay filas pendientes de TC: `SUM()` ignora los
+>   `NULL` y la vista expone `rendiciones_sin_tc` para el aviso ("Faltan N…"), como especifica la Fase 4.
+> - `$usrcod` (nombre de archivo de los reportes) usaba `usuario.descripcion`, columna eliminada en la migr.
+>   024 → ahora usa la parte local del email.
+> - Higiene arrastrada (§5.4) ejecutada: `RendicionFuentesCantidadVista` retirada (modelo + llamadas) y los
+>   follow-ups de `Login.php` y `fecha_original` cerrados en `CLAUDE.md`.
+> - Verificaciones clave en vivo: los 4 casos de corrupción de §1.2 resueltos (3.5M exacto; "3,500,000.50" →
+>   3500000.50; 999999999 y "abc" rechazados) y el caso del doble conteo de §2.4 exacto (vigente 1.2M, saldo A
+>   800k, **capacidad asignable 0**).
 
 ## 1. Por qué
 
@@ -206,24 +224,24 @@ con la BD ya migrada. **No abrir la Fase 2 sin tiempo para llegar a la 4.**
 #### Checklist del bloque A *(turno tarde)*
 
 **Fase 0 — migr. 026 (~2 h)**
-1. [ ] `database/migrations/026_montos_presupuesto_fuente.sql` — el `ALTER` + `INSERT IGNORE schema_migrations`.
-2. [ ] `php database/migrate.php` → verificar `SHOW COLUMNS FROM fuente_financiamiento LIKE 'presupuesto'`.
-3. [ ] `includes/funciones.php` — `montoNumerico()` + constante `MONTO_MAXIMO`.
-4. [ ] Modelos → `montoNumerico()` en el constructor y tope en `validar()`: `FuenteFinanciamiento`, `Rubro`,
+1. [x] `database/migrations/026_montos_presupuesto_fuente.sql` — el `ALTER` + `INSERT IGNORE schema_migrations`.
+2. [x] `php database/migrate.php` → verificar `SHOW COLUMNS FROM fuente_financiamiento LIKE 'presupuesto'`.
+3. [x] `includes/funciones.php` — `montoNumerico()` + constante `MONTO_MAXIMO`.
+4. [x] Modelos → `montoNumerico()` en el constructor y tope en `validar()`: `FuenteFinanciamiento`, `Rubro`,
        `Rendicion`, `OieComprobante`, `DetalleFinanciamiento`.
-5. [ ] Los 6 inputs de §1.3 → `type="number" step="0.01" min="0"`; quitar `text-transform: uppercase` y el
+5. [x] Los 6 inputs de §1.3 → `type="number" step="0.01" min="0"`; quitar `text-transform: uppercase` y el
        `placeholder="S./"`.
-6. [ ] **Verificar en navegador** (no solo lint): registrar una fuente con `3500000` → se guarda exacto;
+6. [x] **Verificar en navegador** (no solo lint): registrar una fuente con `3500000` → se guarda exacto;
        con `3,500,000` → normaliza o rechaza visiblemente, **nunca `1.00`**; con `999999999` → rechaza por tope.
 
 **Fase 1 — migr. 027 (~2 h)**
-7. [ ] `database/migrations/027_reglas_presupuesto.sql` — `vista_saldo_rubro` + reescritura de
+7. [x] `database/migrations/027_reglas_presupuesto.sql` — `vista_saldo_rubro` + reescritura de
        `vista_saldo_fuente_financiamiento` con `presupuesto_inicial` / `presupuesto_vigente` / `capacidad_asignable`.
-8. [ ] `DetalleFinanciamiento::validarLimiteAsignacion()` → comparar contra la **capacidad asignable** (§2.4).
-9. [ ] `Rendicion` → advertencia no bloqueante al cruzar `rubro.monto` (§2.3).
-10. [ ] UI: saldo del rubro con signo en `rubro/admin` y en el formulario de rendición; pantalla de saldos con
+8. [x] `DetalleFinanciamiento::validarLimiteAsignacion()` → comparar contra la **capacidad asignable** (§2.4).
+9. [x] `Rendicion` → advertencia no bloqueante al cruzar `rubro.monto` (§2.3).
+10. [x] UI: saldo del rubro con signo en `rubro/admin` y en el formulario de rendición; pantalla de saldos con
         las 3 cifras.
-11. [ ] **Verificar el caso del doble conteo** (§2.4): fuente 1M, sobres 600k/400k, ingreso de 200k **al sobre A**
+11. [x] **Verificar el caso del doble conteo** (§2.4): fuente 1M, sobres 600k/400k, ingreso de 200k **al sobre A**
         → presupuesto vigente 1.2M, saldo A 800k, **capacidad asignable 0**. Si sale 200k, la Fase 1 está mal.
 
 > El paso 11 es el que prueba que la aritmética de §2.4 quedó bien. No omitirlo.

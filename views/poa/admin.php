@@ -6,8 +6,13 @@
         <?php
         if ($resultado) {
             $mensaje = mostrarNotificacion(intval($resultado));
+            // 19 (sin sobres) y 20 (tope excedido) deben persistir para que el
+            // coordinador entienda qué esperar; los demás flash se auto-ocultan.
+            $clasealerta = in_array(intval($resultado), [19, 20], true)
+                ? 'alert alert-warning alert-persistente'
+                : 'alert alert-info';
             if ($mensaje) { ?>
-                <p class="alert alert-info"><?php echo s($mensaje); ?></p>
+                <p class="<?php echo $clasealerta; ?>"><?php echo s($mensaje); ?></p>
         <?php
             }
         }
@@ -33,17 +38,31 @@
         <!-- ===================== VISTA COORDINADOR ===================== -->
         <div class="container">
             <?php $doc = $documentos[0] ?? null; ?>
+            <?php $sinSobres = (float) ($topeSobres ?? 0) <= 0; ?>
+            <?php if ($sinSobres) : ?>
+                <div class="alert alert-warning alert-persistente">
+                    <i class="bi bi-envelope-exclamation me-2"></i>
+                    <strong>Tu programa aún no tiene sobres asignados.</strong>
+                    El Contador debe asignar el presupuesto (fuente↔programa) antes de que puedas
+                    registrar rubros, el POA Presupuestal o rendiciones. Mientras tanto puedes seguir
+                    elaborando tu POA de Indicadores y la jerarquía de resultados.
+                </div>
+            <?php endif; ?>
             <?php if (!$doc) : ?>
                 <div class="alert alert-secondary">
                     Aún no has iniciado el POA Presupuestal de tu programa para el año <?php echo s($anio); ?>.
                     Primero registra los rubros en la jerarquía; el presupuesto se calcula de ellos.
                 </div>
                 <p class="mb-2"><strong>Total de rubros actual:</strong> <?php echo s($soles($presupuestoVivo)); ?></p>
-                <form method="POST" action="/poa/crear" class="d-inline"><?php echo csrf_input(); ?>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
-                        <i class="bi bi-journal-plus me-2"></i> Iniciar POA Presupuestal
-                    </button>
-                </form>
+                <?php if (!$sinSobres) : ?>
+                    <p class="mb-2"><strong>Suma de sobres asignados (tope del POA):</strong>
+                        <?php echo s($soles($topeSobres)); ?></p>
+                    <form method="POST" action="/poa/crear" class="d-inline"><?php echo csrf_input(); ?>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
+                            <i class="bi bi-journal-plus me-2"></i> Iniciar POA Presupuestal
+                        </button>
+                    </form>
+                <?php endif; ?>
             <?php else : ?>
                 <div class="border rounded-3 shadow-sm p-4 my-3" style="background:#fff;max-width:760px;">
                     <p class="mb-2"><strong>Programa:</strong>
@@ -54,6 +73,25 @@
                     <?php if ($doc->esEditable()) : ?>
                         <p class="mb-2 text-muted"><small>Total de rubros vigente: <?php echo s($soles($presupuestoVivo)); ?>
                             (se congela al enviar)</small></p>
+                    <?php endif; ?>
+                    <?php $margen = (float) ($topeSobres ?? 0) - (float) $presupuestoVivo; ?>
+                    <p class="mb-2"><strong>Suma de sobres asignados (tope del POA):</strong>
+                        <?php echo s($soles($topeSobres ?? 0)); ?>
+                        <?php if ($doc->esEditable() && !$sinSobres) : ?>
+                            <span class="badge <?php echo $margen < 0 ? 'bg-danger' : 'bg-success'; ?> ms-2">
+                                <?php echo $margen < 0
+                                    ? 'Excede por ' . s($soles(-$margen))
+                                    : 'Margen: ' . s($soles($margen)); ?>
+                            </span>
+                        <?php endif; ?>
+                    </p>
+                    <?php if ($doc->esEditable() && $margen < -0.001 && !$sinSobres) : ?>
+                        <div class="alert alert-warning alert-persistente">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            El total de rubros (<?php echo s($soles($presupuestoVivo)); ?>) supera la suma de
+                            tus sobres (<?php echo s($soles($topeSobres)); ?>). Ajusta los rubros antes de enviar:
+                            excedes por <strong><?php echo s($soles(-$margen)); ?></strong>.
+                        </div>
                     <?php endif; ?>
                     <p class="mb-3"><strong>Estado:</strong> <?php echo $badge($doc->estado); ?></p>
 
@@ -109,19 +147,27 @@
                             <th scope="col">Programa</th>
                             <th scope="col" class="text-center">Año</th>
                             <th scope="col" class="text-end">Presupuesto</th>
+                            <th scope="col" class="text-end">Σ sobres (tope)</th>
                             <th scope="col" class="text-center">Estado</th>
                             <th scope="col" class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($documentos)) : ?>
-                            <tr><td colspan="5" class="text-center text-muted py-3">No hay documentos POA Presupuestal.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-3">No hay documentos POA Presupuestal.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($documentos as $doc) : ?>
+                            <?php $topeDoc = (float) (($topesSobres ?? [])[$doc->programa_id] ?? 0); ?>
                             <tr>
                                 <td><?php echo s($programas[$doc->programa_id] ?? ('#' . $doc->programa_id)); ?></td>
                                 <td class="text-center"><?php echo s($doc->anio); ?></td>
                                 <td class="text-end fw-bold text-success"><?php echo s($soles($doc->presupuesto)); ?></td>
+                                <td class="text-end <?php echo ((float) $doc->presupuesto > $topeDoc + 0.001) ? 'fw-bold text-danger' : ''; ?>"
+                                    <?php if ((float) $doc->presupuesto > $topeDoc + 0.001) : ?>
+                                        title="El presupuesto del POA supera la suma de los sobres del programa"
+                                    <?php endif; ?>>
+                                    <?php echo s($soles($topeDoc)); ?>
+                                </td>
                                 <td class="text-center"><?php echo $badge($doc->estado); ?></td>
                                 <td class="text-center">
                                     <a href="/poa/revisar?id=<?php echo s($doc->id); ?>"
@@ -134,7 +180,7 @@
                             </tr>
                             <?php if ((int) $doc->estado === Poa::OBSERVADO && !empty($doc->observacion)) : ?>
                                 <tr>
-                                    <td colspan="5" class="p-0">
+                                    <td colspan="6" class="p-0">
                                         <div class="alert alert-warning alert-persistente rounded-0 mb-0">
                                             <i class="bi bi-chat-left-text me-2"></i>
                                             <strong>Observación registrada:</strong> <?php echo s($doc->observacion); ?>

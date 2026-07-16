@@ -40,12 +40,16 @@
         <input type="text" class="form-control" id="razon_social" name="razon_social" placeholder="Razón Social" value="<?php echo s($rendicion->razon_social); ?>">
     </div>
 
+    <?php // El código lo asigna el sistema al crear; solo se muestra al EDITAR
+          // (en creación era un campo gris vacío: puro ruido). ?>
+    <?php if (!empty($rendicion->codigo)) : ?>
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código:</label>
         <input type="text" class="form-control bg-body-secondary" id="codigo"
                value="<?php echo s($rendicion->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
         <div class="form-text">Se genera automáticamente (p. ej. REN001).</div>
     </div>
+    <?php endif; ?>
 
     <div class="mb-3 w-25">
         <label for="serie" class="form-label">Serie:</label>
@@ -69,7 +73,13 @@
 
     <div class="mb-3 w-25">
         <label for="monto" class="form-label">Monto:</label>
-        <input type="text" class="form-control" id="monto" name="monto" placeholder="Monto" value="<?php echo s($rendicion->monto); ?>">
+        <input type="number" step="0.01" min="0" max="<?php echo s(MONTO_MAXIMO); ?>" class="form-control" id="monto" name="monto" placeholder="0.00" value="<?php echo s($rendicion->monto); ?>">
+        <?php if (isset($saldoRubro)) : ?>
+            <div class="form-text <?php echo $saldoRubro < -0.001 ? 'text-danger' : ''; ?>">
+                Saldo del rubro: <?php echo soles($saldoRubro); ?>
+                <?php echo $saldoRubro < -0.001 ? '(sobregasto — se avisa pero no bloquea)' : '(referencial; el tope real es el saldo del sobre)'; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
 </fieldset>

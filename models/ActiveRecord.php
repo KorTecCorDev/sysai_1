@@ -694,14 +694,18 @@ class ActiveRecord
     //Modificar parámetros
     private static function insertarSumaMontos($sheet, $row, $sumaMontos, $tipoCambioDolar, $tipoCambioEuro)
     {
-        //Esta función inserta el total del monto de rubros por actividad tanto en soles, dólares, como euros
+        //Esta función inserta el total del monto de rubros por actividad tanto en soles, dólares, como euros.
+        //Conversión con guarda (plan de montos, Fase 4): sin TC se escribe "—" — el
+        //reporte nunca revienta ni inventa cifras (antes: DivisionByZeroError fatal).
+        $usd = convertirMoneda($sumaMontos, $tipoCambioDolar);
+        $eur = convertirMoneda($sumaMontos, $tipoCambioEuro);
         $sheet->setCellValue("G$row", $sumaMontos);
-        $sheet->setCellValue("H$row", round($sumaMontos / $tipoCambioDolar, 2));
-        $sheet->setCellValue("I$row", round($sumaMontos / $tipoCambioEuro, 2));
+        $sheet->setCellValue("H$row", $usd ?? '—');
+        $sheet->setCellValue("I$row", $eur ?? '—');
     }
 
 
-    public static function insertarCeldasReportePOA($sheet, array $data, object $dolar, object $euro, int $filaini = 5, array $rendiciones = null, array $fuentes = null, array $cols = null): int
+    public static function insertarCeldasReportePOA($sheet, array $data, ?object $dolar, ?object $euro, int $filaini = 5, array $rendiciones = null, array $fuentes = null, array $cols = null): int
     {
         //Esta función inserta solos los rubros de los reportes tanto para coordinadores como para administradores
         //Parámetros necesarios por la función
@@ -713,8 +717,11 @@ class ActiveRecord
         //$rendiciones -> Array con todas las rendiciones ordenadas por (actividad_id, actividad_nombre, fuente_financiamiento_id, suma_monto_rendiciones)
         //$fuentes -> $arrayFuentes, Son las columnas donde se insertarán las rendiciones de acuerdo a su Fuente de financiamiento (K,N,etc)
         //$cols -> Array con las columnas de celdas que están permitidas ingresar las rendiciones
-        $tipoCambioDolar = floatval($dolar->tipo_cambio);
-        $tipoCambioEuro = floatval($euro->tipo_cambio);
+        //$dolar/$euro: TipoCambio VIGENTE AL CIERRE (o null sin cobertura). Los rubros
+        //son planificación sin fecha de operación => tasa de VENTA al generar el
+        //reporte (§2.5 del plan de montos). Con null, las columnas USD/EUR salen "—".
+        $tipoCambioDolar = ($dolar && isset($dolar->venta)) ? floatval($dolar->venta) : 0.0;
+        $tipoCambioEuro = ($euro && isset($euro->venta)) ? floatval($euro->venta) : 0.0;
 
         //Insertar datos sin encabezados
         $row = $filaini; // Inicia desde la fila indicada en el parámetro, por defecto 5
@@ -1009,13 +1016,16 @@ class ActiveRecord
                 $columnaIndex = array_search($columna, $cols);
                 $columna1 = $columnaIndex + 1;
                 $columna2 = $columnaIndex + 2;
-                //Redondeamos los valores a 2 decimales
-                $dolares = round($rendicion->suma_monto_rendiciones / $tcdolar, 2);
-                $euros = round($rendicion->suma_monto_rendiciones / $tceuro, 2);
+                //Conversión CONGELADA (migr. 030): la vista reporte_poa_rendicion ya trae
+                //suma_usd/suma_eur calculadas con el TC de la fecha de operación de cada
+                //rendición — aquí YA NO se divide por "el último TC". NULL => "—" (hay
+                //rendiciones pendientes de TC; el aviso las cuenta).
+                $dolares = $rendicion->suma_usd ?? null;
+                $euros = $rendicion->suma_eur ?? null;
                 //Insertamos los registros en el reporte excel
                 $sheet->setCellValue("{$cols[$columnaIndex]}{$row}", "{$rendicion->suma_monto_rendiciones}");
-                $sheet->setCellValue("{$cols[$columna1]}{$row}", "{$dolares}");
-                $sheet->setCellValue("{$cols[$columna2]}{$row}", "{$euros}");
+                $sheet->setCellValue("{$cols[$columna1]}{$row}", $dolares !== null ? "{$dolares}" : '—');
+                $sheet->setCellValue("{$cols[$columna2]}{$row}", $euros !== null ? "{$euros}" : '—');
                 //Ingresamos el valor del contador simple dentro de la función algebraica de $contespecial
                 $contespecial = $i * 3 + 3;
             }

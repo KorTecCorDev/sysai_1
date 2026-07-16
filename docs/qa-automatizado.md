@@ -12,10 +12,11 @@
 | Script | Item | Cubre (nº de checks) |
 |---|---|---|
 | `qa_poa_indicadores.ps1` | 3 | Flujo POA Indicadores 0→1→2→3, CSRF 419, rol, cross-tenant, bloqueo de jerarquía, observación. **18** |
-| `qa_poa_presupuestal.ps1` | 4 + 6 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación + **item 6** (al aprobar, la rendición pasa a Aprobada(1) y se descuenta del saldo contable). **21** |
+| `qa_poa_presupuestal.ps1` | 4 + 6 | Flujo POA Presupuestal, presupuesto calculado/congelado, bloqueo de rubros, observación + **item 6** (al aprobar, la rendición pasa a Aprobada(1) y se descuenta del saldo contable) + **tope por sobres** (enviar sobre el tope → 20; bajar el sobre tras enviar → aprobar bloquea) y **puerta de sobres** (programa 5 sin sobres: rubro/POA/rendición → 19; POA Indicadores y jerarquía permitidos; el Contador pasa) + **compuerta de TC** (sin cobertura aprobar bloquea → 22; al reponer tasas el aprobar recongela). **32** |
 | `qa_rendicion.ps1` | 5 | Rendición imputada al rubro, límite Σ ≤ monto del rubro, cross-tenant, CSRF. **10** |
 | `qa_oie.ps1` | 7 | OIE solo Contador (coordinador sin rutas), CSRF, ingreso híbrido (total de fuente = `programa_id` NULL / al sobre), egreso con programa obligatorio + sobre existente + tope por sobre (con exclusión del propio OIE al editar), sin comprobantes huérfanos, eliminar borra OIE+comprobante, saldos en vistas. **22** |
-| `qa_all.ps1` | — | **Runner**: corre los cuatro y resume (esperado: `TODOS LOS ARNESES OK`, 71 checks). |
+| `qa_reportes.ps1` | reportes (plan de montos F4-5) | Las 7 rutas de reporte + `/saldos_contables/saldos` **con TC y sin ningún TC**: 200 sin fatal siempre (antes: `DivisionByZeroError` con las tablas de TC vacías); saldos muestra la conversión al cierre con tasa visible y "sin tipo de cambio registrado" cuando falta. **19** |
+| `qa_all.ps1` | — | **Runner**: corre los cinco y resume (esperado: `TODOS LOS ARNESES OK`, 101 checks). |
 
 ## Cómo ejecutar (desde la raíz del proyecto)
 
@@ -35,7 +36,7 @@ pwsh -File database\qa_poa_presupuestal.ps1
 
 ## Prerrequisitos
 - Servidor `local3000` corriendo y **MariaDB de XAMPP** arriba.
-- BD `sysai` con migraciones **001-019** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
+- BD `sysai` con migraciones **001-031** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
   jerarquía Resultado→Producto→Actividad y **rubros**; programa **5** para los tests cross-tenant).
 - Usuarios de prueba: **coordinador@sysai.test / `Test1234*`** (programa 1) y **contador@sysai.test / `admin1234`**
   (esta última también es la del admin `robertokar97@gmail.com`).

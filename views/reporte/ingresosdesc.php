@@ -64,7 +64,11 @@ $encabezados = [
     'SERIE',
     'NUMERO',
     'DETALLE',
-    'MONTO'
+    'MONTO',
+    // Conversión con TC CONGELADO a la fecha de operación de cada fila (migr. 030).
+    // Vacío/"—" = fila pendiente de tipo de cambio.
+    'MONTO USD (TC congelado)',
+    'MONTO EUR (TC congelado)'
 ];
 
 // Establecer la fila inicial para el título y los encabezados

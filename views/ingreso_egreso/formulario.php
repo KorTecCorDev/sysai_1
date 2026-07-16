@@ -129,7 +129,7 @@
     <!-- Monto -->
     <div class="mb-3 w-25">
         <label for="monto" class="form-label">Monto</label>
-        <input type="money" class="form-control" id="monto" aria-describedby="montoHelp" name="oie_comprobante[monto]" value="<?php echo s($oie_comprobante->monto); ?>">
+        <input type="number" step="0.01" min="0" max="<?php echo s(MONTO_MAXIMO); ?>" class="form-control" id="monto" aria-describedby="montoHelp" name="oie_comprobante[monto]" value="<?php echo s($oie_comprobante->monto); ?>">
         <div id="montoHelp" class="form-text">Ingrese el monto</div>
     </div>
     <!-- Monto -->

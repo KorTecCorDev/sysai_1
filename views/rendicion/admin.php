@@ -19,11 +19,12 @@
         <?php endif; ?>
     </div>
 
-    <!-- Panel de saldo del rubro: regla Σ rendiciones ≤ monto del rubro -->
+    <!-- Panel de saldo del rubro (plan de montos §2.3): saldo CON SIGNO, referencial.
+         El rubro no limita el gasto (el tope real es el sobre); negativo = sobregasto. -->
     <div class="container mb-3">
         <div class="row g-2 text-center">
             <div class="col-md-4">
-                <div class="border rounded-3 p-2 bg-light"><small>Monto del rubro</small><br>
+                <div class="border rounded-3 p-2 bg-light"><small>Monto del rubro (planificado)</small><br>
                     <span class="fw-bold">S/. <?php echo number_format($rubro->monto, 2, '.', ','); ?></span>
                 </div>
             </div>
@@ -33,12 +34,20 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="border rounded-3 p-2 <?php echo $disponible > 0 ? 'bg-success-subtle' : 'bg-danger-subtle'; ?>">
-                    <small>Disponible</small><br>
+                <div class="border rounded-3 p-2 <?php echo $disponible >= -0.001 ? 'bg-success-subtle' : 'bg-danger-subtle'; ?>">
+                    <small><?php echo $disponible >= -0.001 ? 'Saldo del rubro (sobrante)' : 'Saldo del rubro (SOBREGASTO)'; ?></small><br>
                     <span class="fw-bold">S/. <?php echo number_format($disponible, 2, '.', ','); ?></span>
                 </div>
             </div>
         </div>
+        <?php if ($disponible < -0.001) : ?>
+            <div class="alert alert-warning alert-persistente mt-2 mb-0">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Las rendiciones superan el monto planificado del rubro por
+                <strong>S/. <?php echo number_format(-$disponible, 2, '.', ','); ?></strong>.
+                Es una advertencia: el tope real del gasto es el saldo del sobre (programa, fuente).
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="row">

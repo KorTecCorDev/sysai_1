@@ -132,21 +132,14 @@ $router->get('/rendicionff/crear', [RendicionFfController::class, 'crear']);
 $router->post('/rendicionff/crear', [RendicionFfController::class, 'crear']);
 
 
-// Rutas para Tipos de Cambio Dólar
-$router->get('/tcambio/dolar/admin', [TipoCambioController::class, 'indexDolar']);
-$router->get('/tcambio/dolar/crear', [TipoCambioController::class, 'crearDolar']);
-$router->post('/tcambio/dolar/crear', [TipoCambioController::class, 'crearDolar']);
-$router->get('/tcambio/dolar/actualizar', [TipoCambioController::class, 'actualizarDolar']);
-$router->post('/tcambio/dolar/actualizar', [TipoCambioController::class, 'actualizarDolar']);
-$router->post('/tcambio/dolar/eliminar', [TipoCambioController::class, 'eliminarDolar']);
-
-// Rutas para Tipos de Cambio Euro
-$router->get('/tcambio/euro/admin', [TipoCambioController::class, 'indexEuro']);
-$router->get('/tcambio/euro/crear', [TipoCambioController::class, 'crearEuro']);
-$router->post('/tcambio/euro/crear', [TipoCambioController::class, 'crearEuro']);
-$router->get('/tcambio/euro/actualizar', [TipoCambioController::class, 'actualizarEuro']);
-$router->post('/tcambio/euro/actualizar', [TipoCambioController::class, 'actualizarEuro']);
-$router->post('/tcambio/euro/eliminar', [TipoCambioController::class, 'eliminarEuro']);
+// Rutas para Tipos de Cambio (unificado USD/EUR — la moneda viaja como ?moneda=, migr. 028)
+$router->get('/tcambio/admin', [TipoCambioController::class, 'index']);
+$router->get('/tcambio/crear', [TipoCambioController::class, 'crear']);
+$router->post('/tcambio/crear', [TipoCambioController::class, 'crear']);
+$router->get('/tcambio/actualizar', [TipoCambioController::class, 'actualizar']);
+$router->post('/tcambio/actualizar', [TipoCambioController::class, 'actualizar']);
+$router->post('/tcambio/eliminar', [TipoCambioController::class, 'eliminar']);
+$router->get('/tcambio/sbs', [TipoCambioController::class, 'sbs']);   // consulta informativa (Fase 6): pre-llena, no guarda
 
 //Rutas para el reporte de rendiciones
 $router->get('/reporte/poa', [ReportePoaRubrosController::class, 'index']);

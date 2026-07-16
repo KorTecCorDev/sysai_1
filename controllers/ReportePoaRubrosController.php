@@ -5,8 +5,7 @@ namespace Controllers;
 use MVC\Router;
 use Model\Programa;
 use Model\Rendicion;
-use Model\TipoCambioEuro;
-use Model\TipoCambioDolar;
+use Model\TipoCambio;
 use Model\ReportePoaRubros;
 use Model\ReporteEgresosVista;
 use Model\ReporteFuentesVista;
@@ -17,13 +16,36 @@ use Model\ReportePoaRubrosSumas;
 use Model\ReporteRendicionesVista;
 use Model\UsuarioDisponiblePrograma;
 use Model\ReporteFuentesProgramaVista;
-use Model\RendicionFuentesCantidadVista;
 use Model\Usuario;
 use Model\Poa;
 use Model\ReporteEgresosRendiciones;
 
 class ReportePoaRubrosController
 {
+    /**
+     * Identificador corto del usuario para nombrar los archivos de reporte.
+     * (El código de usuario `descripcion` se retiró en la migr. 024: se usa la
+     * parte local del email.)
+     */
+    private static function codigoUsuario(): string
+    {
+        $usuario = Usuario::find($_SESSION['id']);
+        $email = (string) ($usuario->email ?? '');
+        $local = strstr($email, '@', true);
+        return $local !== false && $local !== '' ? $local : 'usuario';
+    }
+
+    /**
+     * TC vigentes AL CIERRE (hoy) para convertir la planificación (rubros/POA),
+     * que no tiene fecha de operación (§2.5 del plan de montos). Devuelve
+     * [TipoCambio|null USD, TipoCambio|null EUR] — null sin cobertura: el reporte
+     * muestra "—" en vez de reventar (antes: DivisionByZeroError con 0 registros).
+     */
+    private static function tcCierre(): array
+    {
+        $hoy = date('Y-m-d');
+        return [TipoCambio::vigente('USD', $hoy), TipoCambio::vigente('EUR', $hoy)];
+    }
     public static function index(Router $router)
     {
         // Obtenemos los datos del usuario para colocar los nombres de los reportes
@@ -34,8 +56,7 @@ class ReportePoaRubrosController
         } else {
             $poaid = null;
         }
-        $usuario = Usuario::find($usuarioid);
-        $usrcod = $usuario->descripcion;
+        $usrcod = self::codigoUsuario();
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
@@ -44,8 +65,7 @@ class ReportePoaRubrosController
 
         // Obtenemos los demás datos requeridos
         $sumas = ReportePoaRubrosSumas::all();
-        $tcdolar = TipoCambioDolar::findlast();
-        $tceuro = TipoCambioEuro::findlast();
+        [$tcdolar, $tceuro] = self::tcCierre();
 
         $router->render('reporte/poa', [
             'tcdolar'    => $tcdolar,
@@ -62,8 +82,7 @@ class ReportePoaRubrosController
     {
         // Obtenemos los datos del usuario para colocar los nombres de los reportes
         $usuarioid = $_SESSION['id'];
-        $usuario = Usuario::find($usuarioid);
-        $usrcod = $usuario->descripcion;
+        $usrcod = self::codigoUsuario();
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
@@ -73,16 +92,16 @@ class ReportePoaRubrosController
         // Obtenemos los demás datos requeridos
         $sumas = ReportePoaRubrosSumas::all();
         $rendiciones = RendicionFuentesVista::all();
-        $tcdolar = TipoCambioDolar::findlast();
-        $tceuro = TipoCambioEuro::findlast();
-        $ffnro   = RendicionFuentesCantidadVista::all();
+        [$tcdolar, $tceuro] = self::tcCierre();
+        // (RendicionFuentesCantidadVista retirada: consultaba la vista
+        //  cantidad_fuentes_rendicion, eliminada en la migr. 009, y su resultado
+        //  no se usaba en ninguna vista — solo ensuciaba el error_log.)
         $fuentes = ReporteFuentesProgramaVista::all();
         $router->render('reporte/poarendicion', [
             'tcdolar'    => $tcdolar,
             'programas'  => $programas,
             'tceuro'     => $tceuro,
             'resbienes'  => $resbienes,
-            'ffnro'      => $ffnro,
             'sumas'      => $sumas,
             'fuentes'    => $fuentes,
             'usrcod'  => $usrcod,
@@ -96,8 +115,7 @@ class ReportePoaRubrosController
         //Esta función es para el reporte de rubros con rendiciones exclusivo para los usuarios administrador y contador
         // Obtenemos los datos del usuario para colocar los nombres de los reportes
         $usuarioid = $_SESSION['id'];
-        $usuario = Usuario::find($usuarioid);
-        $usrcod = $usuario->descripcion;
+        $usrcod = self::codigoUsuario();
         // Obtenemos todos los IDs de programa como enteros
         $programas = Programa::all();
 
@@ -109,12 +127,9 @@ class ReportePoaRubrosController
 
         //Tomamos todas las rendiciones para el reporte
         $rendiciones = RendicionFuentesVista::all();
-        //Tomamos la cantidad de fuentes de financiamiento por rendición
-        $ffnro   = RendicionFuentesCantidadVista::all();
         // Obtenemos los demás datos requeridos
         $sumas = ReportePoaRubrosSumas::all();
-        $tcdolar = TipoCambioDolar::findlast();
-        $tceuro = TipoCambioEuro::findlast();
+        [$tcdolar, $tceuro] = self::tcCierre();
 
         $router->render('reporte/poarubros', [
             'tcdolar'    => $tcdolar,
@@ -124,8 +139,7 @@ class ReportePoaRubrosController
             'resbienes'  => $resbienes,
             'sumas'      => $sumas,
             'rendiciones' => $rendiciones,
-            'usrcod'  => $usrcod,
-            'ffnro'      => $ffnro
+            'usrcod'  => $usrcod
         ]);
     }
 
@@ -153,9 +167,7 @@ class ReportePoaRubrosController
         $fechainicio = $_GET['fechainicio'];
         $fechafin = $_GET['fechafin'];
         // Obtenemos los datos del usuario para colocar los nombres de los reportes
-        $usuarioid = $_SESSION['id'];
-        $usuario = Usuario::find($usuarioid);
-        $usrcod = $usuario->descripcion;
+        $usrcod = self::codigoUsuario();
         $fuentes = FuenteFinanciamiento::all();
         // Filtramos los resultados de acuerdo a las fechas
         $resreporterendiciones = ReporteRendicionesVista::findporRango('rendicion_fecha', $fechainicio, $fechafin);
@@ -195,9 +207,7 @@ class ReportePoaRubrosController
         $fechafin = $_GET['fechafin'];
 
         // Datos del usuario para nombrar el archivo
-        $usuarioid = $_SESSION['id'];
-        $usuario = Usuario::find($usuarioid);
-        $usrcod = $usuario->descripcion;
+        $usrcod = self::codigoUsuario();
 
         // Obtener los datos del reporte
         $resreportefuentes = ReporteFuentesVista::findporRango('fuente_fecha', $fechainicio, $fechafin);

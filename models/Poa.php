@@ -101,4 +101,52 @@ class Poa extends ActiveRecord
         $stmt->close();
         return (float) ($fila['total'] ?? 0);
     }
+
+    // Tope del POA = Σ de los sobres del programa (detalle_financiamiento.monto_asignado).
+    // Es un tope AGREGADO, no por fuente: rubro no tiene ff_id, así que un rubro no sabe
+    // de qué sobre sale (decisión 2026-07-15). Escalar leído con mysqli directo (ver
+    // presupuestoCalculado sobre por qué no sirve consultarPreparado aquí).
+    public static function topeSobres(int $programaId): float
+    {
+        $query = "SELECT COALESCE(SUM(monto_asignado), 0) AS total
+                  FROM detalle_financiamiento
+                  WHERE programa_id = ?";
+        $stmt = self::$db->prepare($query);
+        if ($stmt === false) {
+            return 0.0;
+        }
+        $stmt->bind_param('i', $programaId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $fila = ($res instanceof \mysqli_result) ? $res->fetch_assoc() : null;
+        $stmt->close();
+        return (float) ($fila['total'] ?? 0);
+    }
+
+    /**
+     * Tope del POA por sobres: Σ rubro.monto ≤ Σ monto_asignado del programa.
+     * Se valida al ENVIAR y también al APROBAR (los sobres pueden bajar entre el
+     * envío y la aprobación). Con Σ sobres = 0 el tope es 0 y todo lo excede, por
+     * eso el mensaje distingue "aún no tienes sobres" de "excediste el tope".
+     * Agrega el error a self::$errores y devuelve el desglose para la UI.
+     *
+     * @return array{ok:bool, rubros:float, sobres:float, margen:float}
+     */
+    public static function validarTopeSobres(int $programaId): array
+    {
+        $rubros = self::presupuestoCalculado($programaId);
+        $sobres = self::topeSobres($programaId);
+        $ok = $rubros <= $sobres + 0.001;
+        if (!$ok) {
+            if ($sobres <= 0) {
+                self::$errores[] = 'El programa aún no tiene sobres asignados: el Contador debe '
+                    . 'asignar presupuesto (fuente↔programa) antes de enviar o aprobar el POA.';
+            } else {
+                self::$errores[] = 'El POA (S/. ' . number_format($rubros, 2, '.', ',')
+                    . ') supera la suma de los sobres del programa (S/. ' . number_format($sobres, 2, '.', ',')
+                    . '). Excede por S/. ' . number_format($rubros - $sobres, 2, '.', ',') . '.';
+            }
+        }
+        return ['ok' => $ok, 'rubros' => $rubros, 'sobres' => $sobres, 'margen' => $sobres - $rubros];
+    }
 }

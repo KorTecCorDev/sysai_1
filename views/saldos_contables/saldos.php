@@ -41,6 +41,36 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Conversión al cierre (Fase 4, plan de montos): compra vigente a hoy,
+                     con tasa, fecha de vigencia y origen SIEMPRE visibles — la
+                     desactualización se ve, no se esconde. Sin TC: solo soles. -->
+                <div class="col-12 mt-2">
+                    <?php
+                    $lineasTc = [];
+                    foreach (['USD' => ($tcUsdCierre ?? null), 'EUR' => ($tcEurCierre ?? null)] as $mon => $tc) {
+                        if ($tc) {
+                            $convertido = convertirMoneda($saldo, $tc->compra);
+                            $tasaTxt = rtrim(rtrim(number_format((float) $tc->compra, 6, '.', ''), '0'), '.');
+                            $antiguedad = (int) floor((strtotime(date('Y-m-d')) - strtotime($tc->fecha_vigencia)) / 86400);
+                            $lineasTc[] = '<strong>' . s($mon) . ' ' . number_format((float) $convertido, 2)
+                                . '</strong> <span class="text-muted">(TC compra ' . s($tasaTxt)
+                                . ' del ' . s(date('d/m/Y', strtotime($tc->fecha_vigencia)))
+                                . ' · ' . s($tc->origen) . ')</span>'
+                                . ($antiguedad > 7 ? ' <span class="badge bg-warning text-dark">TC de hace ' . $antiguedad . ' días</span>' : '');
+                        } else {
+                            $lineasTc[] = '<strong>' . s($mon) . '</strong> <span class="text-muted">sin tipo de cambio registrado</span>'
+                                . ' <a href="/tcambio/admin?moneda=' . s($mon) . '" class="ms-1">registrar</a>';
+                        }
+                    }
+                    ?>
+                    <!-- .alert-persistente: es un banner de contenido, no un flash —
+                         sin la clase, app.js lo desvanece a los 3 segundos. -->
+                    <div class="alert alert-light alert-persistente border text-center mb-0">
+                        <i class="bi bi-currency-exchange me-2"></i>
+                        Saldo total convertido al cierre: <?php echo implode(' &nbsp;·&nbsp; ', $lineasTc); ?>
+                    </div>
+                </div>
             </div>
 
             <!-- Bloque 2: Comparativo de saldos por fuente (gráfico SVG inline, CSP-safe) -->
@@ -125,16 +155,18 @@
                 <?php if (!empty($saldofuentes)) : ?>
                     <?php foreach ($saldofuentes as $fuente) :
                         $desg = $desglosefuentes[$fuente->fuente_financiamiento_id] ?? [
-                            'presupuesto' => 0.0, 'ingresos' => 0.0, 'egresos' => 0.0, 'rendiciones' => 0.0, 'comprometido' => 0.0,
+                            'presupuesto' => 0.0, 'ingresos' => 0.0, 'ingresos_libres' => 0.0, 'egresos' => 0.0,
+                            'rendiciones' => 0.0, 'comprometido' => 0.0, 'vigente' => 0.0, 'capacidad_asignable' => 0.0,
                         ];
-                        $presupuesto = $desg['presupuesto'];
+                        $presupuesto = $desg['presupuesto'];            // inicial (inmutable)
+                        $vigente     = $desg['vigente'];                // inicial + todos los ingresos
                         $comprometido = $desg['comprometido'];          // Σ sobres asignados a programas
-                        $sinAsignar   = $presupuesto - $comprometido;   // remanente sin repartir
+                        $capacidad   = $desg['capacidad_asignable'];    // inicial + ingresos libres − Σ sobres
                         $saldoFuente = (float) $fuente->fuente_financiamiento_saldo;
 
-                        // Disponibilidad: saldo respecto al presupuesto de la fuente.
+                        // Disponibilidad: saldo respecto al presupuesto VIGENTE de la fuente.
                         // Sin presupuesto: 100% si el saldo es no negativo, 0% si es negativo.
-                        $ratio  = $presupuesto > 0 ? ($saldoFuente / $presupuesto) * 100 : ($saldoFuente >= 0 ? 100 : 0);
+                        $ratio  = $vigente > 0 ? ($saldoFuente / $vigente) * 100 : ($saldoFuente >= 0 ? 100 : 0);
                         $ancho  = max(0, min(100, $ratio)); // ancho de la barra acotado a [0,100]
 
                         // Semáforo de salud según disponibilidad
@@ -162,7 +194,7 @@
                                         <div class="progress-bar bg-<?php echo $tono; ?>" style="width: <?php echo $ancho; ?>%;"></div>
                                     </div>
                                     <small class="text-muted d-block mt-2 mb-3">
-                                        <?php echo round($ratio); ?>% disponible de <?php echo soles($presupuesto); ?>
+                                        <?php echo round($ratio); ?>% disponible de <?php echo soles($vigente); ?> (vigente)
                                     </small>
 
                                     <!-- Desglose del saldo (C1) -->
@@ -189,16 +221,20 @@
                                         </li>
                                     </ul>
 
-                                    <!-- Asignación a programas: comprometido (Σ sobres) vs remanente (Fase 4) -->
+                                    <!-- Las tres cifras del presupuesto (migr. 027, plan de montos §2.4) -->
                                     <div class="mt-2 pt-2 border-top text-start small">
-                                        <div class="fw-bold text-muted mb-1">Asignación a programas</div>
+                                        <div class="fw-bold text-muted mb-1">Presupuesto y asignación</div>
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span>Presupuesto vigente</span>
+                                            <span class="fw-semibold"><?php echo soles($vigente); ?></span>
+                                        </div>
                                         <div class="d-flex justify-content-between py-1">
                                             <span>Comprometido (Σ sobres)</span>
                                             <span class="fw-semibold"><?php echo soles($comprometido); ?></span>
                                         </div>
                                         <div class="d-flex justify-content-between py-1">
-                                            <span>Sin asignar (remanente)</span>
-                                            <span class="fw-semibold <?php echo $sinAsignar < -0.001 ? 'text-danger' : ''; ?>"><?php echo soles($sinAsignar); ?></span>
+                                            <span>Capacidad asignable</span>
+                                            <span class="fw-semibold <?php echo $capacidad < -0.001 ? 'text-danger' : ''; ?>"><?php echo soles($capacidad); ?></span>
                                         </div>
                                     </div>
                                 </div>

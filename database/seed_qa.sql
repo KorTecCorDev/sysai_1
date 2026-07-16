@@ -36,8 +36,7 @@ SET NAMES utf8;
 -- 0) Limpieza de datos previos (preserva admin id=1 y los catálogos de seed.sql)
 -- ---------------------------------------------------------------------------
 SET FOREIGN_KEY_CHECKS = 0;
-DELETE FROM tipo_cambio_dolar;
-DELETE FROM tipo_cambio_euro;
+DELETE FROM tipo_cambio;
 DELETE FROM otros_ingresos_egresos;
 DELETE FROM oie_comprobante;
 DELETE FROM fuente_presupuesto_anual;
@@ -90,11 +89,20 @@ INSERT INTO coordinador_programa (id, usuario_id, programa_id, activo, fecha) VA
   (2, 6, 5, 1, NOW());   -- coordinador5@sysai.test -> programa 5
 
 -- ---------------------------------------------------------------------------
--- 4) FUENTES DE FINANCIAMIENTO (presupuesto en S/; decimal(8,2) => máx 999,999.99)
+-- 4) FUENTES DE FINANCIAMIENTO (presupuesto en S/; decimal(14,2) desde la migr. 026)
 -- ---------------------------------------------------------------------------
 INSERT INTO fuente_financiamiento (id, codigo, nombre, descripcion, presupuesto, fecha) VALUES
   (1, 'FF001', 'FUENTE QA UNO', 'FUENTE DE PRUEBA 1', 200000.00, NOW()),
   (2, 'FF002', 'FUENTE QA DOS', 'FUENTE DE PRUEBA 2', 100000.00, NOW());
+
+-- ---------------------------------------------------------------------------
+-- 4b) TIPOS DE CAMBIO (tabla unificada, migr. 028). Cobertura desde 2020-01-01:
+--     cualquier fecha_original de los arneses queda cubierta y la aprobación del
+--     POA no se bloquea por TC faltante (eso se prueba aparte, borrando estas filas).
+-- ---------------------------------------------------------------------------
+INSERT INTO tipo_cambio (id, moneda, fecha_vigencia, compra, venta, origen, usuario_id, fecha) VALUES
+  (1, 'USD', '2020-01-01', 3.700, 3.750, 'MANUAL', 1, NOW()),
+  (2, 'EUR', '2020-01-01', 4.000, 4.050, 'MANUAL', 1, NOW());
 
 -- ---------------------------------------------------------------------------
 -- 5) SOBRES del programa 1 (detalle_financiamiento.monto_asignado).

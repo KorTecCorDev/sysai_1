@@ -9,7 +9,9 @@ class Rendicion extends ActiveRecord
     // aquí a propósito: en INSERT toman su DEFAULT (estado=0, poa_rendicion_id=NULL) y su
     // gestión es parte del flujo del POA Rendición (item 6).
     protected static $tabla = 'rendicion';
-    protected static $columnasDB = ['id', 'rubro_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'fecha'];
+    protected static $columnasDB = ['id', 'rubro_id', 'tipo_comprobante_id', 'ff_id', 'codigo', 'serie', 'numero', 'detalle', 'descripcion', 'ruc', 'razon_social', 'monto', 'fecha_original', 'tc_usd', 'tc_eur', 'tipo_cambio_usd_id', 'tipo_cambio_eur_id', 'fecha'];
+    // TC congelado (migr. 029): NULL real = "pendiente de tipo de cambio", nunca 0.
+    protected static $columnasNull = ['tc_usd', 'tc_eur', 'tipo_cambio_usd_id', 'tipo_cambio_eur_id'];
 
     // Estado de la rendición (item 6 — "POA Rendición"). El "POA Rendición" no es un
     // documento aparte: es el mismo POA Presupuestal. Una rendición nace PENDIENTE (0,
@@ -34,6 +36,12 @@ class Rendicion extends ActiveRecord
     public $razon_social;
     public $monto;
     public $fecha_original;
+    // TC congelado a la fecha de operación (fecha_original), tasa de VENTA (gasto, §2.5).
+    // Se copia el VALOR (no un FK): editar/borrar el TC después no reescribe esta fila.
+    public $tc_usd;
+    public $tc_eur;
+    public $tipo_cambio_usd_id;   // solo rastro de procedencia
+    public $tipo_cambio_eur_id;
     public $fecha;
 
     public function __construct($args = [])
@@ -51,11 +59,122 @@ class Rendicion extends ActiveRecord
         $this->razon_social = $args['razon_social'] ?? '';
         $this->monto = $args['monto'] ?? 0.0;
         $this->fecha_original = $args['fecha_original'] ?? '';
+        $this->tc_usd = $args['tc_usd'] ?? null;
+        $this->tc_eur = $args['tc_eur'] ?? null;
+        $this->tipo_cambio_usd_id = $args['tipo_cambio_usd_id'] ?? null;
+        $this->tipo_cambio_eur_id = $args['tipo_cambio_eur_id'] ?? null;
         $this->fecha = date('Y/m/d H:i:s');
+    }
+
+    /**
+     * Congela el TC a la fecha de operación (migr. 029, §2.2): resuelve el vigente a
+     * `fecha_original` y COPIA el valor de VENTA (gasto). Sin cobertura => NULL
+     * ("pendiente de tipo de cambio") — el registro NO se bloquea; la compuerta es
+     * la aprobación del POA (el Contador no puede aprobar con TC faltantes).
+     */
+    public function congelarTipoCambio(): void
+    {
+        $fecha = (string) $this->fecha_original;
+        $usd = $fecha !== '' ? TipoCambio::vigente('USD', $fecha) : null;
+        $eur = $fecha !== '' ? TipoCambio::vigente('EUR', $fecha) : null;
+        $this->tc_usd = $usd ? (float) $usd->venta : null;
+        $this->tipo_cambio_usd_id = $usd ? (int) $usd->id : null;
+        $this->tc_eur = $eur ? (float) $eur->venta : null;
+        $this->tipo_cambio_eur_id = $eur ? (int) $eur->id : null;
+    }
+
+    /**
+     * Reintenta congelar el TC de las rendiciones del programa que siguen "pendientes
+     * de tipo de cambio" (quizá el Contador ya cargó las tasas faltantes). Se llama al
+     * aprobar el POA, antes de verificar la cobertura. Actualiza solo las columnas TC.
+     */
+    public static function recongelarPendientesPorPrograma($programaId): void
+    {
+        $sql = "SELECT r.id, r.fecha_original
+                FROM " . static::$tabla . " r
+                JOIN rubro ru ON ru.id = r.rubro_id
+                JOIN actividad a ON a.id = ru.actividad_id
+                JOIN producto p ON p.id = a.producto_id
+                JOIN resultado re ON re.id = p.resultado_id
+                WHERE re.programa_id = ? AND (r.tc_usd IS NULL OR r.tc_eur IS NULL)";
+        $stmt = self::$db->prepare($sql);
+        if ($stmt === false) {
+            return;
+        }
+        $pid = (int) $programaId;
+        $stmt->bind_param('i', $pid);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $pendientes = [];
+        while ($res && $row = $res->fetch_assoc()) {
+            $pendientes[] = $row;
+        }
+        $stmt->close();
+
+        foreach ($pendientes as $p) {
+            $usd = TipoCambio::vigente('USD', (string) $p['fecha_original']);
+            $eur = TipoCambio::vigente('EUR', (string) $p['fecha_original']);
+            if (!$usd && !$eur) {
+                continue;
+            }
+            $up = self::$db->prepare(
+                "UPDATE " . static::$tabla . " SET
+                    tc_usd = COALESCE(tc_usd, ?), tipo_cambio_usd_id = COALESCE(tipo_cambio_usd_id, ?),
+                    tc_eur = COALESCE(tc_eur, ?), tipo_cambio_eur_id = COALESCE(tipo_cambio_eur_id, ?)
+                 WHERE id = ?"
+            );
+            if ($up === false) {
+                continue;
+            }
+            $tcUsd = $usd ? (float) $usd->venta : null;
+            $idUsd = $usd ? (int) $usd->id : null;
+            $tcEur = $eur ? (float) $eur->venta : null;
+            $idEur = $eur ? (int) $eur->id : null;
+            $rid = (int) $p['id'];
+            $up->bind_param('didii', $tcUsd, $idUsd, $tcEur, $idEur, $rid);
+            $up->execute();
+            $up->close();
+        }
+    }
+
+    /**
+     * Fechas de operación (únicas, ordenadas) de las rendiciones del programa que
+     * siguen sin TC congelado. Si devuelve algo, la aprobación del POA se bloquea
+     * con este detalle (Fase 3 del plan de montos).
+     *
+     * @return string[]
+     */
+    public static function fechasSinTcPorPrograma($programaId): array
+    {
+        $sql = "SELECT DISTINCT r.fecha_original
+                FROM " . static::$tabla . " r
+                JOIN rubro ru ON ru.id = r.rubro_id
+                JOIN actividad a ON a.id = ru.actividad_id
+                JOIN producto p ON p.id = a.producto_id
+                JOIN resultado re ON re.id = p.resultado_id
+                WHERE re.programa_id = ? AND (r.tc_usd IS NULL OR r.tc_eur IS NULL)
+                ORDER BY r.fecha_original";
+        $stmt = self::$db->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+        $pid = (int) $programaId;
+        $stmt->bind_param('i', $pid);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $fechas = [];
+        while ($res && $row = $res->fetch_assoc()) {
+            $fechas[] = (string) $row['fecha_original'];
+        }
+        $stmt->close();
+        return $fechas;
     }
 
     public function validar()
     {
+        // Normalización única de dinero (plan de montos, Fase 0). El tope de negocio
+        // real es el saldo del sobre (validarLimiteSobre); MONTO_MAXIMO es cordura.
+        $this->monto = montoNumerico($this->monto);
         if (!$this->rubro_id) {
             self::$errores[] = 'Debes de seleccionar un rubro válido';
         }
@@ -78,8 +197,11 @@ class Rendicion extends ActiveRecord
         if (!$this->descripcion) {
             self::$errores[] = 'Debes de ingresar un comentario de comprobante válido';
         }
-        if (!$this->monto) {
-            self::$errores[] = 'Debes de ingresar un monto de comprobante válido';
+        if ($this->monto === null || $this->monto <= 0) {
+            self::$errores[] = 'Debes de ingresar un monto de comprobante válido (solo números, mayor a 0)';
+        } elseif ($this->monto > MONTO_MAXIMO) {
+            self::$errores[] = 'El monto excede el tope permitido (S/. '
+                . number_format(MONTO_MAXIMO, 2, '.', ',') . ')';
         }
         if (!$this->fecha_original) {
             self::$errores[] = 'Debes de ingresar una fecha de emisión de comprobante válida';
