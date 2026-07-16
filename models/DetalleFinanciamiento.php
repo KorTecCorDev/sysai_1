@@ -136,6 +136,21 @@ class DetalleFinanciamiento extends ActiveRecord
     }
 
     /**
+     * El sobre (programa, fuente) como objeto, o null si el vínculo no existe.
+     * (El par tiene UNIQUE uq_programa_fuente — migr. 020.)
+     */
+    public static function porPar(int $programaId, int $ffId): ?DetalleFinanciamiento
+    {
+        $filas = self::consultarPreparado(
+            "SELECT * FROM " . static::$tabla
+            . " WHERE programa_id = ? AND fuente_financiamiento_id = ? LIMIT 1",
+            'ii',
+            [$programaId, $ffId]
+        );
+        return $filas[0] ?? null;
+    }
+
+    /**
      * ¿Existe el vínculo (sobre) programa↔fuente? Los OIE dirigidos a un programa
      * solo pueden usar fuentes vinculadas a él (igual que las rendiciones).
      */

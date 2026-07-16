@@ -37,6 +37,7 @@ SET NAMES utf8;
 -- ---------------------------------------------------------------------------
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM tipo_cambio;
+DELETE FROM transferencia_institucional;
 DELETE FROM otros_ingresos_egresos;
 DELETE FROM oie_comprobante;
 DELETE FROM fuente_presupuesto_anual;
@@ -80,6 +81,11 @@ INSERT INTO usuario (id, persona_id, cargo_id, email, password, fecha) VALUES
 INSERT INTO programa (id, codigo, nombre, descripcion, tipo_programa_id, fecha) VALUES
   (1, 'PRG001', 'PROGRAMA QA UNO',   'PROGRAMA DE PRUEBA PARA LA SUITE DE QA', 1, NOW()),
   (5, 'PRG005', 'PROGRAMA QA CINCO', 'PROGRAMA DE PRUEBA CROSS-TENANT',        1, NOW());
+
+-- El programa Institucional SIEMPRE existe (migr. 033; la limpieza de arriba lo borra
+-- → se re-siembra con id fijo 9 para los arneses). es_institucional=1 lo identifica.
+INSERT INTO programa (id, codigo, nombre, descripcion, tipo_programa_id, fecha, es_institucional) VALUES
+  (9, 'PRG000', 'INSTITUCIONAL', 'GASTOS DE OFICINA Y ADMINISTRATIVOS (QA)', 1, NOW(), 1);
 
 -- ---------------------------------------------------------------------------
 -- 3) VÍNCULO COORDINADOR-PROGRAMA (uno activo por programa)

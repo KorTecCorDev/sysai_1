@@ -34,6 +34,7 @@ SET NAMES utf8;
 -- ---------------------------------------------------------------------------
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM tipo_cambio;
+DELETE FROM transferencia_institucional;
 DELETE FROM otros_ingresos_egresos;
 DELETE FROM oie_comprobante;
 DELETE FROM fuente_presupuesto_anual;
@@ -83,6 +84,12 @@ INSERT INTO programa (id, codigo, nombre, descripcion, tipo_programa_id, fecha) 
       'DESARROLLO INTEGRAL DE FAMILIAS EN SITUACIÓN DE VULNERABILIDAD EN LOS CASERÍOS DE HUARAZ', 2, NOW()),
   (2, 'PRG002', 'CASA HOGAR',
       'ACOGIMIENTO RESIDENCIAL Y ATENCIÓN INTEGRAL DE NIÑOS, NIÑAS Y ADOLESCENTES EN RIESGO', 2, NOW());
+
+-- El programa Institucional SIEMPRE existe (migr. 033; la limpieza lo borró → se
+-- re-siembra). Su presupuesto = Σ transferencias de los programas (sin sobres directos).
+INSERT INTO programa (id, codigo, nombre, descripcion, tipo_programa_id, fecha, es_institucional) VALUES
+  (3, 'PRG000', 'INSTITUCIONAL',
+      'GASTOS DE OFICINA Y ADMINISTRATIVOS DE LA ORGANIZACIÓN', 1, NOW(), 1);
 
 -- ---------------------------------------------------------------------------
 -- 3) VÍNCULO COORDINADOR-PROGRAMA (un coordinador activo por programa)
