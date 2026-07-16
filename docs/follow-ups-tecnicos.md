@@ -1,7 +1,7 @@
 # Follow-ups técnicos (deuda pendiente)
 
-> **Referencia.** Extraído de `CLAUDE.md` el 2026-07-09. Aquí se conserva el detalle completo (hechos y
-> pendientes). El `CLAUDE.md` mantiene solo un resumen de los pendientes abiertos.
+> **Referencia.** Extraído de `CLAUDE.md` el 2026-07-09; sincronizado el 2026-07-16. Aquí se conserva el
+> detalle completo (hechos y pendientes). El `CLAUDE.md` mantiene solo un resumen de los pendientes abiertos.
 
 ## Hechos ✅
 - [x] ✅ **SMTP externalizado al `.env`** (integrado en `integ/seguridad`). `LoginController` ya no tiene credenciales; el envío usa el helper `enviarTokenRecuperacion()` y `includes/config/mail.php` lee las claves `MAIL_*` del `.env`. Sin credenciales hardcodeadas en código trackeado.
@@ -11,10 +11,20 @@
 ## Pendientes abiertos
 - [x] ~~`usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia~~ — **CERRADO 2026-07-15:** resuelto en `main` (migr. 011 creó `login_intentos`; `models/Login.php` la usa).
 - [x] ~~Retirar/limpiar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (plan de montos §5.4): modelo eliminado junto con sus llamadas en `ReportePoaRubrosController`; `$ffnro` no se usaba en ninguna vista.
-- [ ] **B2 — Reportes POA inflados en producción** (fan-out por fuentes) — corregido en la rama de seguridad, falta portar/migrar.
-- [ ] **B3 — Esquema desalineado** — ✅ resueltos 2026-07-15 (plan de montos): overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`) y `rendicion.fecha_original` (ya era `date`). **Quedan:** `avance decimal(2,2)`, `email` no UNIQUE (riesgo login `LIMIT 1`), auditoría sin triggers/AUTO_INCREMENT.
+- [ ] **B2 — Reportes POA/Excel inflados** (fan-out por fuentes) — ya existe la cifra correcta libre de
+  fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes
+  Excel** (item 9, diferido a v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
+- [ ] **B3 — Esquema desalineado** — ✅ resueltos: overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`),
+  `rendicion.fecha_original` (ya era `date`) y `usuario.email` **UNIQUE** (migr. 032, item 10, 2026-07-16).
+  **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
 - [ ] **B4 — MAYÚSCULAS forzadas** indiscriminadas (degrada calidad de datos; origen del bug C1).
 - [ ] **B5 — Código muerto / de otro proyecto:** `includes/templates/formulario_propiedades.php`, `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 - [ ] **B6 — `validarPropiedadArray()`** sin `isset` (warnings).
 - [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
-- [ ] Confirmar contra **producción** todas las discrepancias del modelo de datos (ver `docs/modelo-datos-detalle.md`) y planificar la migración de las correcciones pendientes.
+- [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
+  gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
+- [ ] **`sql_mode` sin `STRICT_TRANS_TABLES`** — evaluar activarlo en el despliegue greenfield (convertiría
+  todo truncamiento futuro en error ruidoso); requiere probar la app entera antes.
+- [ ] Revisar las discrepancias restantes del modelo de datos (ver `docs/modelo-datos-detalle.md`) y
+  planificar las correcciones pendientes. (La verificación "contra producción" ya no aplica: la instancia
+  de Hostinger fue dada de baja el 2026-06-03; el próximo despliegue es greenfield.)
