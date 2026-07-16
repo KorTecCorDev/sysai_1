@@ -21,21 +21,29 @@
 - **Eliminada** (migración 009): `cantidad_fuentes_rendicion` (era VISTA, no tabla) — una rendición usa una sola fuente.
 
 ## ⚠️ Discrepancias esquema ↔ código / deuda de datos
-1. `usuario` **no tiene** columnas `intentos`/`estado` pero código histórico de `Login.php` las referenciaba.
-   > En la rama de seguridad esto se resolvió (control por sesión + tabla `login_intentos`). **En la rama
-   > actual, verificar** si ese código muerto sigue presente antes de confiar en el bloqueo por intentos.
-2. **Auditoría sin implementar:** existe tabla `auditoria` y `ActiveRecord::setUsuarioActual()`, pero el dump
-   no trae triggers y `auditoria.id` no era AUTO_INCREMENT → la tabla nunca se llena automáticamente.
-3. **Overflow de montos (dump original):** `monto`/`presupuesto` eran `decimal(7,2)` (máx 99 999.99) en `rubro`,
-   `rendicion`, `oie_comprobante`, `poa`; `fuente_financiamiento.presupuesto` `decimal(8,2)`.
-   > **`poa.presupuesto` ya se amplió a `decimal(14,2)`** (migración 004). (La rama de seguridad proponía
-   > `decimal(12,2)` en `db/schema.sql`; el valor vigente es el de la migración.) Pendiente revisar overflow
-   > en `rubro`/`rendicion`/`oie_comprobante` si no lo cubre otra migración.
-4. `avance` era `decimal(2,2)` (rango máx 0.99 — no admite 100%) en `avance_actividad`/`avance_resultado`. Tablas de uso futuro.
-5. `rendicion.fecha_original` era `varchar(500)` mientras `oie_comprobante.fecha_original` es `date` (inconsistencia).
-6. `email` de `usuario` no es UNIQUE.
+> **Barrido de verificación 2026-07-16 contra la BD viva (`information_schema`):** los puntos 1, 3, 4, 5 y 6
+> quedaron CERRADOS; quedan abiertos el 2 (auditoría, diferida a v1.1) y el 7 (reportes Excel, item 9 v1.1).
+> Desde el mismo día `conectarDB()` activa `STRICT_TRANS_TABLES` por sesión → cualquier truncamiento futuro
+> es error ruidoso, no dato corrupto.
+1. ~~`usuario` sin columnas `intentos`/`estado` que `Login.php` referenciaba~~ — **CERRADO 2026-07-15:**
+   resuelto en `main` (migr. 011 `login_intentos`; `models/Login.php` la usa).
+2. **Auditoría sin implementar (⏸ DIFERIDA a v1.1, decisión 2026-07-16):** existe la tabla `auditoria` y
+   `setUsuarioActual()` se invoca desde ~20 controladores, pero **no hay ningún trigger** que consuma
+   `@usuario_actual` → la tabla nunca se llena. Hallazgos para cuando se implemente: `auditoria.usuario` es
+   `varchar(8)` y la identidad de auditoría es el **email** desde la migr. 024 (truncaría bajo STRICT →
+   redimensionar a `varchar(191)`), y verificar `auditoria.id` AUTO_INCREMENT.
+3. ~~Overflow de montos~~ — **CERRADO (verificado en BD viva 2026-07-16):** `rubro.monto`, `rendicion.monto`,
+   `oie_comprobante.monto` = `decimal(12,2)`; `poa.presupuesto`, `fuente_financiamiento.presupuesto`,
+   `detalle_financiamiento.monto_asignado` = `decimal(14,2)` (migr. 004/020/026).
+4. ~~`avance decimal(2,2)`~~ — **CERRADO (verificado en BD viva 2026-07-16):** `avance_actividad.avance` y
+   `avance_resultado.avance` son `decimal(5,2)` y `avance_producto.avance` `decimal(7,2)` → sí admiten 100.00.
+   La nota "decimal(2,2)" venía de un dump anterior al baseline versionado. Tablas de uso futuro (v1.1).
+5. ~~`rendicion.fecha_original` `varchar(500)`~~ — **CERRADO:** ya es `date` (verificado 2026-07-15).
+6. ~~`usuario.email` sin UNIQUE~~ — **CERRADO:** migr. 032 (item 10, 2026-07-16).
 7. `reporte_poa_rubros_sumas` usaba `SUM(DISTINCT u.monto)` y joins con fan-out cartesiano por fuentes →
-   posible **bug de reporte** (inflado). Corregido en la rama de seguridad; verificar en producción.
+   posible **bug de reporte** (inflado). = **B2**: la cifra correcta libre de fan-out ya existe
+   (`comprometido` = Σ sobres); falta que los reportes Excel la consuman (item 9, v1.1). (La verificación
+   "en producción" ya no aplica: Hostinger fue dado de baja; el despliegue siguiente es greenfield.)
 
 ## Notas técnicas puntuales (misceláneas, ya reflejadas en migraciones)
 - `cantidad_fuentes_rendicion`: vista eliminada (migr. 009). Una rendición solo tiene una fuente.

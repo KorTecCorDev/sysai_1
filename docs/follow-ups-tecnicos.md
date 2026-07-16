@@ -14,9 +14,12 @@
 - [ ] **B2 — Reportes POA/Excel inflados** (fan-out por fuentes) — ya existe la cifra correcta libre de
   fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes
   Excel** (item 9, diferido a v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
-- [ ] **B3 — Esquema desalineado** — ✅ resueltos: overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`),
-  `rendicion.fecha_original` (ya era `date`) y `usuario.email` **UNIQUE** (migr. 032, item 10, 2026-07-16).
-  **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
+- [x] ~~**B3 — Esquema desalineado**~~ — **CERRADO 2026-07-16** (barrido de verificación contra la BD viva,
+  detalle en `docs/modelo-datos-detalle.md`): overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`),
+  `rendicion.fecha_original` (`date`), `usuario.email` UNIQUE (migr. 032) y `avance` (ya era
+  `decimal(5,2)`/`(7,2)` — la nota "decimal(2,2)" venía de un dump viejo; admite 100%). La **auditoría sin
+  triggers** queda **diferida a v1.1 por decisión (2026-07-16)** con hallazgos anotados: `auditoria.usuario
+  varchar(8)` no cabe el email (identidad desde migr. 024) y revisar `auditoria.id` AUTO_INCREMENT.
 - [x] ~~**B4 — MAYÚSCULAS forzadas**~~ — **HECHO 2026-07-16:** se retiró `convertirAMayusculas()` y
   `$columnasSinMayuscula` de `ActiveRecord` (los datos se guardan tal como se ingresan) y los
   `style="text-transform: uppercase"` de los formularios (8 vistas). Los códigos autogenerados
@@ -51,6 +54,6 @@
   excepciones y el patrón del código es comprobar valores de retorno). Verificado: replay greenfield
   (baseline + 001-032 + seed/seed_demo/seed_qa) bajo estricto sin errores + suite QA 131/131.
   Nota: `includes/config/database.php` ya estaba versionado (sin secretos) — se corrigió la doc que decía "gitignored".
-- [ ] Revisar las discrepancias restantes del modelo de datos (ver `docs/modelo-datos-detalle.md`) y
-  planificar las correcciones pendientes. (La verificación "contra producción" ya no aplica: la instancia
-  de Hostinger fue dada de baja el 2026-06-03; el próximo despliegue es greenfield.)
+- [x] ~~Revisar las discrepancias restantes del modelo de datos~~ — **HECHO 2026-07-16:** barrido completo
+  contra la BD viva; `docs/modelo-datos-detalle.md` actualizado. Solo quedan abiertos: auditoría (⏸ v1.1,
+  por decisión) y B2/reportes Excel (item 9, v1.1).

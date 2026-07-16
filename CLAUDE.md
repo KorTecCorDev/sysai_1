@@ -461,6 +461,9 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - **Re-apertura del POA Rendición** por el Contador (MVP = ciclo enviar→aprobar una vez).
 - **Rollover de cierre anual** — traspaso de saldo entre años (`fuente_presupuesto_anual` ya existe).
 - **Reportes Excel nuevos/ampliados** — se conserva lo existente; no se agregan nuevos en MVP.
+- **Auditoría con triggers** (decisión 2026-07-16) — la infraestructura existe (tabla `auditoria`,
+  `setUsuarioActual()` en ~20 controladores) pero nadie consume `@usuario_actual`. Al implementarla:
+  redimensionar `auditoria.usuario` (`varchar(8)` → no cabe el email) y revisar `auditoria.id` AUTO_INCREMENT.
 - **Avances** (`avance_actividad/producto/resultado`) — seguimiento, uso futuro.
 - **Indicadores a nivel de Producto/Resultado** (`indicador_producto`, `indicador_resultado`) — uso futuro.
 
@@ -472,7 +475,11 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - [x] ~~Bloqueo por intentos en `Login.php`~~ — **resuelto en `main`** (migr. 011 `login_intentos`; `models/Login.php` la usa). Cerrado 2026-07-15.
 - [x] ~~Retirar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (modelo y llamadas eliminados; `$ffnro` no se usaba en ninguna vista).
 - [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
-- [ ] B3 — esquema desalineado. ✅ Resueltos: overflow de montos (migr. 026), `fecha_original` (ya era `date`) y `email` UNIQUE (migr. 032, item 10). **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
+- [x] ~~B3 — esquema desalineado~~ — **CERRADO 2026-07-16** (barrido contra BD viva): overflow de montos,
+  `fecha_original`, `email` UNIQUE y `avance` (ya era `decimal(5,2)`/`(7,2)`, admite 100% — la nota
+  "decimal(2,2)" era de un dump viejo) todos verificados OK. La **auditoría sin triggers** se difiere a
+  **v1.1 por decisión** (hallazgos anotados en `docs/modelo-datos-detalle.md` §2: `auditoria.usuario
+  varchar(8)` vs identidad email → redimensionar al implementarla).
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [x] ~~B5 — código muerto de otro proyecto~~ — **HECHO 2026-07-16:** eliminados `includes/templates/` (6
   archivos de bienes raíces), `incluirTemplate()`/`TEMPLATES_URL`/`FUNCIONES_URL`/`CARPETA_IMAGENES`,
