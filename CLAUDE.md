@@ -75,12 +75,11 @@
 - **Servidor de desarrollo:** alias `local3000` = `php -S localhost:3000` ejecutado **desde la raíz del proyecto**. App en **http://localhost:3000**.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
   - ⚠️ **`php -S` NO procesa `.htaccess`** → en dev NO aplican los bloqueos de `controllers/`, `models/`, `*.sql`, `.env`, etc. Los `.htaccess` solo protegen en producción (Apache/Hostinger).
-  - 🔴 **Requisito TLS (Windows) para SMTP — HOY SIN CUMPLIR.** Verificado el 2026-07-15: en
-    `C:\xampp\php\php.ini` tanto `openssl.cafile` como `curl.cainfo` están **vacíos**. La receta estaba escrita
-    para el desaparecido `C:\php\php.ini`, así que se perdió al migrar a la PHP de XAMPP. **No molesta mientras
-    `MAIL_USERNAME`/`MAIL_PASSWORD` sigan vacíos** (modo DEV: el token va a `includes/logs/mail.log` y no se envía
-    correo), pero **el día que se configure SMTP real, la verificación TLS fallará**. Arreglo: en
-    `C:\xampp\php\php.ini` apuntar ambas a `C:\xampp\apache\bin\curl-ca-bundle.crt` y reiniciar el servidor.
+  - ✅ **Requisito TLS (Windows) para SMTP — CUMPLIDO (2026-07-16).** En `C:\xampp\php\php.ini`,
+    `openssl.cafile` y `curl.cainfo` apuntan a `C:\xampp\apache\bin\curl-ca-bundle.crt`. Verificado:
+    HTTPS por streams y handshake TLS verificado contra `smtp.gmail.com:465` OK. El día que se configure
+    SMTP real (`MAIL_USERNAME`/`MAIL_PASSWORD` en `.env`), PHPMailer ya puede verificar el certificado.
+    (Si se reinstala/actualiza XAMPP, revalidar estas dos claves del `php.ini`.)
 
 **Pasos de arranque:**
 ```bash
