@@ -56,21 +56,31 @@ class UsuarioController
 
             if (empty($errores)) {
                 // 1) Persona
-                $persona->guardarsinRedireccion();
-                // 2) Usuario (vinculado a la persona recién creada)
-                $usuario->persona_id = $persona->devolverIdLastInsercion();
-                $usuario->guardarsinRedireccion();
-                $nuevoUsuarioId = $usuario->devolverIdLastInsercion();
+                if (!$persona->guardarsinRedireccion()) {
+                    $errores[] = 'No se pudo registrar la persona. Intente nuevamente.';
+                } else {
+                    // 2) Usuario (vinculado a la persona recién creada)
+                    $usuario->persona_id = $persona->devolverIdLastInsercion();
+                    $persona->id = $usuario->persona_id;
+                    if (!$usuario->guardarsinRedireccion()) {
+                        // No dejar personas huérfanas si el usuario no se pudo crear
+                        // (p. ej. email duplicado que atrapó el UNIQUE de la migr. 032).
+                        $persona->eliminarsinRedireccion();
+                        $errores[] = 'No se pudo registrar el usuario. Intente nuevamente.';
+                    } else {
+                        $nuevoUsuarioId = $usuario->devolverIdLastInsercion();
 
-                // 3) Vínculo coordinador-programa (solo coordinadores con programa elegido)
-                if ($usuario->cargo_id == 3 && $programaSeleccionado) {
-                    CoordinadorPrograma::asignarPrograma(
-                        $nuevoUsuarioId,
-                        $_POST['coordinador_programa']['programa_id']
-                    );
+                        // 3) Vínculo coordinador-programa (solo coordinadores con programa elegido)
+                        if ($usuario->cargo_id == 3 && $programaSeleccionado) {
+                            CoordinadorPrograma::asignarPrograma(
+                                $nuevoUsuarioId,
+                                $_POST['coordinador_programa']['programa_id']
+                            );
+                        }
+                        header("Location: /usuario/admin?resultado=1");
+                        exit();
+                    }
                 }
-                header("Location: /usuario/admin?resultado=1");
-                exit();
             }
         }
         $router->render('usuario/crear', [
@@ -112,8 +122,13 @@ class UsuarioController
         $errores = Usuario::getErrores();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // A2 — mass assignment: por POST solo se editan los datos del formulario.
+            // El password se cambia únicamente por el flujo de recuperación; los ids,
+            // persona_id y reset_token no se reasignan nunca desde el formulario.
+            $protegidos = [$usuario->id, $usuario->persona_id, $usuario->password, $usuario->reset_token, $persona->id];
             $persona->sincronizar($_POST['persona']);
             $usuario->sincronizar($_POST['usuario']);
+            [$usuario->id, $usuario->persona_id, $usuario->password, $usuario->reset_token, $persona->id] = $protegidos;
             $programaSeleccionadoId = (int) ($_POST['coordinador_programa']['programa_id'] ?? 0);
 
             $errores = $persona->validar();
@@ -172,14 +187,28 @@ class UsuarioController
                     // 1) Quitar vínculos coordinador-programa (FK → usuario)
                     CoordinadorPrograma::eliminarPorUsuario($idusuario);
 
-                    // 2) Eliminar POAs legados ligados al usuario (FK poa.usuario_id → usuario)
-                    $poas = Poa::findxatributo('usuario_id', $idusuario);
-                    foreach ($poas as $poa) {
+                    // 2) Eliminar los documentos ligados al usuario por FK: poa,
+                    //    poa_indicadores y poa_rendicion (vestigial). Sin esto el
+                    //    DELETE del usuario fallaba EN SILENCIO (MYSQLI_REPORT_OFF)
+                    //    y el admin veía "Eliminado correctamente" con el usuario intacto.
+                    foreach (Poa::findxatributo('usuario_id', $idusuario) as $poa) {
                         $poa->eliminarsinRedireccion();
                     }
+                    foreach (\Model\PoaIndicadores::findxatributo('usuario_id', $idusuario) as $poai) {
+                        $poai->eliminarsinRedireccion();
+                    }
+                    Usuario::ejecutarPreparado(
+                        "DELETE FROM poa_rendicion WHERE usuario_id = ?",
+                        'i',
+                        [$idusuario]
+                    );
 
-                    // 3) Eliminar usuario y su persona
-                    $usuario->eliminarsinRedireccion();
+                    // 3) Eliminar usuario y su persona — VERIFICANDO el resultado:
+                    //    si algo lo impide, se informa (resultado=25), no se miente.
+                    if (!$usuario->eliminarsinRedireccion()) {
+                        header("Location: /usuario/admin?resultado=25");
+                        exit();
+                    }
                     if ($persona) {
                         $persona->eliminarsinRedireccion();
                     }

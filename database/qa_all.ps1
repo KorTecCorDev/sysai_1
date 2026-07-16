@@ -35,7 +35,7 @@ if (-not $SkipSeed) {
     Write-Host "Fixture de QA instalado." -ForegroundColor DarkGray
 }
 
-$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1', 'qa_cierre_anual.ps1')
+$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1', 'qa_cierre_anual.ps1', 'qa_usuarios.ps1')
 $fail = 0
 foreach ($s in $scripts) {
     Write-Host "`n########## $s ##########" -ForegroundColor Magenta

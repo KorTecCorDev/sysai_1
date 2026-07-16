@@ -469,6 +469,10 @@ function mostrarNotificacion($codigo)
         case 24:
             $mensaje = 'No se registró el cierre: no hay fuentes de financiamiento con datos que guardar';
             break;
+        //ELIMINACIÓN DE USUARIO FALLIDA (item 10 — antes fallaba en silencio)
+        case 25:
+            $mensaje = 'No se pudo eliminar el usuario: tiene registros vinculados que lo impiden. Verifica sus documentos e inténtalo de nuevo';
+            break;
         default:
             $mensaje = false;
             break;

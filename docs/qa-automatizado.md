@@ -17,7 +17,8 @@
 | `qa_oie.ps1` | 7 | OIE solo Contador (coordinador sin rutas), CSRF, ingreso híbrido (total de fuente = `programa_id` NULL / al sobre), egreso con programa obligatorio + sobre existente + tope por sobre (con exclusión del propio OIE al editar), sin comprobantes huérfanos, eliminar borra OIE+comprobante, saldos en vistas. **22** |
 | `qa_reportes.ps1` | reportes (plan de montos F4-5) | Las 7 rutas de reporte + `/saldos_contables/saldos` **con TC y sin ningún TC**: 200 sin fatal siempre (antes: `DivisionByZeroError` con las tablas de TC vacías); saldos muestra la conversión al cierre con tasa visible y "sin tipo de cambio registrado" cuando falta. **19** |
 | `qa_cierre_anual.ps1` | 8 | Cierre anual: rol (coordinador sin ruta), CSRF 419, snapshot correcto por fuente (inicial\|comprometido=Σ sobres\|contable), re-cierre upsert sin duplicar con cifras frescas y aviso de reemplazo, advertencia de rendiciones pendientes, y visibilidad del saldo de sobre solo con POA Aprobado (badge si no). **16** |
-| `qa_all.ps1` | — | **Runner**: corre los seis y resume (esperado: `TODOS LOS ARNESES OK`, 117 checks). |
+| `qa_usuarios.ps1` | 10 | CRUD de usuarios (solo Admin — el arnés crea su propio admin temporal, sin tocar al real): rol, CSRF, alta con password provisional bcrypt, email duplicado (validación + UNIQUE migr. 032) y formato, vínculo coordinador↔programa (alta y retiro al cambiar de cargo), anti mass-assignment del password (A2), y eliminación real que limpia `poa_indicadores` sin mentir. **14** |
+| `qa_all.ps1` | — | **Runner**: corre los siete y resume (esperado: `TODOS LOS ARNESES OK`, 131 checks). |
 
 ## Cómo ejecutar (desde la raíz del proyecto)
 
@@ -37,7 +38,7 @@ pwsh -File database\qa_poa_presupuestal.ps1
 
 ## Prerrequisitos
 - Servidor `local3000` corriendo y **MariaDB de XAMPP** arriba.
-- BD `sysai` con migraciones **001-031** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
+- BD `sysai` con migraciones **001-032** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
   jerarquía Resultado→Producto→Actividad y **rubros**; programa **5** para los tests cross-tenant).
 - Usuarios de prueba: **coordinador@sysai.test / `Test1234*`** (programa 1) y **contador@sysai.test / `admin1234`**
   (esta última también es la del admin `robertokar97@gmail.com`).

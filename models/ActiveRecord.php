@@ -156,9 +156,11 @@ class ActiveRecord
     //Funciones
 
     //Eliminar un registro
-    public function eliminarsinRedireccion()
+    public function eliminarsinRedireccion(): bool
     {
-        // M3 — DELETE parametrizado.
+        // M3 — DELETE parametrizado. Devuelve el resultado real para que el llamador
+        // pueda reaccionar (p. ej. una FK que impide el borrado NO debe reportarse
+        // como éxito — item 10). Los llamadores que lo ignoran no cambian.
         $resultado = self::ejecutarPreparado(
             "DELETE FROM " . static::$tabla . " WHERE id = ? LIMIT 1",
             'i',
@@ -167,6 +169,7 @@ class ActiveRecord
         if ($resultado) {
             $this->borrarImagen();
         }
+        return (bool) $resultado;
     }
     /**
      * Elimina un registro de la base de datos. 

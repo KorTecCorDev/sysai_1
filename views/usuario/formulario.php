@@ -33,7 +33,10 @@
     <legend>Datos del acceso de usuario</legend>
     <div class="mb-3 w-50">
         <label for="email" class="form-label">Email</label>
-        <input type="email" style="text-transform: uppercase" class="form-control shadow-sm" id="email" aria-describedby="emailHelp" name="usuario[email]" value="<?php echo s($usuario->email); ?>">
+        <?php /* Sin text-transform: el email se guarda tal cual se teclea (está en
+                 $columnasSinMayuscula) — mostrarlo en mayúsculas mientras se escribe
+                 confundía sobre lo que realmente se registra. */ ?>
+        <input type="email" class="form-control shadow-sm" id="email" aria-describedby="emailHelp" name="usuario[email]" value="<?php echo s($usuario->email); ?>">
         <div id="emailHelp" class="form-text">Ingrese el email para el acceso</div>
     </div>
     <div class="mb-3">

@@ -24,8 +24,10 @@ class Usuario extends ActiveRecord
         $this->persona_id = $args['persona_id'] ?? '';
         $this->cargo_id = $args['cargo_id'] ?? '';
         $this->email = $args['email'] ?? '';
-        //El password se genera solo al crear el usuario
-        $this->password = $args['password'] ?? password_hash(generarCodigoAleatorioSimple(10), PASSWORD_DEFAULT);;
+        // Password provisional ALEATORIO (crudo; el controlador lo hashea al crear).
+        // No hay campo de contraseña en el formulario a propósito: el usuario define
+        // la suya con el flujo de recuperación (/chgpsswd) usando su email.
+        $this->password = $args['password'] ?? generarCodigoAleatorioSimple(10);
         $this->fecha = date('Y/m/d H:i:s');
         $this->reset_token = $args['reset_token'] ?? null;
     }
@@ -35,12 +37,16 @@ class Usuario extends ActiveRecord
         // El código de usuario fue eliminado: se identifica por email + nombre.
         if (!$this->email) {
             self::$errores[] = 'Debes añadir el correo válido del usuario';
+        } elseif (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
+            // El email es la llave del login y de la recuperación de contraseña:
+            // un valor con formato inválido deja al usuario inaccesible.
+            self::$errores[] = 'El correo no tiene un formato válido';
         }
         if (!$this->cargo_id) {
             self::$errores[] = 'Debes de seleccionar un cargo válido';
         }
-        //Verificar si el email ya existe para otro usuario
-        //Usamos la propiedad email porque así está definido en el FRONT
+        //Verificar si el email ya existe para otro usuario (además del UNIQUE en BD,
+        //migr. 032: este pre-chequeo da el mensaje legible).
         if (self::existeDato($this,['email'])) {
             self::$errores[] = 'El correo ya está registrado para otro usuario';
         }

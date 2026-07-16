@@ -90,7 +90,7 @@ npm run dev                           # = gulp; recompila build/ (opcional: buil
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-031
+php database/migrate.php                                                       # aplica migrations/001-032
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
@@ -385,17 +385,17 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 ### Identidad
 - **`persona`** (datos personales: `nro_documento` UNIQUE, apellidos, nombres, telefono).
-- **`usuario`** (`persona_id` UNIQUE, `cargo_id`, `descripcion` = código corto UNIQUE, `email`,
-  `password` char(60) bcrypt, `reset_token`). ⚠️ `email` **NO es UNIQUE** (riesgo en login `LIMIT 1`).
+- **`usuario`** (`persona_id` UNIQUE, `cargo_id`, `email` **UNIQUE** desde la migr. 032 —el código corto
+  `descripcion` se retiró en la migr. 024—, `password` char(60) bcrypt, `reset_token`).
 
 ---
 
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-031** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`).
-- **BD local `sysai`:** migraciones aplicadas hasta 031. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-031 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Migraciones vigentes: **001-032** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3).
+- **BD local `sysai`:** migraciones aplicadas hasta 032. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-032 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
   Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
 - **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 
@@ -414,7 +414,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 | 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
 | 8 | Saldos (fuente + **sobre** + comprometido + **cierre anual**) | ✅ COMPLETADO (2026-07-16) — cierre anual manual + histórico + visibilidad por POA (QA 16/16, suite 117/117) |
 | 9 | Reportes Excel | ⏸ diferido v1.1 |
-| 10 | Usuarios | ⬜ PENDIENTE |
+| 10 | Usuarios | ✅ COMPLETADO (2026-07-16) — revisión + fixes del CRUD, email UNIQUE (migr. 032), QA 14/14 (suite 131/131) |
 
 > Detalle de construcción + QA de los items **completados (2-6)**: `docs/historial-implementacion-items-2-6.md`.
 > **Sub-presupuestos ("sobres") — Fases 1-5 (2026-07-09):** migr. 020-021, validaciones (`validarLimiteSobre`, `validarLimiteAsignacion`), saldos por sobre + comprometido, y captura de `monto_asignado` en `/dfinanciamiento/crear`. Ver *Fuentes*, *Rubros*, *Saldos*.
@@ -423,11 +423,17 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 
 ## [SECCION: BACKLOG PENDIENTE]
 
-> Cada ítem es código (modelo/controlador/vista/rutas). La BD ya está migrada.
-> Rutas por rol: registrar cada acción nueva en `iadmin.php`, `iconta.php`, `icoordi.php` según corresponda.
+> ✅ **El backlog de negocio del MVP está COMPLETO** (items 1-8 y 10; el 9 —Reportes Excel nuevos— quedó en
+> v1.1 por decisión). Lo abierto vive en *[SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]* (deuda técnica y
+> confirmaciones de negocio) y en *[SECCION: DIFERIDO A v1.1]*.
 
-### 10 — Usuarios
-- [ ] Revisión/ajustes finales del CRUD de usuarios (el vínculo coordinador-programa ya está en item 2).
+### Item 10 — Usuarios (✅ completado 2026-07-16, QA `qa_usuarios.ps1` 14/14)
+La revisión final del CRUD corrigió: `eliminar()` no limpiaba `poa_indicadores`/`poa_rendicion` (FK) y el
+DELETE fallaba EN SILENCIO reportando éxito (ahora `eliminarsinRedireccion()` devuelve `bool`, se verifica, y
+falla con `resultado=25`); `crear()` podía dejar personas huérfanas (ahora verifica y deshace); mass assignment
+en `actualizar()` (password/persona_id/reset_token/ids protegidos, patrón A2); email con formato validado
+(`FILTER_VALIDATE_EMAIL`) y **UNIQUE en BD** (migr. 032, cierra esa parte de B3). El password del alta es un
+provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por diseño no hay campo de contraseña).
 
 ---
 
@@ -459,7 +465,7 @@ detalle_financiamiento  (N:M programa ↔ fuente_financiamiento; `monto_asignado
 - [x] ~~Bloqueo por intentos en `Login.php`~~ — **resuelto en `main`** (migr. 011 `login_intentos`; `models/Login.php` la usa). Cerrado 2026-07-15.
 - [x] ~~Retirar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (modelo y llamadas eliminados; `$ffnro` no se usaba en ninguna vista).
 - [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
-- [ ] B3 — esquema desalineado. ✅ Resueltos 2026-07-15: overflow de montos (migr. 026) y `fecha_original` (ya era `date`). **Quedan:** `avance decimal(2,2)`, `email` no UNIQUE (riesgo login `LIMIT 1`), auditoría sin triggers.
+- [ ] B3 — esquema desalineado. ✅ Resueltos: overflow de montos (migr. 026), `fecha_original` (ya era `date`) y `email` UNIQUE (migr. 032, item 10). **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 - [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
