@@ -42,7 +42,12 @@
                                         echo s($tprograma->id == $programa->tipo_programa_id ? $tprograma->descripcion : '');
                                     }
                                     ?> </td>
-                            <td> <?php echo s($programa->nombre); ?> </td>
+                            <td>
+                                <?php echo s($programa->nombre); ?>
+                                <?php if ((int) ($programa->es_institucional ?? 0) === 1) : ?>
+                                    <span class="badge bg-info text-dark ms-1" title="Programa permanente: su presupuesto se forma con las transferencias de los demás programas">Institucional</span>
+                                <?php endif; ?>
+                            </td>
                             <td> <?php echo s($programa->descripcion); ?> </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
@@ -52,6 +57,8 @@
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
 
+                                    <?php // El Institucional es permanente: sin botón eliminar (guarda espejo en el controlador). ?>
+                                    <?php if ((int) ($programa->es_institucional ?? 0) !== 1) : ?>
                                     <form method="POST" action="/programa/eliminar" class="d-inline"><?php echo csrf_input(); ?>
                                         <input type="hidden" name="id" value="<?php echo s($programa->id); ?>">
                                         <input type="hidden" name="tipo" value="programa">
@@ -62,6 +69,7 @@
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
                                     </form>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>

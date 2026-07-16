@@ -465,6 +465,18 @@ function mostrarNotificacion($codigo)
         case 25:
             $mensaje = 'No se pudo eliminar el usuario: tiene registros vinculados que lo impiden. Verifica sus documentos e inténtalo de nuevo';
             break;
+        //PROGRAMA INSTITUCIONAL — NO RECIBE SOBRES DIRECTOS NI SE OPERA COMO DESTINO (migr. 033)
+        case 26:
+            $mensaje = 'El programa Institucional no recibe sobres directos: su presupuesto se forma con las transferencias registradas al asignar los sobres de cada programa';
+            break;
+        //TRANSFERENCIA AL INSTITUCIONAL — REDUCCIÓN BLOQUEADA POR GASTO YA COMPROMETIDO (migr. 033)
+        case 27:
+            $mensaje = 'No se puede reducir o quitar la transferencia: el programa Institucional ya comprometió ese dinero (rendiciones o egresos contra su sobre en esta fuente)';
+            break;
+        //PROGRAMA INSTITUCIONAL — PROTEGIDO CONTRA ELIMINACIÓN (migr. 033)
+        case 28:
+            $mensaje = 'El programa Institucional no puede eliminarse: es parte permanente de la organización';
+            break;
         default:
             $mensaje = false;
             break;

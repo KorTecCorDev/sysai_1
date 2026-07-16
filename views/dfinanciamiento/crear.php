@@ -95,17 +95,36 @@
                         </div>
 
                         <?php if ($vinculada) : ?>
-                            <!-- Vinculada: monto del sobre + acción Quitar -->
-                            <div class="text-center mb-3">
+                            <!-- Vinculada: monto del sobre + transferencia al Institucional + acción Quitar -->
+                            <?php $montoTransfer = (float) (($transferencias ?? [])[(int) $ff->id] ?? 0); ?>
+                            <div class="text-center mb-2">
                                 <div class="text-muted small">Sobre asignado a este programa</div>
                                 <div class="fs-5 fw-bold text-success"><?php echo soles($montoSobre); ?></div>
                             </div>
+                            <?php // Transferencia al Institucional del par (fuente, programa) — editable;
+                                  // 0 = quitarla. Guardas de capacidad/reducción en el controlador. ?>
+                            <form method="POST" class="mb-2"><?php echo csrf_input(); ?>
+                                <input type="hidden" name="transferencia[fuente_financiamiento_id]" value="<?php echo s($ff->id); ?>">
+                                <label class="form-label small mb-1" for="transfer-<?php echo s($ff->id); ?>">Transferencia al Institucional (S/)</label>
+                                <div class="input-group input-group-sm mb-1">
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                           id="transfer-<?php echo s($ff->id); ?>" name="transferencia[monto]"
+                                           value="<?php echo $montoTransfer > 0 ? s(number_format($montoTransfer, 2, '.', '')) : ''; ?>"
+                                           placeholder="0.00">
+                                    <button type="submit" class="btn btn-outline-primary" title="Guardar transferencia">
+                                        <i class="bi bi-arrow-left-right"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text mb-1"><?php echo $montoTransfer > 0
+                                    ? 'Transferido: ' . soles($montoTransfer) . ' (0 para quitarla)'
+                                    : 'Parte de esta fuente destinada a gastos administrativos'; ?></div>
+                            </form>
                             <form method="POST" class="mt-auto"><?php echo csrf_input(); ?>
                                 <input type="hidden" name="detalle_financiamiento[fuente_financiamiento_id]" value="<?php echo s($ff->id); ?>">
                                 <input type="hidden" name="detalle_financiamiento[programa_id]" value="<?php echo s($programaSeleccionado->id); ?>">
                                 <input type="hidden" name="detalle_financiamiento[tipo]" value="detalle_financiamiento">
                                 <button type="submit" class="btn btn-outline-danger w-100"
-                                        data-confirm="¿Quitar el vínculo de esta fuente con el programa?">
+                                        data-confirm="¿Quitar el vínculo de esta fuente con el programa?<?php echo $montoTransfer > 0 ? ' Se quitará también su transferencia al Institucional.' : ''; ?>">
                                     <i class="bi bi-x-circle me-1"></i>Quitar
                                 </button>
                             </form>
@@ -121,7 +140,12 @@
                                        class="form-control form-control-sm mb-1" id="monto-<?php echo s($ff->id); ?>"
                                        name="detalle_financiamiento[monto_asignado]" placeholder="0.00"
                                        <?php echo $sinCupo ? 'disabled' : ''; ?>>
-                                <div class="form-text mb-2">Disponible en la fuente: <?php echo soles($disponible); ?></div>
+                                <label class="form-label small mb-1" for="transfernuevo-<?php echo s($ff->id); ?>">Transferencia al Institucional (S/) <span class="text-muted">— opcional</span></label>
+                                <input type="number" step="0.01" min="0" max="<?php echo $disponible; ?>"
+                                       class="form-control form-control-sm mb-1" id="transfernuevo-<?php echo s($ff->id); ?>"
+                                       name="transferencia_institucional[monto]" placeholder="0.00"
+                                       <?php echo $sinCupo ? 'disabled' : ''; ?>>
+                                <div class="form-text mb-2">Disponible en la fuente: <?php echo soles($disponible); ?> (sobre + transferencia)</div>
                                 <button type="submit" class="btn btn-primary w-100" <?php echo $sinCupo ? 'disabled' : ''; ?>>
                                     <i class="bi bi-plus-circle me-1"></i>Agregar
                                 </button>

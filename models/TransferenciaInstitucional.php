@@ -64,6 +64,16 @@ class TransferenciaInstitucional extends ActiveRecord
         return $filas[0] ?? null;
     }
 
+    /** Todas las transferencias de UN programa origen (mapa para las cards y reportes). */
+    public static function porOrigen(int $programaOrigenId): array
+    {
+        return self::consultarPreparado(
+            "SELECT * FROM " . static::$tabla . " WHERE programa_origen_id = ? ORDER BY fuente_financiamiento_id",
+            'i',
+            [$programaOrigenId]
+        );
+    }
+
     /** Todas las transferencias de una fuente (para las cards de /dfinanciamiento). */
     public static function porFuente(int $ffId): array
     {

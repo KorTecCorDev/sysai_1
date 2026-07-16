@@ -14,12 +14,15 @@
             <select id="programs" name="detalle_financiamiento[programa_id]" class="form-select">
                 <option value="" disabled <?php echo $selId === null ? 'selected' : ''; ?>>--Seleccione--</option>
                 <?php foreach ($programas as $programa) : ?>
+                    <?php // El Institucional NO recibe sobres directos: su sobre se deriva
+                          // de las transferencias (migr. 033) — se excluye como destino.
+                          if ((int) ($programa->es_institucional ?? 0) === 1) continue; ?>
                     <option value="<?php echo s($programa->id); ?>" <?php echo ((string) $programa->id === $selId) ? 'selected' : ''; ?>>
                         <?php echo s($programa->nombre); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <div class="form-text">Seleccione el programa que desea vincular</div>
+            <div class="form-text">Seleccione el programa que desea vincular. La parte destinada al programa Institucional se captura en cada fuente.</div>
         </div>
     </form>
 </fieldset>

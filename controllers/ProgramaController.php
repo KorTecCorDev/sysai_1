@@ -42,7 +42,10 @@ class ProgramaController
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //Creamos una nueva instancia
-            $programa = new Programa($_POST['programa']);
+            $args = $_POST['programa'];
+            // El flag institucional NO es asignable por formulario (solo migr. 033/seeds).
+            unset($args['es_institucional'], $args['id']);
+            $programa = new Programa($args);
             //Validamos
             $errores = $programa->validar();
             //Si no hubiera errores...
@@ -88,6 +91,9 @@ class ProgramaController
         if ($_SERVER["REQUEST_METHOD"] === 'POST') {
             //Asignamos atributos
             $args = $_POST['programa'];
+            // El flag institucional NO es asignable por formulario (patrón A2:
+            // solo lo fijan la migr. 033 y los seeds).
+            unset($args['es_institucional'], $args['id'], $args['codigo']);
             //Sincronizamos
             $programa->sincronizar($args);
             //Validamos
@@ -127,6 +133,12 @@ class ProgramaController
                 if (validarTipoContenido($tipo)) {
                     $programa = Programa::find($idprograma);
                     if ($programa) {
+                        // El programa Institucional es permanente (migr. 033): sin él no
+                        // funcionan las transferencias ni los gastos administrativos.
+                        if ($programa->esInstitucional()) {
+                            header("Location: /programa/admin?resultado=28");
+                            exit();
+                        }
                         //Insertando la acción de audi para el usuario actual
                         //Enviamos el codigo de usuario a la base de datos
                         $vali = Programa::setUsuarioActual();

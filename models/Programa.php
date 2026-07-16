@@ -27,8 +27,8 @@ class Programa extends ActiveRecord
         $this->descripcion = $args['descripcion'] ?? '';
         $this->fecha = date('Y/m/d H:i:s');
         $this->tipo_programa_id = $args['tipo_programa_id'] ?? '';
-        // El flag NUNCA viene de formularios (solo migr. 033 / seeds lo fijan);
-        // el default 0 protege el alta normal y los controladores lo excluyen del POST.
+        // Args con flag solo al hidratar desde BD; los controladores lo excluyen
+        // del POST (patrón A2) — solo la migr. 033 y los seeds lo fijan en 1.
         $this->es_institucional = $args['es_institucional'] ?? 0;
     }
 
