@@ -12,7 +12,6 @@ use Model\ReporteFuentesVista;
 use Model\FuenteFinanciamiento;
 use Model\ReporteIngresosVista;
 use Model\RendicionFuentesVista;
-use Model\ReportePoaRubrosSumas;
 use Model\ReporteRendicionesVista;
 use Model\UsuarioDisponiblePrograma;
 use Model\ReporteFuentesProgramaVista;
@@ -63,8 +62,6 @@ class ReportePoaRubrosController
         // Obtenemos todos los registros de ReportePoaRubros
         $resbienes = ReportePoaRubros::all();
 
-        // Obtenemos los demás datos requeridos
-        $sumas = ReportePoaRubrosSumas::all();
         [$tcdolar, $tceuro] = self::tcCierre();
 
         $router->render('reporte/poa', [
@@ -73,7 +70,6 @@ class ReportePoaRubrosController
             'programas'  => $programas,
             'resbienes'  => $resbienes,
             'usrcod'  => $usrcod,
-            'sumas'      => $sumas,
             'poaid'      => $poaid
         ]);
     }
@@ -89,20 +85,15 @@ class ReportePoaRubrosController
         // Obtenemos todos los registros de ReportePoaRubros
         $resbienes = ReportePoaRubros::all();
 
-        // Obtenemos los demás datos requeridos
-        $sumas = ReportePoaRubrosSumas::all();
+        // Rendiciones APROBADAS del año, por rubro×fuente (migr. 034).
         $rendiciones = RendicionFuentesVista::all();
         [$tcdolar, $tceuro] = self::tcCierre();
-        // (RendicionFuentesCantidadVista retirada: consultaba la vista
-        //  cantidad_fuentes_rendicion, eliminada en la migr. 009, y su resultado
-        //  no se usaba en ninguna vista — solo ensuciaba el error_log.)
         $fuentes = ReporteFuentesProgramaVista::all();
         $router->render('reporte/poarendicion', [
             'tcdolar'    => $tcdolar,
             'programas'  => $programas,
             'tceuro'     => $tceuro,
             'resbienes'  => $resbienes,
-            'sumas'      => $sumas,
             'fuentes'    => $fuentes,
             'usrcod'  => $usrcod,
             'rendiciones' => $rendiciones
@@ -125,10 +116,8 @@ class ReportePoaRubrosController
         //Tomamos todas las fuentes de financiamiento disponibles
         $fuentes = ReporteFuentesProgramaVista::all();
 
-        //Tomamos todas las rendiciones para el reporte
+        //Tomamos todas las rendiciones para el reporte (aprobadas del año, por rubro — migr. 034)
         $rendiciones = RendicionFuentesVista::all();
-        // Obtenemos los demás datos requeridos
-        $sumas = ReportePoaRubrosSumas::all();
         [$tcdolar, $tceuro] = self::tcCierre();
 
         $router->render('reporte/poarubros', [
@@ -137,7 +126,6 @@ class ReportePoaRubrosController
             'fuentes'    => $fuentes,
             'programas'  => $programas,
             'resbienes'  => $resbienes,
-            'sumas'      => $sumas,
             'rendiciones' => $rendiciones,
             'usrcod'  => $usrcod
         ]);

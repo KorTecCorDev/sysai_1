@@ -1,6 +1,7 @@
 <?php
 
 use Model\ReportePoaRubros;
+use Model\TransferenciaInstitucional;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
@@ -158,6 +159,29 @@ foreach ($resbienesAgrupados as $respoas) {
   $newcntrow = ReportePoaRubros::insertarCeldasReportePOA($sheet, $respoas, $tcdolar, $tceuro, $ultcont);
   $cntrows = $newcntrow; // Actualizar $cntrows con el valor retornado por la función
 
+  // Fila "TRANSFERENCIA A PROGRAMA INSTITUCIONAL" (migr. 033): última fila antes
+  // de la sumatoria — el total del bloque = Σ rubros + transferencia (lo que el
+  // donante ve cargado al grant). Solo si el programa transfirió algo.
+  $transferPrograma = TransferenciaInstitucional::totalPorOrigen((int) $respoas[0]->id_programa);
+  if ($transferPrograma > 0) {
+    $sheet->mergeCells("A{$newcntrow}:F{$newcntrow}");
+    $sheet->setCellValue("A{$newcntrow}", 'TRANSFERENCIA A PROGRAMA INSTITUCIONAL');
+    $sheet->getStyle("A{$newcntrow}")->getFont()->setBold(true)->setSize(11);
+    $sheet->getStyle("A{$newcntrow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+    $sheet->setCellValue("G{$newcntrow}", $transferPrograma);
+    $usdTransfer = convertirMoneda($transferPrograma, ($tcdolar->venta ?? 0));
+    $eurTransfer = convertirMoneda($transferPrograma, ($tceuro->venta ?? 0));
+    $sheet->setCellValue("H{$newcntrow}", $usdTransfer ?? '—');
+    $sheet->setCellValue("I{$newcntrow}", $eurTransfer ?? '—');
+    $newcntrow++; // la fila de totales baja una posición y su rango la incluye
+  }
+
+  // Etiqueta de la fila de totales (antes quedaba sin nombre).
+  $sheet->mergeCells("A{$newcntrow}:C{$newcntrow}");
+  $sheet->setCellValue("A{$newcntrow}", 'TOTAL');
+  $sheet->getStyle("A{$newcntrow}")->getFont()->setBold(true)->setSize(12);
+  $sheet->getStyle("A{$newcntrow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
   //SECCIÓN DE LA SUMA TOTALES DE COLUMNAS
   $limite = array_search($ultimacolumna, $columnassumar);
   for ($i = 0; $i <= $limite; $i++) {
@@ -208,7 +232,9 @@ foreach ($resbienesAgrupados as $respoas) {
   $newcntrow += 3; // Incrementar en 1 el valor de $newcntrow
   $colorIndex++; // Incrementar el índice del color
 }
-ReportePoaRubros::combinarCeldasRepetidas($sheet, $columnas);
+// Solo columnas de ETIQUETAS (A, B): fusionar montos iguales adyacentes (D/F/G…)
+// hacía desaparecer importes visualmente.
+ReportePoaRubros::combinarCeldasRepetidas($sheet, ['A', 'B']);
 
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
 // Guardando el archivo Excel
