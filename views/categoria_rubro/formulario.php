@@ -12,13 +12,13 @@
 
     <div class="mb-3 w-auto">
     <label for="nombre" class="form-label">Nombre</label>
-    <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="nombre" aria-describedby="nombreHelp" name="categoria_rubro[nombre]" value="<?php echo s($categoria_rubro->nombre); ?>">
+    <input type="text" class="form-control shadow-sm" id="nombre" aria-describedby="nombreHelp" name="categoria_rubro[nombre]" value="<?php echo s($categoria_rubro->nombre); ?>">
     <div id="nombreHelp" class="form-text">Ingrese el nombre que recibirá la categoría de rubro</div>
     </div>
 
     <div class="mb-3 w-auto">
     <label for="descripcion" class="form-label">Descripción</label>
-    <textarea type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="descripcion" aria-describedby="descripcionHelp" name="categoria_rubro[descripcion]"><?php echo s($categoria_rubro->descripcion); ?></textarea>
+    <textarea type="text" class="form-control shadow-sm" id="descripcion" aria-describedby="descripcionHelp" name="categoria_rubro[descripcion]"><?php echo s($categoria_rubro->descripcion); ?></textarea>
     <div id="descripcionHelp" class="form-text">Ingrese la descripción que recibirá la categoría de rubro</div>
     </div>
 

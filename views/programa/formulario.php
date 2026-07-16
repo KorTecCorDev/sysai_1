@@ -12,7 +12,7 @@
 
     <div class="mb-3">
         <label for="nombre" class="form-label">Nombre</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="nombre" name="programa[nombre]" aria-describedby="nombreHelp" value="<?php echo s($programa->nombre); ?>">
+        <input type="text" class="form-control shadow-sm" id="nombre" name="programa[nombre]" aria-describedby="nombreHelp" value="<?php echo s($programa->nombre); ?>">
         <div id="nombreHelp" class="form-text">Ingrese el nombre que recibirá este programa</div>
     </div>
 
@@ -34,7 +34,7 @@
     <!-- SELECT DE TIPOS DE PROGRAMA -->
     <div class="mb-3">
         <label for="descripcion" class="form-label">Descripción</label>
-        <textarea style="text-transform: uppercase" class="form-control shadow-sm" id="descripcion" name="programa[descripcion]" aria-describedby="descripcionHelp"><?php echo s($programa->descripcion); ?></textarea>
+        <textarea class="form-control shadow-sm" id="descripcion" name="programa[descripcion]" aria-describedby="descripcionHelp"><?php echo s($programa->descripcion); ?></textarea>
         <div id="descripcionHelp" class="form-text">Ingrese la descripción que recibirá este programa</div>
     </div>
 </fieldset>

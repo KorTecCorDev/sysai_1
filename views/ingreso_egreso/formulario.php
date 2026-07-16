@@ -41,7 +41,7 @@
     <!-- Codigo -->
     <div class="mb-3 w-25">
         <label for="codigo" class="form-label">Código</label>
-        <input style="text-transform: uppercase" type="text" class="form-control" id="codigo" aria-describedby="codigoHelp" name="oie[codigo]" value="<?php echo s($oie->codigo); ?>">
+        <input type="text" class="form-control" id="codigo" aria-describedby="codigoHelp" name="oie[codigo]" value="<?php echo s($oie->codigo); ?>">
         <div id="codigoHelp" class="form-text">Ingrese el código</div>
     </div>
     <!-- Codigo -->
@@ -49,7 +49,7 @@
     <!-- Descripcion -->
     <div class="mb-3">
         <label for="oie_descripcion" class="form-label">Descripción</label>
-        <input style="text-transform: uppercase" type="text" class="form-control" id="oie_descripcion" aria-describedby="oieDescripcionHelp" name="oie[descripcion]" value="<?php echo s($oie->descripcion); ?>">
+        <input type="text" class="form-control" id="oie_descripcion" aria-describedby="oieDescripcionHelp" name="oie[descripcion]" value="<?php echo s($oie->descripcion); ?>">
         <div id="oieDescripcionHelp" class="form-text">Ingrese la descripción</div>
     </div>
     <!-- Descripcion -->
@@ -64,7 +64,7 @@
     <div class="mb-3 w-auto">
         <div class="col-12 w-25">
             <label for="fecha_original" class="form-label">Fecha:</label>
-            <input style="text-transform: uppercase" type="date" class="form-control" id="fecha_original" name="oie_comprobante[fecha_original]" placeholder="Fecha del comprobante" value="<?php echo s($oie_comprobante->fecha_original); ?>">
+            <input type="date" class="form-control" id="fecha_original" name="oie_comprobante[fecha_original]" placeholder="Fecha del comprobante" value="<?php echo s($oie_comprobante->fecha_original); ?>">
         </div>
     </div>
     <!-- Fecha -->
@@ -86,7 +86,7 @@
     <div class="mb-3 w-25">
         <div class="col-12">
             <label for="ruc" class="form-label">RUC:</label>
-            <input style="text-transform: uppercase" type="text" class="form-control" id="ruc" name="oie_comprobante[ruc]" placeholder="RUC" value="<?php echo s($oie_comprobante->ruc); ?>">
+            <input type="text" class="form-control" id="ruc" name="oie_comprobante[ruc]" placeholder="RUC" value="<?php echo s($oie_comprobante->ruc); ?>">
         </div>
     </div>
     <!-- RUC -->

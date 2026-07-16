@@ -15,13 +15,6 @@ class ActiveRecord
     protected static $errores = [];
     protected static $aux = [];
 
-    // Columnas que NUNCA deben convertirse a MAYÚSCULAS:
-    //  - password    : el hash bcrypt es case-sensitive (uppercasearlo lo corrompe)
-    //  - reset_token  : token sensible a mayúsculas/minúsculas
-    //  - email        : se preserva tal cual (calidad de dato)
-    // Los modelos pueden sobreescribir esta lista si lo necesitan.
-    protected static $columnasSinMayuscula = ['password', 'reset_token', 'email'];
-
     // Columnas que persisten NULL real cuando llegan vacías (el resto normaliza null → '').
     // Opt-in por modelo, p. ej. otros_ingresos_egresos.programa_id (ingreso al total de la fuente).
     protected static $columnasNull = [];
@@ -91,7 +84,8 @@ class ActiveRecord
     {
         // M3 — INSERT parametrizado (prepared statement) en vez de escape_string+concatenación.
         // Los nombres de columna provienen de $columnasDB (código, no del usuario) → seguros.
-        $atributos = $this->convertirAMayusculas($this->atributos());
+        // B4 (2026-07-16): los datos se guardan tal como se ingresan (se retiró el forzado a MAYÚSCULAS).
+        $atributos = $this->atributos();
         $columnas = array_keys($atributos);
         if (empty($columnas)) {
             return false;
@@ -125,7 +119,8 @@ class ActiveRecord
     public function actualizarsinRedireccion()
     {
         // M3 — UPDATE parametrizado (prepared statement). Nombres de columna desde $columnasDB.
-        $atributos = $this->convertirAMayusculas($this->atributos());
+        // B4 (2026-07-16): los datos se guardan tal como se ingresan (se retiró el forzado a MAYÚSCULAS).
+        $atributos = $this->atributos();
         $columnas = array_keys($atributos);
         if (empty($columnas)) {
             return false;
@@ -1035,19 +1030,6 @@ class ActiveRecord
             $i++;
         }
     }
-
-    //Función que transforma cualquier dato en mayúscula antes de ser insertado en la base de datos
-    //Protected para que solo sea accesible dentro de esta clase
-    protected function convertirAMayusculas(array $atributos): array
-    {
-        foreach ($atributos as $key => $value) {
-            if (is_string($value) && !in_array($key, static::$columnasSinMayuscula, true)) {
-                $atributos[$key] = mb_strtoupper($value, 'UTF-8');
-            }
-        }
-        return $atributos;
-    }
-
 
     //Función que permite enviar el código del usuario a la base de datos
     public static function setUsuarioActual(): bool

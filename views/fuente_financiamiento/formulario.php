@@ -12,13 +12,13 @@
 
   <div class="mb-3">
     <label for="nombre" class="form-label">Nombre</label>
-    <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="nombre" name="fuente_financiamiento[nombre]" aria-describedby="nombreHelp" value="<?php echo s($fuente_financiamiento->nombre); ?>">
+    <input type="text" class="form-control shadow-sm" id="nombre" name="fuente_financiamiento[nombre]" aria-describedby="nombreHelp" value="<?php echo s($fuente_financiamiento->nombre); ?>">
     <div id="nombreHelp" class="form-text">Ingrese el nombre que recibirá esta fuente de financiamiento</div>
   </div>
 
   <div class="mb-3">
     <label for="descripcion" class="form-label">Descripción</label>
-    <textarea style="text-transform: uppercase" class="form-control shadow-sm" id="descripcion" name="fuente_financiamiento[descripcion]" aria-describedby="descripcionHelp"><?php echo s($fuente_financiamiento->descripcion); ?></textarea>
+    <textarea class="form-control shadow-sm" id="descripcion" name="fuente_financiamiento[descripcion]" aria-describedby="descripcionHelp"><?php echo s($fuente_financiamiento->descripcion); ?></textarea>
     <div id="descripcionHelp" class="form-text">Ingrese la descripción que recibirá esta fuente de financiamiento</div>
   </div>
 

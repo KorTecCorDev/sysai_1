@@ -158,8 +158,9 @@ src/               → SCSS y JS fuente
 - Lectura: `all()`, `find($id)`, `findxatributo()`, `findwithparameters()`, `consultarSql()`, etc.
   ⚠️ `consultarPreparado()`/`crearObjeto()` descartan columnas fuera de `$columnasDB` (p. ej. alias de agregación);
   para leer un escalar calculado, consultar con mysqli directo.
-- **`sanitizarAtributos()`** escapa en escrituras; **`convertirAMayusculas()`** fuerza TODO string a MAYÚSCULAS
-  antes de insertar (decisión de negocio). Excepciones declaradas en `$columnasSinMayuscula = ['password','reset_token','email']`.
+- ✅ **B4 cerrado (2026-07-16):** se retiró `convertirAMayusculas()` — los datos se guardan **tal como se
+  ingresan** (antes TODO string se forzaba a MAYÚSCULAS y degradaba nombres/razones sociales). Los códigos
+  autogenerados (`siguienteCodigo*()`) siguen saliendo en mayúsculas por sus prefijos constantes (PRG, FF, REN…).
   ⚠️ `null` se normaliza a `''` en todo `UPDATE` (intencional): "limpiar" un campo = cadena vacía, no `NULL`.
 - Helpers de reportes Excel embebidos: `insertarCeldasReportePOA()`, `insertarRendicionesFuente()`,
   `insertarDatosDesdeArray()`, `combinarCeldasRepetidas()`, `insertarDatosDesdeArrayEgresosRendiciones()`.
@@ -445,7 +446,9 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 ## [SECCION: CONVENCIONES]
 
 - Comentarios y nombres en **español**; identificadores de dominio en español (`fuente_financiamiento`, `rendicion`, …).
-- Datos de texto se almacenan en **MAYÚSCULAS** (forzado en `ActiveRecord::convertirAMayusculas`, excepto `password`/`reset_token`/`email`).
+- Los datos se guardan **tal como se ingresan** (B4, 2026-07-16: se retiró el forzado a MAYÚSCULAS de
+  `ActiveRecord`; los datos históricos y catálogos sembrados quedan en mayúsculas, la collation
+  `utf8_general_ci` hace las comparaciones case-insensitive).
 - Controladores con métodos **estáticos**; patrón CRUD `index/crear/actualizar/eliminar`.
 - La redirección post-guardado vive en el modelo (`crear()/actualizar()` hacen `header()+exit`); usar las variantes `*sinRedireccion()` para encadenar operaciones.
 - Tras una operación se redirige a `/<entidad>/admin?resultado=N` y `mostrarNotificacion(N)` traduce el código a mensaje (1=creado, 2=actualizado, 3=eliminado…).

@@ -2,29 +2,29 @@
     <legend>Datos Personales</legend>
     <div class="mb-3 w-25">
         <label for="nro_documento" class="form-label">Número de documento de identificación</label>
-        <input type="number" style="text-transform: uppercase" class="form-control shadow-sm" id="nro_documento" name="persona[nro_documento]" aria-describedby="nro_documentoHelp" value="<?php echo s($persona->nro_documento); ?>">
+        <input type="number" class="form-control shadow-sm" id="nro_documento" name="persona[nro_documento]" aria-describedby="nro_documentoHelp" value="<?php echo s($persona->nro_documento); ?>">
         <div id="nro_documentoHelp" class="form-text">Ingrese un DNI válido</div>
     </div>
 
     <div class="mb-3 w-50">
         <label for="apellido_paterno" class="form-label">Apellido Paterno</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="apellido_paterno" name="persona[apellido_paterno]" aria-describedby="apellido_paternoHelp" value="<?php echo s($persona->apellido_paterno); ?>">
+        <input type="text" class="form-control shadow-sm" id="apellido_paterno" name="persona[apellido_paterno]" aria-describedby="apellido_paternoHelp" value="<?php echo s($persona->apellido_paterno); ?>">
         <div id="apellido_paternoHelp" class="form-text">Ingrese el apellido paterno del usuario</div>
     </div>
 
     <div class="mb-3 w-50">
         <label for="apellido_materno" class="form-label">Apellido Materno</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="apellido_materno" name="persona[apellido_materno]" aria-describedby="apellido_maternoHelp" value="<?php echo s($persona->apellido_materno); ?>">
+        <input type="text" class="form-control shadow-sm" id="apellido_materno" name="persona[apellido_materno]" aria-describedby="apellido_maternoHelp" value="<?php echo s($persona->apellido_materno); ?>">
         <div id="apellido_maternoHelp" class="form-text">Ingrese el apellido materno del usuario</div>
     </div>
     <div class="mb-3 w-75">
         <label for="nombres" class="form-label">Nombres</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="nombres" name="persona[nombres]" aria-describedby="nombresHelp" value="<?php echo s($persona->nombres); ?>">
+        <input type="text" class="form-control shadow-sm" id="nombres" name="persona[nombres]" aria-describedby="nombresHelp" value="<?php echo s($persona->nombres); ?>">
         <div id="nombresHelp" class="form-text">Ingrese los nombres del usuario</div>
     </div>
     <div class="mb-3 w-25">
         <label for="telefono" class="form-label">Teléfono</label>
-        <input type="number" style="text-transform: uppercase" class="form-control shadow-sm" id="telefono" name="persona[telefono]" aria-describedby="telefonoHelp" value="<?php echo s($persona->telefono); ?>">
+        <input type="number" class="form-control shadow-sm" id="telefono" name="persona[telefono]" aria-describedby="telefonoHelp" value="<?php echo s($persona->telefono); ?>">
         <div id="telefonoHelp" class="form-text">Ingrese el teléfono de contacto del usuario</div>
     </div>
 </fieldset>
@@ -33,9 +33,6 @@
     <legend>Datos del acceso de usuario</legend>
     <div class="mb-3 w-50">
         <label for="email" class="form-label">Email</label>
-        <?php /* Sin text-transform: el email se guarda tal cual se teclea (está en
-                 $columnasSinMayuscula) — mostrarlo en mayúsculas mientras se escribe
-                 confundía sobre lo que realmente se registra. */ ?>
         <input type="email" class="form-control shadow-sm" id="email" aria-describedby="emailHelp" name="usuario[email]" value="<?php echo s($usuario->email); ?>">
         <div id="emailHelp" class="form-text">Ingrese el email para el acceso</div>
     </div>

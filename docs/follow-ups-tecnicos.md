@@ -17,7 +17,12 @@
 - [ ] **B3 — Esquema desalineado** — ✅ resueltos: overflow de montos (migr. 026 + `montoNumerico()`/`MONTO_MAXIMO`),
   `rendicion.fecha_original` (ya era `date`) y `usuario.email` **UNIQUE** (migr. 032, item 10, 2026-07-16).
   **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
-- [ ] **B4 — MAYÚSCULAS forzadas** indiscriminadas (degrada calidad de datos; origen del bug C1).
+- [x] ~~**B4 — MAYÚSCULAS forzadas**~~ — **HECHO 2026-07-16:** se retiró `convertirAMayusculas()` y
+  `$columnasSinMayuscula` de `ActiveRecord` (los datos se guardan tal como se ingresan) y los
+  `style="text-transform: uppercase"` de los formularios (8 vistas). Los códigos autogenerados
+  (`siguienteCodigoCorrelativo`/`Jerarquico`) no dependían del forzado (prefijos constantes en mayúsculas).
+  Comparaciones contra catálogos en MAYÚSCULAS: sin impacto (collation `utf8_general_ci`, case-insensitive).
+  Suite QA 131/131.
 - [ ] **B5 — Código muerto / de otro proyecto:** `includes/templates/formulario_propiedades.php`, `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 - [ ] **B6 — `validarPropiedadArray()`** sin `isset` (warnings).
 - [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.

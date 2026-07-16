@@ -37,12 +37,12 @@
 
     <div class="mb-3 w-75">
         <label for="nombre" class="form-label">Rubro:</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="nombre" name="nombre" placeholder="Rubro" value="<?php echo s($rubro->nombre); ?>">
+        <input type="text" class="form-control shadow-sm" id="nombre" name="nombre" placeholder="Rubro" value="<?php echo s($rubro->nombre); ?>">
     </div>
 
     <div class="mb-3 w-auto">
         <label for="descripcion" class="form-label">Descripción:</label>
-        <input type="text" style="text-transform: uppercase" class="form-control shadow-sm" id="descripcion" name="descripcion" placeholder="Descripción" value="<?php echo s($rubro->descripcion); ?>">
+        <input type="text" class="form-control shadow-sm" id="descripcion" name="descripcion" placeholder="Descripción" value="<?php echo s($rubro->descripcion); ?>">
     </div>
 
     <div class="mb-3 w-25">

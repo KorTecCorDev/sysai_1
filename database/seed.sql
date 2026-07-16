@@ -13,8 +13,9 @@
 -- El catálogo tipo_comprobante refleja el estado FINAL (TCM002 = "Boleta de
 -- venta"), coherente con la migración 013 sin importar el orden seed↔migrate.
 --
--- Convención: textos de dominio en MAYÚSCULAS (como fuerza la app); email en
--- minúsculas (excepción declarada en ActiveRecord::$columnasSinMayuscula).
+-- Convención: los catálogos sembrados van en MAYÚSCULAS (estilo histórico del
+-- dominio); email en minúsculas. Desde B4 (2026-07-16) la app ya NO fuerza
+-- mayúsculas: los datos del usuario se guardan tal como se ingresan.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
