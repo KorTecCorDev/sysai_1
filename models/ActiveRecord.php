@@ -161,31 +161,21 @@ class ActiveRecord
             'i',
             [(int) $this->id]
         );
-        if ($resultado) {
-            $this->borrarImagen();
-        }
         return (bool) $resultado;
     }
     /**
-     * Elimina un registro de la base de datos. 
-     * Si el registro es eliminado exitosamente, se borra la imagen asociada
-     * y se redirige al usuario a la página de administración correspondiente.
+     * Elimina un registro de la base de datos.
      *
      * @return void
      */
     public function eliminar()
     {
         // M3 — DELETE parametrizado.
-        $resultado = self::ejecutarPreparado(
+        self::ejecutarPreparado(
             "DELETE FROM " . static::$tabla . " WHERE id = ? LIMIT 1",
             'i',
             [(int) $this->id]
         );
-        if ($resultado) {
-            $this->borrarImagen();
-            //Comentado por haber colocado el redireccionamiento en la misma función del controller
-            //header("Location: /".static::$tabla."/admin?resultado=3");
-        }
     }
 
     //Esta función se encarga de iterar los elementos de columnasDB.
@@ -220,31 +210,6 @@ class ActiveRecord
 
         return $sanitizado;
     }
-
-    // Subida de archivos
-    public function setImagen($imagen)
-    {
-        //Eliminando el archivo antes de asignarlo
-        if (!is_null($this->id)) {
-            //Comprobando si existe el archivo
-            $this->borrarImagen();
-        }
-        //Asignar al atributo de imagen el nombre de la imagen
-        if ($imagen) {
-            $this->imagen = $imagen;
-        }
-    }
-
-    //Eliminar el archivo de imagen
-    public function borrarImagen()
-    {
-        //Comprobando si existe el archivo
-        $existeArchivo = file_exists(CARPETA_IMAGENES . $this->imagen);
-        if ($existeArchivo) {
-            unlink(CARPETA_IMAGENES . $this->imagen);
-        }
-    }
-
 
     //Validación
     public static function getErrores()

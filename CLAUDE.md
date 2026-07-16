@@ -474,7 +474,11 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - [ ] B2 — reportes POA/Excel inflados por fan-out de fuentes. Ya existe la cifra correcta libre de fan-out (`comprometido` = Σ sobres por fuente; `vista_saldo_sobre` por sobre); falta que los **reportes Excel** (item 9, v1.1) la consuman en vez de repetir `fuente.presupuesto` por actividad.
 - [ ] B3 — esquema desalineado. ✅ Resueltos: overflow de montos (migr. 026), `fecha_original` (ya era `date`) y `email` UNIQUE (migr. 032, item 10). **Quedan:** `avance decimal(2,2)` y auditoría sin triggers.
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
-- [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
+- [x] ~~B5 — código muerto de otro proyecto~~ — **HECHO 2026-07-16:** eliminados `includes/templates/` (6
+  archivos de bienes raíces), `incluirTemplate()`/`TEMPLATES_URL`/`FUNCIONES_URL`/`CARPETA_IMAGENES`,
+  `setImagen()`/`borrarImagen()` (sin caller; accedían a una propiedad inexistente en cada delete) y la
+  dependencia `intervention/image` (cero referencias). De paso B6: `validarPropiedadArray()` SÍ tenía un
+  caller (`UsuarioController.php:48`) → corregida con `!empty()` (sin warnings), no eliminada. QA 131/131.
 - [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna. **Documento de consulta listo: `docs/confirmar-tc-contador.md`** (mapeo, preguntas y puntos exactos del código). ⚠️ Resolver ANTES de registrar transacciones reales en el greenfield (el TC congelado no se recalcula).
 - [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
   (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.

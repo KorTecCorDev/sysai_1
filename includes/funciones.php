@@ -1,12 +1,4 @@
 <?php
-define('TEMPLATES_URL', __DIR__ . '/templates');
-define('FUNCIONES_URL', __DIR__ . 'funciones.php');
-define('CARPETA_IMAGENES', $_SERVER['DOCUMENT_ROOT'] . '/imagenes/');
-function incluirTemplate(string $nombre, bool $inicio = false)
-{
-    include TEMPLATES_URL . '/' . $nombre . '.php';
-}
-
 function estaAutenticado()
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -650,15 +642,10 @@ function enviarTokenRecuperacion(string $email, string $nombre, string $token): 
     }
 }
 
-//Función para arrays asociativos
+//Función para arrays asociativos (p. ej. ¿se eligió programa en $_POST['coordinador_programa']['programa_id']?)
 function validarPropiedadArray(array $array, string $propiedad, string $subpropiedad): bool
 {
-    // Verifica si la propiedad existe en el array y su valor no es nulo ni vacío
-    if ($array[$propiedad][$subpropiedad] == 0) {
-        return false;
-    }
-    return true;
-
-    //&&array_key_exists($propiedad, $array)  && $array[$propiedad] != 0;
+    // true solo si la clave existe y su valor no es 0/'' (B6: sin warnings cuando la clave falta)
+    return !empty($array[$propiedad][$subpropiedad]);
 }
 

@@ -23,8 +23,15 @@
   (`siguienteCodigoCorrelativo`/`Jerarquico`) no dependían del forzado (prefijos constantes en mayúsculas).
   Comparaciones contra catálogos en MAYÚSCULAS: sin impacto (collation `utf8_general_ci`, case-insensitive).
   Suite QA 131/131.
-- [ ] **B5 — Código muerto / de otro proyecto:** `includes/templates/formulario_propiedades.php`, `formulario_vendedores.php`, `anuncios.php` (parecen de bienes raíces); `setImagen/borrarImagen` sin validar archivo.
-- [ ] **B6 — `validarPropiedadArray()`** sin `isset` (warnings).
+- [x] ~~**B5 — Código muerto / de otro proyecto**~~ — **HECHO 2026-07-16:** eliminados `includes/templates/`
+  completo (6 archivos; `anuncios.php` usaba la clase inexistente `App\Propiedad` y habría fatal-errorado),
+  `incluirTemplate()`, `TEMPLATES_URL`, `FUNCIONES_URL`, `CARPETA_IMAGENES`, `setImagen()`/`borrarImagen()`
+  (sin caller externo; `borrarImagen()` corría en cada `eliminar*()` sobre una propiedad inexistente →
+  warning en PHP 8.2+) y `intervention/image` de composer (cero referencias; se fueron también guzzlehttp/psr7
+  y ralouphie/getallheaders). QA 131/131.
+- [x] ~~**B6 — `validarPropiedadArray()`** sin `isset`~~ — **HECHO 2026-07-16:** NO era función muerta
+  (caller real: `UsuarioController.php:48`, detecta si se eligió programa al crear coordinador). Reescrita
+  como `!empty($array[$propiedad][$subpropiedad])`: misma semántica, sin warnings cuando falta la clave.
 - [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
 - [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
   gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
