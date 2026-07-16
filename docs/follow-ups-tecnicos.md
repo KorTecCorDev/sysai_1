@@ -23,8 +23,13 @@
 - [ ] **B7 — Deuda de build:** `@import` Sass deprecated (migrar a `@use/@forward`); SVGs commiteados en `build/css/`.
 - [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
   gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
-- [ ] **`sql_mode` sin `STRICT_TRANS_TABLES`** — evaluar activarlo en el despliegue greenfield (convertiría
-  todo truncamiento futuro en error ruidoso); requiere probar la app entera antes.
+- [x] ~~**`sql_mode` sin `STRICT_TRANS_TABLES`**~~ — **HECHO 2026-07-16:** `conectarDB()` fija
+  `SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'` (por sesión →
+  portable a Hostinger sin `my.cnf`; cubre app + `migrate.php`). También se hizo explícito
+  `mysqli_report(MYSQLI_REPORT_OFF)` (estaba documentado pero no existía en el código; sin él, PHP 8.2 lanza
+  excepciones y el patrón del código es comprobar valores de retorno). Verificado: replay greenfield
+  (baseline + 001-032 + seed/seed_demo/seed_qa) bajo estricto sin errores + suite QA 131/131.
+  Nota: `includes/config/database.php` ya estaba versionado (sin secretos) — se corrigió la doc que decía "gitignored".
 - [ ] Revisar las discrepancias restantes del modelo de datos (ver `docs/modelo-datos-detalle.md`) y
   planificar las correcciones pendientes. (La verificación "contra producción" ya no aplica: la instancia
   de Hostinger fue dada de baja el 2026-06-03; el próximo despliegue es greenfield.)

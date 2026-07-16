@@ -39,7 +39,8 @@
   despliegue va **sobre Hostinger otra vez, pero greenfield**: proyecto y BD nuevos, sin datos que preservar ni
   reconciliar.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
-- **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` ignorado en git (lee `.env` y conecta MySQL).
+- **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` está **versionado**
+  (no contiene secretos: lee `.env` y conecta MySQL) → el repo es portable de equipo en equipo copiando solo `.env`.
 - **Moneda base:** Sol peruano (PEN / S/). Conversiones a USD/EUR solo para reportes.
 
 ---
@@ -101,9 +102,13 @@ local3000                             # php -S localhost:3000  → http://localh
 > deshabilitado (`$cfg['AllowUserDropDatabase']=false`). Usar la consola MySQL —no tiene esa restricción—:
 > `DROP DATABASE IF EXISTS sysai; CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;`
 
-**Configuración por entorno (secretos, NO versionados):**
-- `includes/config/database.php` — conexión (lee `.env`). Gitignored. Plantilla: `.env.example`.
-  `conectarDB()` hace `mysqli_report(MYSQLI_REPORT_OFF)` porque el código comprueba valores de retorno (no usa try/catch).
+**Configuración por entorno (secretos solo en `.env`, NO versionado):**
+- `includes/config/database.php` — conexión (lee `.env`; **versionado**, sin secretos). Plantilla: `.env.example`.
+  `conectarDB()` hace `mysqli_report(MYSQLI_REPORT_OFF)` porque el código comprueba valores de retorno (no usa try/catch),
+  y fija **`SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`**
+  (2026-07-16): todo truncamiento/overflow es error ruidoso, idéntico en dev y Hostinger (por sesión, sin tocar
+  `my.cnf`). Cubre también `database/migrate.php` (reutiliza `conectarDB()`). Verificado: replay greenfield
+  completo (baseline + migr. 001-032 + seeds) y suite QA 131/131 bajo modo estricto.
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
   ✅ Credenciales ya externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env` (helper
   `enviarTokenRecuperacion()`). En **modo DEV** (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) el token solo se
@@ -469,7 +474,8 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
 - [ ] B5 — código muerto de otro proyecto en `includes/templates/` (bienes raíces); `setImagen/borrarImagen` sin validar archivo.
 - [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
-- [ ] `sql_mode` sin `STRICT_TRANS_TABLES` — evaluar activarlo en el greenfield (convertiría todo truncamiento futuro en error ruidoso); requiere probar la app entera antes.
+- [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
+  (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.
 
 ---
 
