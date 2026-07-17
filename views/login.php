@@ -1,65 +1,74 @@
+<body class="auth">
+    <main class="auth-shell">
+        <div class="auth-card">
 
-<body class="d-flex flex-column min-vh-100">
-        <!-- Imprimiendo las alertas de errores en la página -->
-        <?php foreach ($errores as $error) { ?>
-                <div class="modal fade" data-bs-key="modal" tabindex="-1">
-                        <div class="modal-dialog">
-                                <div class="modal-content">
-                                        <div class="modal-header">
-                                                <h5 class="modal-title">Error!</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                                <p><?php echo s($error); ?></p>
-                                        </div>
-                                        <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                                        </div>
-                                </div>
-                        </div>
+            <!-- Panel de marca (institucional) -->
+            <aside class="auth-brand" aria-hidden="true">
+                <div class="auth-brand__top">
+                    <img class="auth-brand__logo" src="/build/img/arco_iris_logo.svg" alt="Organización Arco Iris">
+                    <span class="auth-brand__org">Organización Arco Iris</span>
                 </div>
-        <?php } ?>
-        <!-- Main -->
-        <main class="flex-grow-1">
+                <div class="auth-brand__pitch">
+                    <h1 class="auth-brand__title">SysAI</h1>
+                    <p class="auth-brand__lead">Sistema de gestión presupuestal y rendición de cuentas.</p>
+                </div>
+                <ul class="auth-brand__features">
+                    <li><i class="bi bi-shield-check" aria-hidden="true"></i> Acceso por rol y auditoría</li>
+                    <li><i class="bi bi-clipboard-data" aria-hidden="true"></i> POA, rendiciones y saldos</li>
+                    <li><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Reportes contables en Excel</li>
+                </ul>
+            </aside>
 
-                <!-- División -->
-                <div class="page-login">
-                        <div class="login-container">
-                                <div class="login-header">
-                                        <div class="logo-login">
-                                                <img src="/build/img/arco_iris_logo.svg" alt="Logo_AI">
-                                        </div>
-                                        <h2>Bienvenido a SySAI</h2>
-                                        <p>Inicia sesión para continuar</p>
-                                </div>
-                                <form method="POST" class="form" action="/login"><?php echo csrf_input(); ?>
-                                        <!-- Campo de usuario -->
-                                        <div class="mb-3">
-                                                <label class="form-label" for="email">E-mail</label>
-                                                <input class="form-control" name="email" type="email" placeholder="Ingresa tu correo electrónico" id="email" require>
-                                        </div>
-                                        <!-- Campo de contraseña -->
-                                        <label for="password" class="form-label">Contraseña</label>
-                                        <div class="mb-3 d-flex flex-row password-space">
-                                                <input class="form-control" name="password" type="password" placeholder="Ingresa tu password" id="password" require>
-                                                <button type="button" id="togglePassword"><i class="bi bi-eye-slash"></i></button>
-                                        </div>
-                                        <!-- Botón de inicio de sesión -->
-                                        <div class="d-flex flex-row justify-content-center">
-                                                <input type="submit" class="btn btn-login" value="Iniciar Sesión">
-                                        </div>
-                                </form>
-                                <!-- Enlace de recuperación -->
-                                <div class="footer text-start">
-                                        <a href="/chgpsswd">¿Deseas cambiar tu contraseña?</a>
-                                </div>
+            <!-- Panel del formulario -->
+            <section class="auth-form">
+                <header class="auth-form__head">
+                    <img class="auth-form__logo" src="/build/img/arco_iris_logo.svg" alt="SysAI">
+                    <h2 class="auth-form__title">Bienvenido</h2>
+                    <p class="auth-form__subtitle">Inicia sesión para continuar</p>
+                </header>
+
+                <?php if (($_GET['resultado'] ?? '') === 'cambio') : ?>
+                    <div class="auth-alert auth-alert--ok" role="status">
+                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        <div class="auth-alert__body"><p>Tu contraseña se actualizó. Ya puedes iniciar sesión.</p></div>
+                    </div>
+                <?php endif; ?>
+
+                <?php include __DIR__ . '/partials/_auth_alertas.php'; ?>
+
+                <form method="POST" action="/login" class="auth-fields" novalidate><?php echo csrf_input(); ?>
+                    <div class="auth-field">
+                        <label class="form-label" for="email">Correo electrónico</label>
+                        <div class="auth-input">
+                            <i class="bi bi-envelope" aria-hidden="true"></i>
+                            <input class="form-control" name="email" type="email" id="email"
+                                   placeholder="tucorreo@arcoiris.pe" autocomplete="username" required autofocus>
                         </div>
+                    </div>
+
+                    <div class="auth-field">
+                        <label class="form-label" for="password">Contraseña</label>
+                        <div class="auth-input password-space">
+                            <i class="bi bi-lock" aria-hidden="true"></i>
+                            <input class="form-control" name="password" type="password" id="password"
+                                   placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+                            <button type="button" id="togglePassword" class="auth-eye"
+                                    aria-label="Mostrar contraseña"><i class="bi bi-eye-slash"></i></button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary auth-submit">
+                        <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Iniciar sesión
+                    </button>
+                </form>
+
+                <div class="auth-form__foot">
+                    <a href="/chgpsswd">¿Primera vez o olvidaste tu contraseña?</a>
                 </div>
-        </main>
-        <!-- Footer -->
-        <footer class="text-center py-3 footer">
-                <div>
-                        <?php $fecha = date('Y'); ?>
-                        <h6> Desarrollado por Cronos Soluciones - Todos los derechos reservados - <?php echo s($fecha); ?></h6>
-                </div>
-        </footer>
+            </section>
+        </div>
+    </main>
+
+    <footer class="auth-copyright">
+        <span>Desarrollado por Cronos Soluciones · Todos los derechos reservados · <?php echo s(date('Y')); ?></span>
+    </footer>

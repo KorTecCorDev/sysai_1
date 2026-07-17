@@ -207,9 +207,13 @@ class LoginController
                 $errores = Login::getErrores();
                 //Tenemos la consulta lista, con el usuario con ese token
                 if ($usuario) {
-                    //Permitir ingresar nueva contraseña y reemplazar a la anterior con su hasheo
-                    //Pasamos el id de usuario para actualizar contraseña
-                    header("Location: /updtepsswd?id=" . $usuario->id);
+                    // La identidad del usuario que superó el token se guarda en la SESIÓN
+                    // (prueba de un solo uso), NO en la URL: /updtepsswd ya no confía en
+                    // ningún ?id, cerrando el IDOR que permitía resetear cuentas ajenas.
+                    session_regenerate_id(true); // anti-fijación de sesión
+                    $_SESSION['pwd_reset_uid'] = $usuario->id;
+                    $_SESSION['pwd_reset_ts']  = time();
+                    header("Location: /updtepsswd");
                     exit();
                 } else {
                     // Código inválido o expirado: contar la verificación fallida.
@@ -227,25 +231,32 @@ class LoginController
 
     public static function updatePassword(Router $router)
     {
-        $id = validarORedireccionar('/updtepsswd');
         $errores = Login::getErrores();
+
+        // La identidad proviene EXCLUSIVAMENTE del token verificado en /token_verify
+        // (guardado en sesión), nunca de la URL. Sin esa prueba —o si ya caducó junto
+        // con el token— no se puede cambiar ninguna contraseña: se vuelve al inicio.
+        $uid     = $_SESSION['pwd_reset_uid'] ?? null;
+        $emitido = $_SESSION['pwd_reset_ts']  ?? 0;
+        if (!$uid || (time() - $emitido) > Login::RECUP_TOKEN_TTL) {
+            unset($_SESSION['pwd_reset_uid'], $_SESSION['pwd_reset_ts']);
+            header('Location: /chgpsswd');
+            exit();
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newusu = new Login($_POST);
-            $newpssw = $newusu->password;
-            if ($id && $newpssw) {
-                $oldusu = Login::find($id);
-                if ($oldusu) {
-                    $resultado = $oldusu->updatePsswrdUser($newpssw);
-                    if ($resultado) {
-                        header("Location: /login");
-                        exit();
-                    }
+            $errores = $newusu->validarUpdatePassword();
+            if (empty($errores)) {
+                $oldusu = Login::find($uid);
+                if ($oldusu && $oldusu->updatePsswrdUser($newusu->password)) {
+                    // Prueba de un solo uso: se consume al cambiar la contraseña.
+                    unset($_SESSION['pwd_reset_uid'], $_SESSION['pwd_reset_ts']);
+                    header('Location: /login?resultado=cambio');
+                    exit();
                 }
-                $newusu->validarUpdatePassword();
-                $errores = Login::getErrores();
+                $errores[] = 'No se pudo actualizar la contraseña. Solicite un nuevo código.';
             }
-            $newusu->validarUpdatePassword();
-            $errores = Login::getErrores();
         }
 
         $router->renderssdbr('/updtepsswd', [
