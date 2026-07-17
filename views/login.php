@@ -4,13 +4,12 @@
 
             <!-- Panel de marca (institucional) -->
             <aside class="auth-brand" aria-hidden="true">
-                <div class="auth-brand__top">
-                    <img class="auth-brand__logo" src="/build/img/arco_iris_logo.svg" alt="Organización Arco Iris">
-                    <span class="auth-brand__org">Organización Arco Iris</span>
+                <div class="auth-brand__mark">
+                    <img src="/build/img/arco_iris_logo_pestania.svg" alt="">
                 </div>
                 <div class="auth-brand__pitch">
-                    <h1 class="auth-brand__title">SysAI</h1>
-                    <p class="auth-brand__lead">Sistema de gestión presupuestal y rendición de cuentas.</p>
+                    <h1 class="auth-brand__title">Arca</h1>
+                    <p class="auth-brand__lead">Gestión presupuestal y rendición de cuentas · Arco Iris.</p>
                 </div>
                 <ul class="auth-brand__features">
                     <li><i class="bi bi-shield-check" aria-hidden="true"></i> Acceso por rol y auditoría</li>
@@ -22,7 +21,7 @@
             <!-- Panel del formulario -->
             <section class="auth-form">
                 <header class="auth-form__head">
-                    <img class="auth-form__logo" src="/build/img/arco_iris_logo.svg" alt="SysAI">
+                    <img class="auth-form__logo" src="/build/img/arco_iris_logo_pestania.svg" alt="Arca">
                     <h2 class="auth-form__title">Bienvenido</h2>
                     <p class="auth-form__subtitle">Inicia sesión para continuar</p>
                 </header>

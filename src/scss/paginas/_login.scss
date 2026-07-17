@@ -54,23 +54,22 @@
     pointer-events: none;
   }
 
-  &__top {
+  // Marca cuadrada (el simbolo, arco_iris_logo_pestania.svg) sobre placa blanca:
+  // sus colores estan pensados para fondo claro, la placa los preserva sobre el azul.
+  &__mark {
     position: relative;
     z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-  }
-
-  &__logo {
-    width: 44px;
-    height: 44px;
-    padding: 5px;
+    width: 132px;
+    height: 132px;
+    padding: 1.25rem;
+    display: grid;
+    place-items: center;
     background: #fff;
-    border-radius: 10px;
-  }
+    border-radius: 20px;
+    box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .4);
 
-  &__org { font-weight: 600; }
+    img { width: 100%; height: 100%; object-fit: contain; }
+  }
 
   &__pitch { position: relative; z-index: 1; }
 
@@ -110,7 +109,7 @@
   display: flex;
   flex-direction: column;
 
-  &__logo { display: none; width: 52px; margin: 0 auto .75rem; }
+  &__logo { display: none; width: 64px; margin: 0 auto .75rem; }
   &__head { margin-bottom: 1.5rem; }
   &__title { font-size: 1.6rem; margin: 0 0 .25rem; }
   &__subtitle { margin: 0; color: var(--sa-ink-soft); }

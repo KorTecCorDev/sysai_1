@@ -5,10 +5,10 @@
     <!-- Metadatos -->
     <meta charset="UTF-8">
     <meta name="author" content="CronosSoluciones">
-    <meta name="description" content="SysAi - Sistema de reportes contables para la ONG Arco Iris">
+    <meta name="description" content="Arca - Sistema de gestión presupuestal y rendición de cuentas de la ONG Arco Iris">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Título -->
-    <title>SysAI</title>
+    <title>Arca · Arco Iris</title>
     <!-- Icon -->
     <link rel="icon" type="image/x-icon" href="/build/img/arco_iris_logo_pestania.svg">
     <!-- Bootstrap -->
