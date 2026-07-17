@@ -29,12 +29,19 @@ Reglas ya confirmadas que NO están en duda (no preguntar de nuevo):
    ¿usan la tasa de **venta** del día de la operación? ¿O tienen otra convención (p. ej. tasa SBS
    contable única, promedio compra/venta, tasa del donante)?
 2. Cuando **ingresa una donación** en soles que se reporta en divisa, ¿aplican la tasa de **compra**?
-3. Para los **saldos al cierre** (reporte a donantes), ¿convierten con la tasa de **compra** vigente
+3. Un **egreso fuera del POA (OIE Egreso)** —no un gasto rendido— ¿se convierte con la misma tasa de
+   **venta** que un gasto rendido, o le dan un tratamiento distinto?
+4. Para los **saldos al cierre** (reporte a donantes), ¿convierten con la tasa de **compra** vigente
    al cierre (NIC 21) o con otra tasa (venta, promedio, tasa pactada con el donante)?
-4. Para el **presupuesto/POA** (planificación, sin fecha de operación), ¿venta vigente al generar el
+5. Para el **presupuesto/POA** (planificación, sin fecha de operación), ¿venta vigente al generar el
    reporte es aceptable, o el donante fija una tasa contractual?
-5. ¿Algún donante exige una **fuente específica de tasa** (SBS contable, BCRP, banco propio)?
+6. ¿Algún donante exige una **fuente específica de tasa** (SBS contable, BCRP, banco propio)?
    Hoy la SBS es solo informativa y las tasas las registra el Contador a mano.
+7. **Redondeo:** hoy el TC se guarda con 6 decimales y las conversiones se muestran redondeadas a 2
+   (`ROUND(monto/tc, 2)`). ¿La organización o el donante exigen una regla concreta (truncar vs.
+   redondear, cuántos decimales en el reporte)?
+8. **Momento de la tasa (validación):** cada transacción congela el TC vigente a su **fecha de
+   operación** (no a la fecha de registro ni a la de aprobación). ¿Coincide con su práctica contable?
 
 ## Dónde vive el mapeo en el código (tocar SOLO si el contador contradice)
 
