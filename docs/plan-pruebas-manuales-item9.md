@@ -1,8 +1,9 @@
-# Plan de pruebas manuales en el navegador — Item 9 (2026-07-16)
+# Plan de pruebas manuales en el navegador
 
-> Verificación manual del **Programa Institucional + transferencias + reportes Excel corregidos**
-> antes de la presentación a la contadora. Ejecutar en orden; cada paso indica su resultado esperado.
-> Si algo no cuadra, anotar el número de paso.
+> Verificación manual antes de la entrega. Cubre el **item 9** (Programa Institucional +
+> transferencias + reportes Excel, 2026-07-16) y el **sprint de login/marca/B4** (2026-08-12).
+> Ejecutar en orden; cada paso indica su resultado esperado. Si algo no cuadra, anotar el número
+> de paso (p. ej. "falla el 5.4") — con eso basta para retomarlo.
 
 ## Preparación (una sola vez)
 
@@ -11,10 +12,30 @@
    ```
    "C:\xampp\mysql\bin\mysql.exe" -u root sysai -e "source C:/xampp/htdocs/sysai/database/seed_demo.sql"
    ```
-3. Credenciales demo: **Contador** `contador@arcoiris.pe / Contador2026*` · **Coordinador** `coordinador.comunidad@arcoiris.pe / Comunidad2026*`.
-4. ⚠️ No correr `qa_all.ps1` a mitad de las pruebas — resetea la BD.
+3. Credenciales demo:
+   | Rol | Correo | Contraseña |
+   |---|---|---|
+   | Contador | `contador@arcoiris.pe` | `Contador2026*` |
+   | Coordinador (Comunidad) | `coordinador.comunidad@arcoiris.pe` | `Comunidad2026*` |
+   | Coordinador (Casa Hogar) | `coordinador.casahogar@arcoiris.pe` | `CasaHogar2026*` |
+4. ⚠️ No correr `qa_all.ps1` a mitad de las pruebas — resetea la BD al fixture de QA.
 
 ---
+
+## Bloque 0 — Autenticación y marca (sprint 2026-08-12)
+
+| # | Acción | Resultado esperado |
+|---|---|---|
+| 0.1 | Abrir `/login` | Tarjeta de dos paneles: izquierda azul con el **logo de Arca** y el título **Arca**; pestaña del navegador con el **isotipo** y el título **Arca · Arco Iris** |
+| 0.2 | Teclear el correo en minúsculas | Se ve **en minúsculas** (antes el CSS lo mostraba en MAYÚSCULAS aunque se guardara tal cual) |
+| 0.3 | Entrar con un correo **inventado** y cualquier clave, 5 veces seguidas | Del 1º al 4º: "Las credenciales ingresadas no son correctas"; al 5º: aviso de **máximo de intentos**; después: "Demasiados intentos fallidos" *(usar un correo inventado para no bloquear una cuenta demo)* |
+| 0.4 | Pegar en la barra de direcciones `/updtepsswd?id=1` **sin haber pedido código** | Rebota a **`/chgpsswd`**. ⚠️ Este es el fallo de seguridad corregido: antes esa URL dejaba cambiarle la contraseña a **cualquier** usuario |
+| 0.5 | `/chgpsswd` → correo de Casa Hogar → "Enviar código" | Pasa al paso 2 (stepper 1-2-3). El código **no** llega por correo en modo DEV: se escribe en `includes/logs/mail.log` (última línea) |
+| 0.6 | Pegar el código en el paso 2 | Pasa al paso 3, "Nueva contraseña" |
+| 0.7 | Poner una contraseña de menos de 8 caracteres, y luego dos que no coincidan | Error visible en ambos casos; no avanza |
+| 0.8 | Contraseña válida (mínimo 8) → guardar | Vuelve a `/login` con "Tu contraseña se actualizó". Entrar con la nueva ✔ *(ojo: esto cambia la clave demo de Casa Hogar; anótala)* |
+| 0.9 | Volver a pegar `/updtepsswd` tras el cambio | Rebota a `/chgpsswd` (la prueba es de **un solo uso**) |
+| 0.10 | Entrar con cada rol y mirar la pestaña del navegador; abrir también una URL inexistente (404) | Siempre **Arca · Arco Iris** y el isotipo de Arca (antes decía "SysAI") |
 
 ## Bloque 1 — El Institucional existe y está protegido (Contador)
 
@@ -37,7 +58,7 @@
 | # | Acción | Resultado esperado |
 |---|---|---|
 | 3.1 | **POA Presupuestal** (`/poa/admin`) | Panel superior "**Programa Institucional** — a tu cargo" con presupuesto = S/. 150,000 y margen |
-| 3.2 | "Gestionar jerarquía y rubros" → crear **Resultado → Producto → Actividad → Rubro** (ej. "SERVICIOS BÁSICOS", servicio, **S/ 80,000**) | Todo se crea normal (selector de programa = INSTITUCIONAL) |
+| 3.2 | "Gestionar jerarquía y rubros" → crear **Resultado → Producto → Actividad → Rubro** (ej. "Servicios básicos", servicio, **S/ 80,000**) | Todo se crea normal (selector de programa = INSTITUCIONAL). El texto se guarda **tal como lo escribes** |
 | 3.3 | Volver a `/poa/admin` → **Iniciar POA Institucional** | Documento en **Borrador**, presupuesto = 80 000 (Σ rubros) |
 | 3.4 | **Enviar a revisión** | Estado **Enviado** |
 | 3.5 | "Revisar y decidir" en la tabla → **Aprobar** | Estado **Aprobado** (auto-aprobación aceptada por diseño) |
@@ -58,9 +79,10 @@
 | 5.2 | Bloque COMUNIDAD: mirar la actividad 1.1.1 (dos rubros) | La suma rendida de cada fuente está **en la fila del rubro que la generó** (no amontonada en la última fila) |
 | 5.3 | Columnas después de la última fuente | Sección "**TOTAL RENDIDO**" con encabezados RENDIDO (S/) / (USD) / (EUR); **sin ceros** en filas sin rendiciones |
 | 5.4 | Final del bloque COMUNIDAD | Fila "**TRANSFERENCIA A PROGRAMA INSTITUCIONAL**" (150 000) y debajo la fila "**TOTAL**" etiquetada, que la incluye |
-| 5.5 | Bloque CASA HOGAR | Sus 2 rendiciones **pendientes** NO aparecen (solo aprobadas) |
+| 5.5 | Bloque CASA HOGAR | Sus rendiciones **pendientes** NO aparecen (solo aprobadas) |
 | 5.6 | Bloque INSTITUCIONAL | Aparece como programa normal, con la rendición de 5 000 — **sin** fila de transferencia |
 | 5.7 | **Reportes → POA** (`/reporte/poa`) y **POA General** (`/reporte/poarubros`) | Misma fila de transferencia + TOTAL etiquetado; nada revienta |
+| 5.8 | Descargar **dos veces seguidas** el reporte de rendición y comparar | Las columnas de fuente salen **en el mismo orden** las dos veces (arreglado el 2026-08-12: antes el orden era el que devolviera MySQL y podía cambiar entre descargas) |
 
 ## Bloque 6 — El coordinador no se ve afectado
 
@@ -69,18 +91,19 @@
 | 6.1 | Login como coordinador → `/poa/admin` | Su panel de siempre, **sin** panel institucional |
 | 6.2 | Su reporte de rendición | Solo su programa, con la fila de transferencia si COMUNIDAD transfirió |
 
-## Bloque 7 (opcional) — Regresión del sprint de deuda técnica
+## Bloque 7 — Regresión del sprint de deuda técnica
 
 | # | Acción | Resultado esperado |
 |---|---|---|
-| 7.1 | Como admin: crear un usuario con nombre "María de los Ángeles" | Se guarda **tal cual** (sin MAYÚSCULAS forzadas) y el input ya no muestra mayúsculas al teclear |
-| 7.2 | Cualquier pantalla con iconos (sidebar) | Iconos intactos (limpieza de `build/css/` no rompió nada) |
+| 7.1 | Como admin: crear un usuario con nombre "María de los Ángeles" | Se guarda **tal cual** y el input **ya no muestra mayúsculas al teclear** (B4 quedó cerrado del todo el 2026-08-12: faltaba la mitad de CSS) |
+| 7.2 | Cualquier pantalla con iconos (sidebar) | Iconos intactos (la limpieza de `build/css/` no rompió nada) |
+| 7.3 | Un formulario con **textarea** (p. ej. descripción de un rubro) y otro con fechas/montos | Texto tal como se escribe; los montos siguen aceptando decimales |
 
 ---
 
-## Para la reunión con la contadora
+## Estado de los pendientes de negocio
 
-- Llevar **`docs/confirmar-tc-contador.md`**: mapeo compra/venta del TC (gasto→venta, ingreso→compra,
-  saldos→compra, planificación→venta) con las 5 preguntas concretas. **Resolver antes de registrar
-  transacciones reales** — el TC congelado no se recalcula retroactivamente.
-- Demostrar el flujo institucional (bloques 2-5) con el escenario demo.
+- ✅ **Mapeo compra/venta del TC — CONFIRMADO por la contadora el 2026-08-12**: *"usar la tasa
+  vigente, seguimos con la lógica NIC 21"*. No hay código que cambiar; registro en
+  `docs/confirmar-tc-contador.md`.
+- ⏳ **Despliegue greenfield en Hostinger**: al final, después de estas pruebas.
