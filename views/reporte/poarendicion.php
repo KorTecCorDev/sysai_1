@@ -26,6 +26,16 @@ foreach ($fuentes as $fuente) {
     if ($soloPrograma !== null && (int) $fuente->programa_id !== $soloPrograma) continue;
     $fuentesPorPrograma[(int) $fuente->programa_id][] = $fuente;
 }
+// El orden de las columnas de fuente se fija AQUÍ (por id = orden de alta) porque la
+// vista se lee con `all()`, sin ORDER BY: MySQL puede devolver las filas en cualquier
+// orden y el mismo reporte salía con las fuentes en columnas distintas de una
+// generación a otra (detectado 2026-08-12: la fuente 1 caía unas veces en K y otras
+// en N). Los datos nunca fueron incorrectos —cada columna lleva su encabezado— pero
+// el contador compara reportes entre sí y las columnas deben quedarse quietas.
+foreach ($fuentesPorPrograma as &$listaFuentes) {
+    usort($listaFuentes, fn($a, $b) => (int) $a->fuente_financiamiento_id <=> (int) $b->fuente_financiamiento_id);
+}
+unset($listaFuentes);
 // Rendiciones (aprobadas, año vigente) indexadas por rubro y fuente (migr. 034).
 $rendicionesPorRubro = [];
 foreach ($rendiciones as $r) {

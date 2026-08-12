@@ -115,13 +115,19 @@ Assert (($celdas.Values | Where-Object { $_ -like "RENDICI*N - $anio - PROGRAMA*
 Assert (($celdas.Values | Where-Object { $_ -eq 'TOTAL RENDIDO' }).Count -ge 1) "Encabezado de seccion TOTAL RENDIDO presente"
 Assert (($celdas.Values | Where-Object { $_ -eq 'TOTAL' }).Count -ge 1) "Fila de totales ETIQUETADA (TOTAL)"
 
-# La suma aprobada (777.77) debe estar en la columna de la fuente 1 (K) EN LA FILA del rubro 2.
+# La suma aprobada (777.77) debe estar en la columna de SU fuente EN LA FILA de su rubro.
+# La columna NO se hardcodea (era 'K'): el reporte pone una tripleta por fuente vinculada
+# al programa y el fixture vincula dos, asi que la fuente 1 puede caer en K o en N segun
+# cuantas y en que orden salgan. Se resuelve por el ENCABEZADO, que es el contrato real.
 $rubroNombre = Q "SELECT nombre FROM rubro WHERE id=2;"
 $tipoRubro = Q "SELECT tipo_rubro_id FROM rubro WHERE id=2;"
 $colRubro = if ($tipoRubro -eq '1') { 'C' } else { 'E' }
 $filaRubro = $null
 foreach ($k in $celdas.Keys) { if ($k -match "^$colRubro(\d+)$" -and $celdas[$k] -eq $rubroNombre) { $filaRubro = $Matches[1]; break } }
-Assert ($filaRubro -and $celdas["K$filaRubro"] -eq '777.77') "Suma aprobada 777.77 en la FILA de su rubro (${colRubro}$filaRubro -> K$filaRubro='$($celdas["K$filaRubro"])')"
+$fuenteNombre = Q "SELECT nombre FROM fuente_financiamiento WHERE id=1;"
+$colFuente = $null
+foreach ($k in $celdas.Keys) { if ($k -match '^([A-Z]+)\d+$' -and $celdas[$k] -eq $fuenteNombre) { $colFuente = $Matches[1]; break } }
+Assert ($filaRubro -and $colFuente -and $celdas["$colFuente$filaRubro"] -eq '777.77') "Suma aprobada 777.77 en la FILA de su rubro y la COLUMNA de su fuente (${colRubro}$filaRubro -> $colFuente$filaRubro='$($celdas["$colFuente$filaRubro"])')"
 Assert (($celdas.Values | Where-Object { $_ -eq '555.55' }).Count -eq 0) "Rendicion PENDIENTE (555.55) excluida del reporte"
 
 # Fila de transferencia: etiqueta y monto 4000 en G de la misma fila.
