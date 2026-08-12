@@ -29,6 +29,12 @@
   (`siguienteCodigoCorrelativo`/`Jerarquico`) no dependían del forzado (prefijos constantes en mayúsculas).
   Comparaciones contra catálogos en MAYÚSCULAS: sin impacto (collation `utf8_general_ci`, case-insensitive).
   Suite QA 131/131.
+  **Cerrado del todo el 2026-08-12:** el barrido del 16-jul quitó los `style=` de 8 vistas pero **dejó vivo el
+  gemelo global en SCSS** (`src/scss/layout/_sidebar.scss`: `input:not([type="password"])` y `textarea` con
+  `text-transform: uppercase` + `font-family: Lato`), así que TODOS los formularios seguían mostrando en
+  MAYÚSCULAS lo que se guardaba tal cual, y arrastraban la fuente vieja fuera del tema. Se eliminaron ambas
+  reglas y se recompiló `build/css/app.css`. El caso más dañino era el login: el código de verificación se
+  veía en mayúsculas pero se compara en minúsculas.
 - [x] ~~**B5 — Código muerto / de otro proyecto**~~ — **HECHO 2026-07-16:** eliminados `includes/templates/`
   completo (6 archivos; `anuncios.php` usaba la clase inexistente `App\Propiedad` y habría fatal-errorado),
   `incluirTemplate()`, `TEMPLATES_URL`, `FUNCIONES_URL`, `CARPETA_IMAGENES`, `setImagen()`/`borrarImagen()`

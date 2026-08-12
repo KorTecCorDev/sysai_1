@@ -42,16 +42,12 @@ body {
   background-color: color.adjust(v.$gris, $lightness: 1%);
 }
 
-//Todos los input son MAYÚSCULAS a excepción del password-input
-input:not([type="password"]) {
-  font-family: v.$fuente_principal;
-  text-transform: uppercase;
-}
-//Todos los textarea también son MAYÚSCULAS
-textarea {
-  font-family: v.$fuente_principal;
-  text-transform: uppercase;
-}
+// B4 (2026-08-12): se retira el forzado visual a MAYÚSCULAS de inputs y textarea.
+// Era el gemelo en CSS de `convertirAMayusculas()` (retirado de ActiveRecord el
+// 2026-07-16): los datos se guardan tal como se ingresan, así que la pantalla debe
+// mostrarlos igual. Mostrar en mayúsculas lo que se guarda en minúsculas engañaba
+// al usuario (p. ej. el código de verificación del login se veía en mayúsculas
+// pero se compara en minúsculas). La fuente se hereda del tema (`--bs-body-font-family`).
 
 //Quitando los spinners de los inputs de cantidades
 input[type="number"] {
