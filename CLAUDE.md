@@ -29,6 +29,12 @@
 ## [SECCION: ENTORNO]
 
 - **Proyecto:** SysAI — Sistema de gestión presupuestal y rendición de cuentas para ONG.
+- **Nombre visible = "Arca"** (rebrand 2026-07-17, barrido aplicado el 2026-08-12): así se llama el sistema en
+  `<title>`, login, correos y ante el usuario. El **identificador técnico `sysai` NO cambia** (repo, BD,
+  namespace, rutas, carpeta). Marca: `docs/marca/` (original) → `build/img/arca_isotipo.png` (login),
+  `arca_favicon.png` (pestaña), `arca_logo.png` (lockup con la palabra, por si hace falta).
+  El logo de la **ONG** (`build/img/logo_last.png`, la casita) sigue en el sidebar y en el Excel de reportes:
+  ahí la marca que corresponde es la de Arco Iris, no la del software.
 - **Organización:** Arco Iris (ONG sin fines de lucro, **Huaraz, Perú**).
 - **Repositorio:** `KorTecCorDev/sysai_1` (privado, GitHub).
 - **Autor original:** Karlos Colonia Arellano.
@@ -193,7 +199,7 @@ src/               → SCSS y JS fuente
 
 | Módulo | Rutas base | Descripción |
 |---|---|---|
-| **Login / Auth** | `/login`, `/logout`, `/chgpsswd`, `/token_verify`, `/updtepsswd` | Autenticación, bloqueo por intentos, recuperación de contraseña por email con `reset_token`. |
+| **Login / Auth** | `/login`, `/logout`, `/chgpsswd`, `/token_verify`, `/updtepsswd` | Autenticación, bloqueo por intentos, recuperación de contraseña por email con `reset_token`. **Reingeniería 2026-07-17 (verificada y mergeada el 2026-08-12)** — ver abajo. |
 | **Usuarios** | `/usuario/*` | CRUD de usuarios + `persona` asociada. Coordinador (cargo 3) se vincula a programa. |
 | **Programas** | `/programa/*` | Programas de la ONG. |
 | **POA** | `/poa/*`, `/reporte/guardarpoa`, `/reporte/modificarpoa` | Plan Operativo Anual; vincula coordinador↔programa. |
@@ -205,6 +211,24 @@ src/               → SCSS y JS fuente
 | **Tipos de cambio** | `/tcambio/*?moneda=USD\|EUR` | TC unificado (migr. 028): compra/venta por `fecha_vigencia`; el vigente a una fecha se resuelve por fecha, no por orden de registro. `/tcambio/sbs` = consulta informativa que pre-llena el formulario. |
 | **Reportes** | `/reporte/poa`, `/reporte/rendiciones`, `/reporte/ingresos`, `/descargar`, … | Exportación Excel con PhpSpreadsheet, con conversión de moneda. |
 | **Saldos contables** | `/saldos_contables/saldos` | Saldos por fuente de financiamiento. |
+
+### Autenticación — modelo y rediseño (✅ 2026-07-17, verificado y mergeado 2026-08-12)
+- **Onboarding = invitación por correo** (decisión 2026-07-17): el Admin da de alta al usuario con una
+  contraseña provisional **aleatoria y oculta** (`Usuario::crear()` → `generarCodigoAleatorioSimple`); el
+  usuario **nunca** entra con una clave que alguien más conoce: activa la suya en `/chgpsswd` → código al
+  correo → `/token_verify` → `/updtepsswd`. **Descartado** el modelo "contraseña temporal conocida +
+  bandera `must_change`". Por eso el alta de usuarios no tiene campo de contraseña.
+- **La identidad del cambio de contraseña vive en la SESIÓN, no en la URL.** `token_verify` fija
+  `$_SESSION['pwd_reset_uid']` + `pwd_reset_ts` con `session_regenerate_id(true)`, y `updatePassword` solo
+  confía en eso (prueba de un solo uso, TTL `Login::RECUP_TOKEN_TTL`); sin ella redirige a `/chgpsswd`.
+  ⚠️ **No reintroducir `?id=` en `/updtepsswd`**: así era antes y permitía tomar cualquier cuenta (IDOR).
+- Política: mínimo 8 caracteres + confirmación. Bloqueo por intentos (`login_intentos`, migr. 011) intacto.
+- Las 4 vistas (`login`, `chgpsswd`, `token_verify`, `updtepsswd`) usan los tokens `--sa-*` del tema y
+  comparten el partial de avisos `views/partials/_auth_alertas.php`.
+- **QA**: el flujo NO está en la suite `qa_*.ps1` (los arneses parten de una sesión ya autenticada). Se
+  verificó a mano el 2026-08-12 con un usuario desechable creado y borrado en la BD local — 10 pruebas
+  (IDOR, código inválido/válido, confirmación, longitud, one-shot, login posterior, token limpiado,
+  bloqueo por intentos). Repetirlo así si se toca el módulo.
 
 ---
 
@@ -488,9 +512,11 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 ## [SECCION: CONVENCIONES]
 
 - Comentarios y nombres en **español**; identificadores de dominio en español (`fuente_financiamiento`, `rendicion`, …).
-- Los datos se guardan **tal como se ingresan** (B4, 2026-07-16: se retiró el forzado a MAYÚSCULAS de
-  `ActiveRecord`; los datos históricos y catálogos sembrados quedan en mayúsculas, la collation
-  `utf8_general_ci` hace las comparaciones case-insensitive).
+- Los datos se guardan **y se muestran tal como se ingresan** (B4: el 2026-07-16 se retiró el forzado a
+  MAYÚSCULAS de `ActiveRecord`; el 2026-08-12 se retiró su gemelo en CSS —`input:not([type="password"])`
+  y `textarea` con `text-transform: uppercase` en `src/scss/layout/_sidebar.scss`—, que hacía que la
+  pantalla mintiera sobre lo guardado). Los datos históricos y catálogos sembrados quedan en mayúsculas;
+  la collation `utf8_general_ci` hace las comparaciones case-insensitive.
 - Controladores con métodos **estáticos**; patrón CRUD `index/crear/actualizar/eliminar`.
 - La redirección post-guardado vive en el modelo (`crear()/actualizar()` hacen `header()+exit`); usar las variantes `*sinRedireccion()` para encadenar operaciones.
 - Tras una operación se redirige a `/<entidad>/admin?resultado=N` y `mostrarNotificacion(N)` traduce el código a mensaje (1=creado, 2=actualizado, 3=eliminado…).
@@ -527,7 +553,10 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
   "decimal(2,2)" era de un dump viejo) todos verificados OK. La **auditoría sin triggers** se difiere a
   **v1.1 por decisión** (hallazgos anotados en `docs/modelo-datos-detalle.md` §2: `auditoria.usuario
   varchar(8)` vs identidad email → redimensionar al implementarla).
-- [ ] B4 — MAYÚSCULAS forzadas indiscriminadas (degrada calidad de datos).
+- [x] ~~B4 — MAYÚSCULAS forzadas indiscriminadas~~ — **CERRADO 2026-08-12:** la mitad de servidor cayó el
+  2026-07-16 (`convertirAMayusculas()`); hoy cayó la mitad de CSS, que había sobrevivido y seguía mostrando
+  en MAYÚSCULAS —con la fuente vieja `Lato`— todo input y textarea de la app
+  (`src/scss/layout/_sidebar.scss`). Detalle en `docs/follow-ups-tecnicos.md`.
 - [x] ~~B5 — código muerto de otro proyecto~~ — **HECHO 2026-07-16:** eliminados `includes/templates/` (6
   archivos de bienes raíces), `incluirTemplate()`/`TEMPLATES_URL`/`FUNCIONES_URL`/`CARPETA_IMAGENES`,
   `setImagen()`/`borrarImagen()` (sin caller; accedían a una propiedad inexistente en cada delete) y la
