@@ -10,7 +10,7 @@
     <!-- Título -->
     <title>Arca · Arco Iris</title>
     <!-- Icon -->
-    <link rel="icon" type="image/x-icon" href="/build/img/arco_iris_logo_pestania.svg">
+    <link rel="icon" type="image/png" href="/build/img/arca_favicon.png">
     <!-- Bootstrap -->
     <link href="/build/css/bootstrap.min.css" rel="stylesheet">
     <!-- Styles CSS -->

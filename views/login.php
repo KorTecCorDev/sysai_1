@@ -5,7 +5,7 @@
             <!-- Panel de marca (institucional) -->
             <aside class="auth-brand" aria-hidden="true">
                 <div class="auth-brand__mark">
-                    <img src="/build/img/arco_iris_logo_pestania.svg" alt="">
+                    <img src="/build/img/arca_isotipo.png" alt="">
                 </div>
                 <div class="auth-brand__pitch">
                     <h1 class="auth-brand__title">Arca</h1>
@@ -21,7 +21,7 @@
             <!-- Panel del formulario -->
             <section class="auth-form">
                 <header class="auth-form__head">
-                    <img class="auth-form__logo" src="/build/img/arco_iris_logo_pestania.svg" alt="Arca">
+                    <img class="auth-form__logo" src="/build/img/arca_isotipo.png" alt="Arca">
                     <h2 class="auth-form__title">Bienvenido</h2>
                     <p class="auth-form__subtitle">Inicia sesión para continuar</p>
                 </header>

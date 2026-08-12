@@ -15,5 +15,5 @@ return [
     'port'       => $_ENV['MAIL_PORT']       ?? getenv('MAIL_PORT')       ?: 587,
     'secure'     => $_ENV['MAIL_SECURE']     ?? getenv('MAIL_SECURE')     ?: 'tls',
     'from_email' => $_ENV['MAIL_FROM_EMAIL'] ?? getenv('MAIL_FROM_EMAIL') ?: 'no-reply@sysai.local',
-    'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'Área de TI - SysAI',
+    'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'Área de TI - Arca',
 ];
