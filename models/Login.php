@@ -30,6 +30,8 @@ class Login extends ActiveRecord
     public $cargo;
     public $programa_id;
     public $autenticado = false;
+    // Confirmación de la nueva contraseña (solo en el flujo de cambio; no se persiste).
+    public $password_confirm = '';
 
     public function __construct($args = [])
     {
@@ -43,7 +45,11 @@ class Login extends ActiveRecord
         $this->cargo = $args['cargo'] ?? '';
         $this->programa_id = $args['programa_id'] ?? null;
         $this->autenticado = $args['autenticado'] ?? false;
+        $this->password_confirm = $args['password_confirm'] ?? '';
     }
+
+    // Longitud mínima de una contraseña nueva (política de fuerza del cambio).
+    const PSSWD_MIN_LEN = 8;
 
     public function getSessionKey($type){
         return "login_{$type}";
@@ -79,7 +85,12 @@ class Login extends ActiveRecord
     public function validarUpdatePassword()
     {
         if (!$this->password) {
-            self::$errores[] = "Debe ingresar una nueva contraseña válida";
+            self::$errores[] = "Debe ingresar una nueva contraseña";
+        } elseif (strlen($this->password) < self::PSSWD_MIN_LEN) {
+            self::$errores[] = "La contraseña debe tener al menos " . self::PSSWD_MIN_LEN . " caracteres";
+        }
+        if ($this->password !== $this->password_confirm) {
+            self::$errores[] = "Las contraseñas no coinciden";
         }
         return self::$errores;
     }
