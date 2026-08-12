@@ -387,7 +387,9 @@ src/               → SCSS y JS fuente
   tipo ingreso↔egreso en OIE), o que siga pendiente y ya haya cobertura.
 - **Planificación** (rubros/POA, sin fecha de operación) → **venta al cierre** (vigente al generar el reporte);
   **saldos** (partida monetaria) → **compra al cierre** (NIC 21), siempre mostrando tasa/fecha/origen.
-  ⚠️ El mapeo compra/venta está derivado por lógica, no por norma: **confirmar con el contador** (§5.3 del plan).
+  ✅ **Mapeo CONFIRMADO por la contadora de Arco Iris el 2026-08-12** (*"usar la tasa vigente, seguimos con
+  NIC 21"*): ya no es una derivación por lógica, es la convención de la organización. No cambiar sin una
+  nueva consulta — el TC congelado no se recalcula hacia atrás (`docs/confirmar-tc-contador.md`).
 - **La tasa SBS es informativa**: botón "Consultar SBS" pre-llena el formulario (endpoint configurable
   `SBS_API_URL` en `.env`, timeout 5 s, degradación limpia) y `database/importar_tc_sbs.php` hace el backfill en
   lote (origen='SBS', `INSERT IGNORE`). Nunca corre en la ruta de un reporte; nunca se guarda sin el Contador.
@@ -562,7 +564,12 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
   `setImagen()`/`borrarImagen()` (sin caller; accedían a una propiedad inexistente en cada delete) y la
   dependencia `intervention/image` (cero referencias). De paso B6: `validarPropiedadArray()` SÍ tenía un
   caller (`UsuarioController.php:48`) → corregida con `!empty()` (sin warnings), no eliminada. QA 131/131.
-- [ ] Confirmar con el contador de la organización el **mapeo compra/venta** del TC (ingreso→compra, gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna. **Documento de consulta listo: `docs/confirmar-tc-contador.md`** (mapeo, preguntas y puntos exactos del código). ⚠️ Resolver ANTES de registrar transacciones reales en el greenfield (el TC congelado no se recalcula).
+- [x] ~~Confirmar con el contador el **mapeo compra/venta** del TC~~ — ✅ **CONFIRMADO POR LA CONTADORA
+  (2026-08-12):** *"se debe usar la tasa vigente, seguimos con la lógica NIC 21"*. El mapeo implementado
+  queda **sin cambios** (gasto/egreso→venta, ingreso→compra, saldos→compra, planificación→venta) con la
+  tasa vigente a la **fecha de operación**, que es lo que ya congela el sistema. **Cero código que tocar.**
+  Sin pronunciamiento sobre fuente de la tasa y redondeo → se mantiene el comportamiento actual (Contador
+  registra a mano, SBS informativa, `ROUND(…, 2)`). Detalle en `docs/confirmar-tc-contador.md`.
 - [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
   (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.
 

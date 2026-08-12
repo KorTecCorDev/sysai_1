@@ -51,11 +51,12 @@
   bootstrap sin uso, y el dir `font/` duplicado). Quedan solo los 3 CSS que cargan los layouts
   (`app.css`, `bootstrap.min.css`, `bootstrap-icons.min.css`), sus maps y `fonts/` (woff/woff2, la fuente
   real de los iconos). Smoke HTTP 200 en todos + suite QA 131/131.
-- [ ] Confirmar con el **contador de la organización** el mapeo compra/venta del TC (ingreso→compra,
-  gasto→venta, saldo→compra): está derivado por lógica NIC 21, no por norma interna (plan de montos §5.3).
-  **Documento de consulta listo (2026-07-16): `docs/confirmar-tc-contador.md`** — mapeo implementado,
-  5 preguntas concretas y los puntos exactos del código a tocar si el contador contradice. Resolver ANTES
-  de registrar transacciones reales (el TC congelado se copia por valor y no se recalcula).
+- [x] ~~Confirmar con el **contador de la organización** el mapeo compra/venta del TC~~ — ✅ **CONFIRMADO
+  2026-08-12** por la contadora de Arco Iris: *"se debe usar la tasa de tipo de cambio vigente, seguimos
+  con la lógica NIC 21"*. El mapeo (ingreso→compra, gasto/egreso→venta, saldo→compra, planificación→venta)
+  con la tasa vigente a la **fecha de operación** deja de ser una derivación y pasa a ser la convención de
+  la organización: **ningún punto del código cambia**. Sin pronunciamiento sobre fuente de la tasa (P6) ni
+  redondeo (P7) → se mantiene lo actual. Registro completo en `docs/confirmar-tc-contador.md`.
 - [x] ~~**`sql_mode` sin `STRICT_TRANS_TABLES`**~~ — **HECHO 2026-07-16:** `conectarDB()` fija
   `SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'` (por sesión →
   portable a Hostinger sin `my.cnf`; cubre app + `migrate.php`). También se hizo explícito

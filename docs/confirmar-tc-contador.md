@@ -1,12 +1,23 @@
 # Consulta al contador — Mapeo compra/venta del tipo de cambio
 
-> **Estado: PENDIENTE de respuesta del contador de Arco Iris** (creado 2026-07-16).
-> El mapeo vigente fue derivado por lógica NIC 21 durante el plan de montos y TC
-> (`docs/plan-montos-y-tipo-cambio.md` §5.3), **no por norma interna de la organización**.
-> Este documento resume qué está implementado, por qué, y qué preguntar. Cuando el contador
-> responda: si confirma, cerrar el follow-up en `CLAUDE.md`; si contradice, tocar los puntos
-> del código listados abajo (son copias por valor — corregir ANTES de registrar transacciones
-> reales, porque el TC congelado no se recalcula retroactivamente).
+> ## ✅ CONFIRMADO por la contadora de Arco Iris (2026-08-12)
+>
+> **Respuesta:** *"Se debe usar la tasa de tipo de cambio vigente; seguimos con la lógica NIC 21."*
+>
+> Es decir: **el mapeo implementado queda tal cual** (gasto/egreso → **venta**, ingreso → **compra**,
+> saldos al cierre → **compra**, planificación → **venta**), y la tasa aplicable es la **vigente a la
+> fecha de operación** de cada transacción — que es exactamente lo que congela el sistema (migr. 029).
+> **No hay que tocar ninguno de los puntos de código listados abajo.** Preguntas 1-5 y 8: resueltas.
+>
+> Quedan **sin pronunciamiento explícito** (se mantiene el comportamiento actual, que es razonable
+> y no bloquea el despliegue; reabrir solo si un donante lo exige):
+> - **P6 — fuente de la tasa:** ningún donante pidió una fuente específica. Sigue: el Contador
+>   registra la tasa a mano y la consulta SBS es solo informativa.
+> - **P7 — redondeo:** sigue `ROUND(monto/tc, 2)` sobre un TC guardado con 6 decimales.
+>
+> *(Histórico: documento creado el 2026-07-16 cuando el mapeo estaba derivado por lógica NIC 21 y no
+> por norma interna. Se conserva completo como registro de la consulta y de dónde vive cada decisión
+> en el código, por si alguna vez cambia la convención.)*
 
 ## Mapeo implementado hoy
 
