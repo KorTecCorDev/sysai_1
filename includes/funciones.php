@@ -594,61 +594,109 @@ function validarId($tb)
 }
 
 /**
+ * Registra una línea en includes/logs/mail.log (bitácora del correo saliente).
+ * Es el único rastro que queda cuando el envío falla: sin esto, un SMTP caído
+ * en producción es invisible (el usuario ve la misma pantalla neutra de siempre
+ * y se queda esperando un código que nunca sale).
+ */
+function registrarMailLog(string $linea): void
+{
+    $logDir = __DIR__ . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+    @file_put_contents(
+        $logDir . '/mail.log',
+        sprintf("[%s] %s%s", date('Y-m-d H:i:s'), $linea, PHP_EOL),
+        FILE_APPEND | LOCK_EX
+    );
+}
+
+/**
+ * Construye un PHPMailer ya configurado con el SMTP del .env.
+ * Devuelve null si no hay credenciales (modo desarrollo).
+ * Lo comparten el envío del token y el diagnóstico database/smtp_test.php.
+ */
+function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
+{
+    $cfg = require __DIR__ . '/config/mail.php';
+    if (empty($cfg['username']) || empty($cfg['password'])) {
+        return null;
+    }
+
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host       = $cfg['host'];
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $cfg['username'];
+    $mail->Password   = $cfg['password'];
+    $mail->SMTPSecure = $cfg['secure'];
+    $mail->Port       = (int) $cfg['port'];
+    // Un SMTP que no responde no puede colgar la petición del usuario.
+    $mail->Timeout    = 15;
+    $mail->CharSet    = 'UTF-8';
+    if (!empty($cfg['debug'])) {
+        $mail->SMTPDebug   = 2; // solo para diagnóstico (MAIL_DEBUG=1 en el .env)
+        $mail->Debugoutput = 'error_log';
+    }
+
+    // Gmail —y la mayoría de SMTP autenticados— reescriben o rechazan un remitente
+    // distinto de la cuenta que autentica. Si el .env conserva el placeholder de
+    // desarrollo, se usa la propia cuenta SMTP en vez de un dominio inexistente.
+    $remitente = $cfg['from_email'];
+    if ($remitente === '' || $remitente === 'no-reply@sysai.local') {
+        $remitente = $cfg['username'];
+    }
+    $mail->setFrom($remitente, $cfg['from_name']);
+
+    return $mail;
+}
+
+/**
  * Envía el código (token) de recuperación de contraseña.
  *  - Con SMTP configurado en includes/config/mail.php → envía el email real.
  *  - Sin SMTP (entorno de desarrollo) → registra el token en includes/logs/mail.log
  *    y lo trata como "enviado", para poder continuar el flujo sin servidor de correo.
  *
+ * En producción el token NUNCA se escribe en el log: solo se deja constancia de
+ * que salió (o de por qué no salió).
+ *
  * @return bool true si se envió (o se registró en modo dev), false si falló el SMTP.
  */
 function enviarTokenRecuperacion(string $email, string $nombre, string $token): bool
 {
-    $cfg = require __DIR__ . '/config/mail.php';
+    $mail = construirMailer();
 
     // Modo desarrollo: sin credenciales SMTP no se puede enviar de verdad.
-    if (empty($cfg['username']) || empty($cfg['password'])) {
-        $logDir = __DIR__ . '/logs';
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
-        }
-        $linea = sprintf(
-            "[%s] [DEV - correo NO enviado] PARA: %s | NOMBRE: %s | TOKEN: %s%s",
-            date('Y-m-d H:i:s'),
-            $email,
-            $nombre,
-            $token,
-            PHP_EOL
-        );
-        @file_put_contents($logDir . '/mail.log', $linea, FILE_APPEND | LOCK_EX);
+    if ($mail === null) {
+        registrarMailLog("[DEV - correo NO enviado] PARA: {$email} | NOMBRE: {$nombre} | TOKEN: {$token}");
         error_log("[DEV] Token de recuperación para {$email}: {$token}");
         return true;
     }
 
     try {
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host       = $cfg['host'];
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $cfg['username'];
-        $mail->Password   = $cfg['password'];
-        $mail->SMTPSecure = $cfg['secure'];
-        $mail->Port       = (int) $cfg['port'];
-        $mail->setFrom($cfg['from_email'], $cfg['from_name']);
         $mail->addAddress($email, $nombre);
         $mail->isHTML(true);
-        $mail->CharSet = 'UTF-8';
-        $mail->Subject = 'Respuesta a Solicitud de cambio de Contraseña';
+        $mail->Subject = 'Código para cambiar tu contraseña — Arca';
         $mail->Body =
             '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">'
-            . '<h2 style="color:#42A5F5">Cambio de Contraseña</h2>'
+            . '<h2 style="color:#42A5F5">Cambio de contraseña</h2>'
             . '<p>Hola, ' . htmlspecialchars($nombre) . '.</p>'
             . '<p>Usa el siguiente código para completar el proceso:</p>'
             . '<p style="font-size:24px;font-weight:bold;color:#42A5F5">' . htmlspecialchars($token) . '</p>'
             . '<p>Si no solicitaste este cambio, ignora este correo electrónico.</p>'
-            . '<hr><small>Cronos Soluciones</small></div>';
+            . '<hr><small>Arca — Organización Arco Iris</small></div>';
         $mail->AltBody = "Tu código de recuperación es: {$token}";
-        return $mail->send();
+
+        if (!$mail->send()) {
+            registrarMailLog("[ERROR] No se pudo enviar a {$email}: {$mail->ErrorInfo}");
+            error_log('Error al enviar correo de recuperación: ' . $mail->ErrorInfo);
+            return false;
+        }
+        registrarMailLog("[OK] Código de recuperación enviado a {$email}");
+        return true;
     } catch (\Throwable $e) {
+        registrarMailLog("[ERROR] Excepción enviando a {$email}: " . $e->getMessage());
         error_log('Error al enviar correo de recuperación: ' . $e->getMessage());
         return false;
     }

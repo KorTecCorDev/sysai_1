@@ -1,6 +1,9 @@
 vendor/
 node_modules/
 .env
+# Cualquier variante (.env.bak, .env.local, .env.produccion…): son secretos igual
+# que el original, y una copia de respaldo es la forma tipica de colar uno al repo.
+.env.*
 !.env.example
 *.log
 *.cache

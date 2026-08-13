@@ -115,9 +115,20 @@ local3000                             # php -S localhost:3000  → http://localh
   `my.cnf`). Cubre también `database/migrate.php` (reutiliza `conectarDB()`). Verificado: replay greenfield
   completo (baseline + migr. 001-032 + seeds) y suite QA 131/131 bajo modo estricto.
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
-  ✅ Credenciales ya externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env` (helper
-  `enviarTokenRecuperacion()`). En **modo DEV** (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) el token solo se
-  escribe en `includes/logs/mail.log`, no se envía correo real.
+  ✅ Credenciales externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env`; el envío lo
+  arma `construirMailer()` y lo usa `enviarTokenRecuperacion()` (ambos en `includes/funciones.php`).
+  ✅ **SMTP REAL CONFIGURADO Y VERIFICADO (2026-08-13):** Gmail `korteccor@gmail.com` con **App Password**
+  (587/TLS). Es la cuenta **emisora**, no una cuenta de usuario del sistema. Gmail exige que
+  `MAIL_FROM_EMAIL` sea **la misma** de `MAIL_USERNAME` (si no, reescribe el remitente). Verificado de punta
+  a punta: correo recibido y contraseña cambiada. ⏸ Al haber dominio propio en Hostinger, migrar a
+  `no-reply@<dominio>` (`smtp.hostinger.com`, 465/ssl).
+  - **Diagnóstico:** `php database/smtp_test.php <destinatario>` — comprueba por separado credenciales,
+    openssl/CA de Windows, handshake y envío real. No toca la BD ni genera tokens. `MAIL_DEBUG=1` vuelca el
+    diálogo SMTP al `error_log`.
+  - **Bitácora:** todo envío deja línea en `includes/logs/mail.log`. En **modo DEV**
+    (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) escribe el token y no envía nada; con SMTP real registra
+    `[OK]`/`[ERROR]` **sin el token**. `LoginController` ya no ignora el fallo de envío (queda en el log),
+    pero la respuesta al usuario sigue siendo **neutra** (A5, anti-enumeración).
 - **Credenciales de prueba / QA local:** coordinador `coordinador@sysai.test` / `Test1234*` (programa 1);
   contador `contador@sysai.test` / `admin1234` (= admin local `robertokar97@gmail.com`).
   ⚠️ **No re-sembrar ni resetear `usuario.password`** en la BD local — el usuario gestiona sus contraseñas

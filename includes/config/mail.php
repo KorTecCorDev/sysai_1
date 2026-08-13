@@ -16,4 +16,7 @@ return [
     'secure'     => $_ENV['MAIL_SECURE']     ?? getenv('MAIL_SECURE')     ?: 'tls',
     'from_email' => $_ENV['MAIL_FROM_EMAIL'] ?? getenv('MAIL_FROM_EMAIL') ?: 'no-reply@sysai.local',
     'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'Área de TI - Arca',
+    // MAIL_DEBUG=1 → PHPMailer vuelca el diálogo SMTP al error_log. Solo para
+    // diagnosticar un envío que falla; dejar vacío en operación normal.
+    'debug'      => $_ENV['MAIL_DEBUG']      ?? getenv('MAIL_DEBUG')      ?: '',
 ];
