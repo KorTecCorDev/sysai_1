@@ -5,7 +5,8 @@
 > Ejecutar en orden; cada paso indica su resultado esperado. Si algo no cuadra, anotar el número
 > de paso (p. ej. "falla el 5.4") — con eso basta para retomarlo.
 
-> **Estado del recorrido (2026-08-13):** bloques **0 a 6 aprobados**; queda el **7**.
+> **Estado del recorrido (2026-08-13): ✅ COMPLETO — bloques 0 a 7 aprobados.** Siguiente paso:
+> correr `database/qa_all.ps1` (resetea la BD al fixture de QA) y mergear `dev` → `main`.
 > ⚠️ Los montos escritos abajo son los previstos al redactar el plan y **ya no calzan** con el
 > escenario real: la transferencia de ALIANZA SOLIDARIA quedó en **S/ 15,000** (no 150 000), así que
 > Σ transferencias = **605 000** (no 740 000) y el sobre del Institucional en ALIANZA es
@@ -111,13 +112,30 @@ una sesión real del coordinador de COMUNIDAD:
   fila de **su** rubro (7 500 / 2 800 / 5 000) — el arreglo de la migr. 034 visto desde el rol que
   más lo usa.
 
-## Bloque 7 — Regresión del sprint de deuda técnica
+## Bloque 7 — Regresión del sprint de deuda técnica ✅ (aprobado 2026-08-13)
 
 | # | Acción | Resultado esperado |
 |---|---|---|
 | 7.1 | Como admin: crear un usuario con nombre "María de los Ángeles" | Se guarda **tal cual** y el input **ya no muestra mayúsculas al teclear** (B4 quedó cerrado del todo el 2026-08-12: faltaba la mitad de CSS) |
 | 7.2 | Cualquier pantalla con iconos (sidebar) | Iconos intactos (la limpieza de `build/css/` no rompió nada) |
 | 7.3 | Un formulario con **textarea** (p. ej. descripción de un rubro) y otro con fechas/montos | Texto tal como se escribe; los montos siguen aceptando decimales |
+
+**Resultado:** aprobado en el navegador (el "no se ve en MAYÚSCULAS al teclear" solo se comprueba
+tecleando) y con 17 asserts de servidor en paralelo:
+- **7.1** — alta con `María de los Ángeles` / `Núñez` / `de la Cruz` → 302 `resultado=1` sin avisos de
+  PHP; en BD queda literal y el listado la muestra igual.
+- **7.2** — 200 en `app.css`, `bootstrap.min.css`, `bootstrap-icons.min.css`, las dos fuentes
+  `bootstrap-icons.woff/.woff2` y `bundle.min.js`; **cero reglas `text-transform` sobre
+  `input`/`textarea`** en el bundle compilado (las dos `uppercase` que quedan son de encabezados y
+  badges, correctas).
+- **7.3** — textarea con tildes, `ñ` y mayúsculas mezcladas guardada verbatim; monto **1234.56 sin
+  truncar** (`step="0.01"` + `montoNumerico()`).
+- Todo lo creado se borró por la ruta real de la app; sin personas huérfanas y con el escenario demo
+  intacto.
+
+> Nota para quien automatice esto: `POST /<entidad>/eliminar` exige además del `id` un campo **`tipo`**
+> (guardia `validarTipoContenido`); sin él el controlador responde **200 con la pantalla**, no un
+> error — parece que borró y no borró nada.
 
 ---
 
