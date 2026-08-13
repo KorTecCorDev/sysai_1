@@ -67,3 +67,22 @@
 - [x] ~~Revisar las discrepancias restantes del modelo de datos~~ — **HECHO 2026-07-16:** barrido completo
   contra la BD viva; `docs/modelo-datos-detalle.md` actualizado. Solo quedan abiertos: auditoría (⏸ v1.1,
   por decisión) y B2/reportes Excel (item 9, v1.1).
+- [x] ~~**B8 — Modal "Guardar POA" en la pantalla de reportes**~~ — **HECHO 2026-08-13** (detectado durante
+  las pruebas manuales, paso 5.7). Era el mecanismo pre-flujo para persistir el presupuesto del POA desde
+  `/reporte/poa`; hoy lo hace el servidor (`Poa::presupuestoCalculado()` al iniciar el documento y al
+  congelarlo en `/poa/enviar`), así que estaba de más — y roto en cinco frentes:
+  **(1)** guardaba mal: el `monto` que posteaba salía de la **columna D** del xlsx, que solo recibe rubros
+  tipo BIEN (los SERVICIOS van a la F) → escribía en `poa.presupuesto` solo el total de bienes;
+  **(2)** el modal estaba echado **dos veces** con el mismo `id` (HTML inválido, solo el primero se conectaba);
+  **(3)** dos manejadores rivales en el mismo botón, uno posteando a `/guardarpoa` —ruta inexistente— y sin CSRF;
+  **(4)** `console.log(bootstrapModal)` fuera de alcance → `ReferenceError` en cada clic de descarga, en las
+  **cinco** pantallas de reporte (el manejador interceptaba `#descargarReporte` en todas);
+  **(5)** para el Contador era un no-op silencioso (`indexguardarpoa` exigía `$_SESSION['programa_id']`, que
+  solo tienen los coordinadores).
+  De paso se corrigió un **error fatal latente**: la ruta GET `/reporte/guardarpoa` apuntaba a
+  `ReportePoaRubrosController::crearpoa`, **método inexistente**, registrada en los tres roles.
+  Retirados: los dos modales y el form oculto (`views/reporte/poa.php`), el bloque JS (`src/js/app.js` +
+  bundle recompilado), las 5 rutas (`iadmin`/`iconta`/`icoordi`), la entrada de la lista CSRF de `Router.php`
+  y los métodos `indexguardarpoa()`/`updateguardarpoa()`. Verificado con sesión real de contador:
+  `/reporte/poa` responde 200, conserva el botón "Ver POA", sin modal y sin avisos de PHP; la ruta retirada
+  ahora cae en `/error` en vez de reventar.

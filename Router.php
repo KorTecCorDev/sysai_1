@@ -35,7 +35,6 @@ class Router
             || str_ends_with($url, '/aprobar')
             || str_ends_with($url, '/guardar')
             || in_array($url, [
-                '/reporte/modificarpoa', '/reporte/guardarpoa',
                 '/login', '/chgpsswd', '/token_verify', '/updtepsswd',
             ], true);
     }

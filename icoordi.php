@@ -121,7 +121,6 @@ $router->post('/rendicionff/crear', [RendicionFfController::class, 'crear']);
 
 //Rutas para el reporte de rendiciones
 $router->get('/reporte/poa', [ReportePoaRubrosController::class, 'index']);
-$router->get('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'crearpoa']);
 $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'indexrendicion']);
 
 
@@ -134,5 +133,4 @@ $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'index
 
 
 //Ruta del guardado del POA
-$router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
 //Ruta de modificación de estados en el admin del POA
