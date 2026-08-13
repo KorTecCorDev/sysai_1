@@ -15,7 +15,7 @@
 3. Credenciales demo:
    | Rol | Correo | Contraseña |
    |---|---|---|
-   | Contador | `contador@arcoiris.pe` | `Contador2026*` |
+   | Contador | `contador@arcoiris.pe` | `contador2026` ⚠️ *(cambiada el 2026-08-12 al ejecutar el paso 0.8 con esta cuenta; `seed_demo.sql` sigue trayendo `Contador2026*` — un reseed la revierte)* |
    | Coordinador (Comunidad) | `coordinador.comunidad@arcoiris.pe` | `Comunidad2026*` |
    | Coordinador (Casa Hogar) | `coordinador.casahogar@arcoiris.pe` | `CasaHogar2026*` |
 4. ⚠️ No correr `qa_all.ps1` a mitad de las pruebas — resetea la BD al fixture de QA.
@@ -30,7 +30,7 @@
 | 0.2 | Teclear el correo en minúsculas | Se ve **en minúsculas** (antes el CSS lo mostraba en MAYÚSCULAS aunque se guardara tal cual) |
 | 0.3 | Entrar con un correo **inventado** y cualquier clave, 5 veces seguidas | Del 1º al 4º: "Las credenciales ingresadas no son correctas"; al 5º: aviso de **máximo de intentos**; después: "Demasiados intentos fallidos" *(usar un correo inventado para no bloquear una cuenta demo)* |
 | 0.4 | Pegar en la barra de direcciones `/updtepsswd?id=1` **sin haber pedido código** | Rebota a **`/chgpsswd`**. ⚠️ Este es el fallo de seguridad corregido: antes esa URL dejaba cambiarle la contraseña a **cualquier** usuario |
-| 0.5 | `/chgpsswd` → correo de Casa Hogar → "Enviar código" | Pasa al paso 2 (stepper 1-2-3). El código **no** llega por correo en modo DEV: se escribe en `includes/logs/mail.log` (última línea) |
+| 0.5 | `/chgpsswd` → correo de Casa Hogar → "Enviar código" ⚠️ *(la cuenta que uses aquí **pierde** su contraseña demo: apunta la nueva antes de seguir, o los bloques posteriores no podrán entrar con ella)* | Pasa al paso 2 (stepper 1-2-3). El código **no** llega por correo en modo DEV: se escribe en `includes/logs/mail.log` (última línea) |
 | 0.6 | Pegar el código en el paso 2 | Pasa al paso 3, "Nueva contraseña" |
 | 0.7 | Poner una contraseña de menos de 8 caracteres, y luego dos que no coincidan | Error visible en ambos casos; no avanza |
 | 0.8 | Contraseña válida (mínimo 8) → guardar | Vuelve a `/login` con "Tu contraseña se actualizó". Entrar con la nueva ✔ *(ojo: esto cambia la clave demo de Casa Hogar; anótala)* |
@@ -51,13 +51,14 @@
 | 2.1 | Seleccionar **COMUNIDAD** → card ALIANZA SOLIDARIA (vinculada) → campo "Transferencia al Institucional" = **100000** → botón ⇄ | Mensaje "actualizado"; la card muestra "Transferido: S/. 100,000.00 (0 para quitarla)" |
 | 2.2 | Cambiar a **150000** → guardar | Se actualiza; el "Comprometido (Σ sobres)" de la fuente sube |
 | 2.3 | Teclear **999999999** → guardar | **Error visible** "excede la capacidad asignable"; el monto NO cambia |
-| 2.4 | **Saldos** (`/saldos_contables/saldos`) | En la tabla de sobres aparece la fila **(INSTITUCIONAL, ALIANZA SOLIDARIA)** con monto 150 000 |
+| 2.4 | **Saldos** (`/saldos_contables/saldos`) → tabla "Saldos por Sobre" | Aparece la fila **PRG000 · INSTITUCIONAL / ALIANZA SOLIDARIA**, pero **con badge amarillo "POA no aprobado" y sin cifras** — no es un fallo: es la regla del item 8 (el saldo solo se muestra con el POA Presupuestal del año Aprobado, y el del Institucional se crea en el Bloque 3). Casa Hogar sale igual, por lo mismo |
+| 2.5 | *(se comprueba al terminar el Bloque 3)* Volver a **Saldos** | Ahora sí, la fila del Institucional muestra el monto: **Σ de las transferencias que recibió en esa fuente** |
 
 ## Bloque 3 — El Contador opera el POA Institucional
 
 | # | Acción | Resultado esperado |
 |---|---|---|
-| 3.1 | **POA Presupuestal** (`/poa/admin`) | Panel superior "**Programa Institucional** — a tu cargo" con presupuesto = S/. 150,000 y margen |
+| 3.1 | **POA Presupuestal** (`/poa/admin`) | Panel superior "**Programa Institucional** — a tu cargo", con tope = **Σ de TODAS las transferencias que ha recibido** (no solo la de ALIANZA). Con las transferencias hechas el 2026-08-13 —150 000 ALIANZA + 500 000 COMPASSION de Comunidad + 90 000 LATIN LINK de Casa Hogar— el tope es **S/ 740,000** |
 | 3.2 | "Gestionar jerarquía y rubros" → crear **Resultado → Producto → Actividad → Rubro** (ej. "Servicios básicos", servicio, **S/ 80,000**) | Todo se crea normal (selector de programa = INSTITUCIONAL). El texto se guarda **tal como lo escribes** |
 | 3.3 | Volver a `/poa/admin` → **Iniciar POA Institucional** | Documento en **Borrador**, presupuesto = 80 000 (Σ rubros) |
 | 3.4 | **Enviar a revisión** | Estado **Enviado** |
@@ -68,7 +69,7 @@
 | # | Acción | Resultado esperado |
 |---|---|---|
 | 4.1 | Jerarquía del Institucional → rubro → **Rendiciones** → crear una (ej. S/ 5,000, fecha de hoy, fuente ALIANZA) | Nace **Aprobada** (POA aprobado + eres Contador) |
-| 4.2 | **Saldos** | Sobre del Institucional: 150 000 − 5 000 = **145 000** |
+| 4.2 | **Saldos** | Ya con el POA aprobado las cifras se ven. Sobre del Institucional en **la fuente que usaste** en 4.1: su transferencia − 5 000 (con ALIANZA: 150 000 − 5 000 = **145 000**) |
 | 4.3 | Volver a `/dfinanciamiento` COMUNIDAD → intentar reducir la transferencia a **3000** (< 5 000 rendidos) | Banner: "**No se puede reducir o quitar la transferencia: el programa Institucional ya comprometió ese dinero…**"; el monto sigue en 150 000 |
 
 ## Bloque 5 — Reportes Excel (la corrección estrella)

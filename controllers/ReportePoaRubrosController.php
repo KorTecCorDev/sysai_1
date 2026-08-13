@@ -247,57 +247,10 @@ class ReportePoaRubrosController
         }
     }
 
-    // Guardar el presupuesto calculado en el documento POA Presupuestal del programa.
-    // Upsert por programa/año en estado Borrador: NO cambia el estado del documento
-    // (las transiciones van por el flujo /poa/enviar|observar|aprobar) ni duplica.
-    // Respeta el bloqueo: si el POA ya está Enviado/Aprobado, el coordinador no edita.
-    public static function indexguardarpoa(Router $router)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /poa/admin');
-            exit;
-        }
-        $programaId = $_SESSION['programa_id'] ?? null;
-        if (!$programaId) {
-            header('Location: /poa/admin');
-            exit;
-        }
-        // Bloqueo si el POA Presupuestal ya fue enviado/aprobado (solo coordinador).
-        exigirPoaPresupuestalEditable($programaId);
-
-        $anio  = date('Y');
-        $monto = (float) ($_POST['monto'] ?? 0);
-
-        $poa = Poa::porProgramaAnio($programaId, $anio);
-        if (!$poa) {
-            $poa = new Poa([
-                'programa_id' => $programaId,
-                'usuario_id'  => $_SESSION['id'],
-                'anio'        => $anio,
-                'presupuesto' => $monto,
-                'estado'      => Poa::BORRADOR
-            ]);
-        } else {
-            $poa->presupuesto = $monto;
-        }
-
-        $poa->validar();
-        $errores = Poa::getErrores();
-        if (empty($errores)) {
-            Poa::setUsuarioActual();
-            $poa->guardarsinRedireccion();
-            header('Location: /poa/admin?resultado=2');
-            exit;
-        }
-        header('Location: /poa/admin?resultado=12');
-        exit;
-    }
-
-    // Deprecado: el cambio de estado del POA Presupuestal ahora se realiza por el flujo
-    // documental (/poa/enviar, /poa/observar, /poa/aprobar) con validación de estados.
-    public static function updateguardarpoa(Router $router)
-    {
-        header('Location: /poa/admin');
-        exit;
-    }
+    // Retirados el 2026-08-13: indexguardarpoa() (POST /reporte/guardarpoa) y
+    // updateguardarpoa() (POST /reporte/modificarpoa, ya deprecado a no-op). Los
+    // alimentaba el modal "Guardar POA" de views/reporte/poa.php, que escribía el
+    // presupuesto del documento desde un monto posteado por el navegador. Hoy esa
+    // cifra la calcula el servidor: Poa::presupuestoCalculado() al iniciar el POA
+    // (/poa/crear) y de nuevo al congelarlo en /poa/enviar.
 }

@@ -159,67 +159,17 @@ function eventListeners(e) {
     });
   }
 
-  //MODAL DE GUARDAR POA
-  //Elección de guardar o no poa luego de crear el reporte en excel
-  var modalpoa = document.getElementById("guardarModal");
-  var guardarBtn = document.getElementById("guardarBtn");
-  var cancelarBtn = document.getElementById("cancelarBtn");
-  var descargarReporte = document.getElementById("descargarReporte");
-
-  // Verificar si los elementos del modal existen
-  // if (modal && guardarBtn && cancelarBtn && descargarReporte) {
-  // Manejar el clic en el enlace de descarga
-  if (descargarReporte) {
-    descargarReporte.addEventListener("click", function (event) {
-      event.preventDefault();
-      window.open(this.href, "_blank");
-      setTimeout(function () {
-        var bootstrapModal = new bootstrap.Modal(modalpoa);
-        bootstrapModal.show();
-      }, 1000); // Esperar 1 segundo antes de mostrar el modal
-      console.log(bootstrapModal);
-    });
-    console.log(modalpoa);
-  }
-
-  //Deberíamos de guardar los valores necesarios para la tabla POA
-  if (guardarBtn) {
-    // Manejar el clic en el botón "Sí"
-    guardarBtn.addEventListener("click", function () {
-      // Enviar el formulario para guardar el POA en la base de datos
-      var form = document.createElement("form");
-      form.method = "POST";
-      form.action = "/guardarpoa"; // Cambia esto a la URL correcta para guardar el POA
-      document.body.appendChild(form);
-      form.submit();
-    });
-  }
-  //Fin de la modificación
-  if (cancelarBtn) {
-    // Manejar el clic en el botón "No"
-    cancelarBtn.addEventListener("click", function () {
-      // Ocultar el modal y regresar a la vista anterior
-      var bootstrapModal = bootstrap.Modal.getInstance(modal);
-      bootstrapModal.hide();
-      window.history.back();
-    });
-  }
-
-  //FIN DE MODAL DE GUARDAR POA
+  // El modal "Guardar POA" se retiró el 2026-08-13 (ver views/reporte/poa.php).
+  // De paso desaparece el manejador que interceptaba el clic de #descargarReporte
+  // en las CINCO pantallas de reporte: hacía preventDefault + window.open y luego
+  // intentaba abrir un modal que solo existía en una de ellas. El enlace ya lleva
+  // target="_blank", así que el comportamiento nativo es el mismo, sin errores.
 
   //Existe el combo SELECT cargo con el cargo_id=3 (COORDINADORES)
   const cargo = document.querySelector("#cargo");
   // Si existe el combo con id cargo, entonces se debe de mostrar el combo con id programas_coordinador que está por defecto como oculto
   if (cargo) {
     cargo.addEventListener("change", mostrarProgramasCoordinador);
-  }
-
-  //Guardar POA en el MODAL
-  const btnguardar = document.getElementById("guardarBtn");
-  if (btnguardar) {
-    btnguardar.addEventListener("click", function () {
-      document.getElementById("guardarForm").submit();
-    });
   }
 
   //Cambiar las fechas del DATE(límites de los reportes)

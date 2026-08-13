@@ -139,7 +139,6 @@ $router->get('/tcambio/sbs', [TipoCambioController::class, 'sbs']);   // consult
 
 //Rutas para el reporte de rendiciones
 $router->get('/reporte/poa', [ReportePoaRubrosController::class, 'index']);
-$router->get('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'crearpoa']);
 $router->get('/reporte/poarendicion', [ReportePoaRubrosController::class, 'indexrendicion']);
 $router->get('/reporte/poarubros', [ReportePoaRubrosController::class, 'indexrubro']);
 $router->get('/reporte/rendiciones', [ReportePoaRubrosController::class, 'indexreporterendiciones']);
@@ -169,6 +168,4 @@ $router->post('/ingreso_egreso/actualizar', [Controllers\IngresoEgresoController
 $router->post('/ingreso_egreso/eliminar', [Controllers\IngresoEgresoController::class, 'eliminar']);
 
 //Ruta del guardado del POA
-$router->post('/reporte/guardarpoa', [ReportePoaRubrosController::class, 'indexguardarpoa']);
 //Ruta de modificación de estados en el admin del POA
-$router->post('/reporte/modificarpoa', [ReportePoaRubrosController::class, 'updateguardarpoa']);

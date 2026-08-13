@@ -570,6 +570,14 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
   tasa vigente a la **fecha de operación**, que es lo que ya congela el sistema. **Cero código que tocar.**
   Sin pronunciamiento sobre fuente de la tasa y redondeo → se mantiene el comportamiento actual (Contador
   registra a mano, SBS informativa, `ROUND(…, 2)`). Detalle en `docs/confirmar-tc-contador.md`.
+- [x] ~~B8 — modal "Guardar POA" en `/reporte/poa`~~ — **CERRADO 2026-08-13** (hallado en las pruebas
+  manuales): fósil pre-flujo que escribía `poa.presupuesto` desde un monto posteado por el navegador —y
+  que además solo sumaba la **columna D del xlsx (rubros tipo BIEN)**, dejando fuera los servicios—.
+  Hoy esa cifra la calcula el servidor (`Poa::presupuestoCalculado()` al iniciar y al congelar en
+  `/poa/enviar`). Retirados modal (duplicado en el DOM), form oculto, bloque JS (que rompía el clic de
+  descarga en las 5 pantallas de reporte), 5 rutas, entrada CSRF y los métodos del controlador; de paso
+  se eliminó la ruta GET `/reporte/guardarpoa` → `crearpoa`, **método inexistente** = error fatal latente.
+  Detalle en `docs/follow-ups-tecnicos.md`.
 - [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
   (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.
 

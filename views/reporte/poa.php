@@ -255,53 +255,9 @@ echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-suc
 /*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
 
 
-// Modal para preguntar si desea guardar el POA en la base de datos
-echo '
-<div class="modal fade oculto" id="guardarModal" tabindex="-1" aria-labelledby="guardarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="guardarModalLabel">Guardar POA</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>¿Desea guardar el POA en la base de datos?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <button type="button" class="btn btn-primary" id="guardarBtn">Sí</button>
-      </div>
-    </div>
-  </div>
-</div>
-';
-
-// Si se descarga el reporte, se debe abrir un modal con la pregunta si desea guardar el poa en la base de datos
-// Si se acepta, se debe guardar el poa en la base de datos
-// Si se cancela, se debe regresar la página a la vista anterior
-
-//Modal
-echo '
-<div class="modal fade oculto" id="guardarModal" tabindex="-1" aria-labelledby="guardarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="guardarModalLabel">Guardar POA</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>¿Desea guardar el POA en la base de datos?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <button type="button" class="btn btn-primary" id="guardarBtn">Sí</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Formulario oculto para envío por POST -->
-<form id="guardarForm" method="POST" action="/reporte/guardarpoa?id=' . $poaid . '" style="display: none;">
-  <input type="hidden" name="csrf_token" value="' . csrf_token() . '">
-  <input type="hidden" name="monto" value="' . $montototal . '">
-</form>';
+// El modal "¿Desea guardar el POA en la base de datos?" se retiró el 2026-08-13:
+// era un fósil de cuando esta pantalla era la única forma de persistir el
+// presupuesto del POA. Hoy el documento lo crea /poa/crear con
+// Poa::presupuestoCalculado() (Σ rubros, calculada en el servidor) y se congela
+// en /poa/enviar. Además guardaba mal: el monto que posteaba salía de la columna
+// D del xlsx, que solo recibe los rubros tipo BIEN — los SERVICIOS van a la F.
