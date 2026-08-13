@@ -71,14 +71,28 @@ async function servidorPhp(cb) {
     setTimeout(cb, 1200);
 }
 
+// En Windows, `spawn(..., {shell:true})` cuelga php.exe de un cmd.exe intermedio:
+// matar el hijo directo puede dejar php.exe VIVO y aferrado al puerto, y el
+// siguiente `gulp` "reutilizaria" un servidor fantasma de la sesion anterior.
+// `taskkill /T` se lleva el arbol completo.
 function cerrarPhp() {
-    if (procesoPhp && !procesoPhp.killed) {
-        procesoPhp.kill();
-        procesoPhp = null;
+    if (!procesoPhp || procesoPhp.killed) {
+        return;
+    }
+    const pid = procesoPhp.pid;
+    procesoPhp = null;
+    if (process.platform === 'win32') {
+        try {
+            require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+        } catch (e) { /* ya habia muerto */ }
+    } else {
+        try { process.kill(-pid); } catch (e) { /* ya habia muerto */ }
     }
 }
-process.on('exit',   cerrarPhp);
-process.on('SIGINT', () => { cerrarPhp(); process.exit(0); });
+process.on('exit',    cerrarPhp);
+process.on('SIGINT',  () => { cerrarPhp(); process.exit(0); });
+process.on('SIGTERM', () => { cerrarPhp(); process.exit(0); });
+process.on('SIGBREAK',() => { cerrarPhp(); process.exit(0); });   // Ctrl+Break en Windows
 
 function servidor(cb) {
     browserSync.init({
@@ -157,12 +171,18 @@ function versionWebp() {
 }
 
 
-function watchArchivos() {
+// Recibe `cb` y lo llama en cuanto los vigilantes quedan registrados. Sin eso,
+// Gulp 4 considera que la tarea nunca termino y al cerrar con Ctrl+C imprime
+// "The following tasks did not complete / Did you forget to signal async
+// completion?". El proceso NO se cierra al llamar cb(): los watchers de chokidar
+// mantienen vivo el bucle de eventos, que es justo lo que queremos.
+function watchArchivos(cb) {
     watch( paths.scss, css );                              // inyecta (sin recargar)
     watch( paths.js, series( javascript, recargar ) );
     watch( paths.imagenes, series( imagenes, recargar ) );
     watch( paths.imagenes, versionWebp );
     watch( paths.php, recargar );                          // vistas y controladores
+    cb();
 }
 
 // Solo estilos: vigila src/scss y recompila el CSS al detectar cambios.
