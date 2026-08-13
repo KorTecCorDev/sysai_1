@@ -5,6 +5,13 @@
 > Ejecutar en orden; cada paso indica su resultado esperado. Si algo no cuadra, anotar el número
 > de paso (p. ej. "falla el 5.4") — con eso basta para retomarlo.
 
+> **Estado del recorrido (2026-08-13):** bloques **0 a 6 aprobados**; queda el **7**.
+> ⚠️ Los montos escritos abajo son los previstos al redactar el plan y **ya no calzan** con el
+> escenario real: la transferencia de ALIANZA SOLIDARIA quedó en **S/ 15,000** (no 150 000), así que
+> Σ transferencias = **605 000** (no 740 000) y el sobre del Institucional en ALIANZA es
+> 15 000 − 5 000 = **10 000**. El POA institucional (80 000) sigue muy por debajo del tope. Al releer
+> un paso, quedarse con la **regla** que verifica, no con la cifra.
+
 ## Preparación (una sola vez)
 
 1. Servidor corriendo: `local3000` (http://localhost:3000).
@@ -85,12 +92,24 @@
 | 5.7 | **Reportes → POA** (`/reporte/poa`) y **POA General** (`/reporte/poarubros`) | Misma fila de transferencia + TOTAL etiquetado; nada revienta |
 | 5.8 | Descargar **dos veces seguidas** el reporte de rendición y comparar | Las columnas de fuente salen **en el mismo orden** las dos veces (arreglado el 2026-08-12: antes el orden era el que devolviera MySQL y podía cambiar entre descargas) |
 
-## Bloque 6 — El coordinador no se ve afectado
+## Bloque 6 — El coordinador no se ve afectado ✅ (aprobado 2026-08-13)
 
 | # | Acción | Resultado esperado |
 |---|---|---|
 | 6.1 | Login como coordinador → `/poa/admin` | Su panel de siempre, **sin** panel institucional |
 | 6.2 | Su reporte de rendición | Solo su programa, con la fila de transferencia si COMUNIDAD transfirió |
+
+**Resultado:** aprobado en el navegador y, en paralelo, con una verificación HTTP de 21 asserts sobre
+una sesión real del coordinador de COMUNIDAD:
+- `/poa/admin` → 200 sin avisos de PHP; sin "Programa Institucional" ni "Iniciar POA Institucional";
+  su panel de POA Presupuestal presente.
+- Sin enlaces a `/dfinanciamiento` ni `/ingreso_egreso` en su sidebar, y las rutas ajenas
+  (`/dfinanciamiento/crear`, `/saldos_contables/saldos`, `/reporte/poarubros`) responden **302**.
+- Su xlsx: título `RENDICIÓN - 2026 - PROGRAMA COMUNIDAD`, **solo** su bloque (ni CASA HOGAR ni
+  INSTITUCIONAL), fila `TRANSFERENCIA A PROGRAMA INSTITUCIONAL` = **515 000** (15 000 ALIANZA +
+  500 000 COMPASSION) incluida en el `TOTAL` etiquetado (`=SUM(G5:G10)`), y cada suma rendida en la
+  fila de **su** rubro (7 500 / 2 800 / 5 000) — el arreglo de la migr. 034 visto desde el rol que
+  más lo usa.
 
 ## Bloque 7 — Regresión del sprint de deuda técnica
 
