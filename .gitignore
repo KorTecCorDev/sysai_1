@@ -16,5 +16,9 @@ node_modules/
 views/reporte/storage/
 # Volcado de BD con datos reales (solo schema/seed de prueba se versionan)
 *sysai_schema_*.sql
+# Respaldos de database/respaldo.ps1. Tras la capacitacion contendran datos
+# personales reales de los participantes (nombres y correos): un volcado de la
+# base no tiene por que acabar en el historial del repositorio.
+database/respaldos/
 # Worktrees efimeros creados por sesiones de Claude Code
 .claude/worktrees/
