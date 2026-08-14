@@ -5,6 +5,14 @@
 // tal cual, sin calcular — los asserts comparan literales). Exit 1 si el
 // archivo no existe o no se puede leer.
 
+// Solo por linea de comandos: recibe una RUTA por $argv y la vuelca. Servido por
+// HTTP (con register_argc_argv, $argv sale de la query string) permitia leer
+// hojas de calculo arbitrarias del servidor.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 require __DIR__ . '/../vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;

@@ -171,7 +171,13 @@ class LoginController
                     if ($login->guardarToken()) {
                         // En producción manda el email; en desarrollo (sin SMTP) lo
                         // registra en includes/logs/mail.log.
-                        enviarTokenRecuperacion($login->email, $login->datos, $tokenClaro);
+                        // El resultado NO cambia lo que ve el usuario (A5: respuesta
+                        // neutra contra enumeración), pero un fallo de SMTP tiene que
+                        // dejar rastro: si no, el usuario espera un código que nunca
+                        // salió y en el servidor no hay nada que mirar.
+                        if (!enviarTokenRecuperacion($login->email, $login->datos, $tokenClaro)) {
+                            error_log("[RECUPERACION] Fallo el envio del token a {$login->email}; revisar includes/logs/mail.log");
+                        }
                     }
                 }
                 // Registrar la solicitud (alimenta el límite por IP y el cooldown).

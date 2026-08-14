@@ -16,11 +16,24 @@
   101/101)**: montos a escala real, `montoNumerico()`, capacidad asignable, tabla `tipo_cambio` unificada
   (compra/venta por `fecha_vigencia`), TC congelado en transacciones, reportes que nunca revientan y consulta
   SBS informativa. Se conserva como registro de decisiones.
+- **`docs/plan-reportes-ingresos-y-rendiciones.md`** — 📋 **PLANIFICADO (2026-08-14)**: corrección de
+  `/reporte/ingresos` y `/reporte/rendiciones`. Auditoría con hallazgos verificados (movimientos que
+  desaparecen por un JOIN mal planteado, presupuesto de fuentes sumado como ingreso, rendiciones
+  pendientes sin marcar, columnas USD/EUR nunca escritas) + **2 hallazgos de seguridad críticos** que
+  alcanzan a los cinco reportes (traversal en `/descargar`, xlsx servibles sin sesión). 12 decisiones
+  tomadas; migr. 035 + builder + QA. **Nada ejecutado todavía.**
 - `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
 - `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
-- `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP.
+- `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
+  PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
+  CSRF fallan porque el 419 sale como 500). Suite actual: **176/176**.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
+- **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
+  secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del
+  document root en producción, `.htaccess` corregido (era sintaxis Apache 2.2 dentro de un `<IfModule>`),
+  guardas CLI en `database/`, y el correo que ya no finge envíos exitosos. **P2 pendiente**: dominio
+  propio, SPF/DKIM y verificación del `.htaccess` contra el Apache real.
 - `docs/build-assets.md` — pipeline Gulp.
 - `docs/follow-ups-tecnicos.md` — deuda técnica pendiente (detalle).
 
@@ -78,9 +91,26 @@
     de XAMPP)". **`C:\php` ya no existe.** Si algún script o permiso invoca `C:\php\php.exe`, está roto.
 - **MariaDB de XAMPP** en `127.0.0.1:3306` (binario `C:\xampp\mysql\bin\mysql.exe`, root sin contraseña).
 - **Composer 2.9**, **Node 24 / npm 11**.
-- **Servidor de desarrollo:** alias `local3000` = `php -S localhost:3000` ejecutado **desde la raíz del proyecto**. App en **http://localhost:3000**.
+- **Servidor de desarrollo — `npm run dev` es el iniciador único (2026-08-13).** Un solo comando desde la raíz
+  del proyecto compila CSS/JS/imágenes, levanta el servidor PHP, pone **BrowserSync** por delante y queda
+  vigilando cambios:
+  - ⚠️ **No hay `gulp-cli` global**: `gulp` pelado responde `command not found`. Usar **`npm run dev`** o
+    **`npx gulp`** (ambos resuelven el binario de `node_modules/.bin/`). Si `npx gulp` falla con
+    `Cannot find module 'browser-sync'`, el `node_modules` está desactualizado → `npm install`.
+  - **http://localhost:3001** → la app, con recarga automática ← **usar esta**
+  - **http://localhost:3002** → panel de BrowserSync
+  - **http://localhost:8025** → bandeja de correo de desarrollo (Mailpit)
+  - 🔒 Todo escucha **solo en `127.0.0.1`** (2026-08-14). BrowserSync lo hacía en todas las interfaces y
+    su proxy no filtra rutas: `curl http://<ip-lan>:3001/.env` devolvía las credenciales de la BD.
+  - `http://localhost:3000` → el `php -S` crudo que gulp levanta por debajo (sigue sirviendo; sin recarga).
+    El alias `local3000` (= `php -S localhost:3000`) sigue siendo válido si solo se quiere el backend.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
   - ⚠️ **`php -S` NO procesa `.htaccess`** → en dev NO aplican los bloqueos de `controllers/`, `models/`, `*.sql`, `.env`, etc. Los `.htaccess` solo protegen en producción (Apache/Hostinger).
+  - Para trabajar contra el **vhost de Apache** (multiproceso y con `.htaccess` activo, lo más parecido a
+    producción): `$env:PHP_PORT=8080; npx gulp` — gulp detecta que el puerto ya está servido y proxea a
+    Apache en vez de levantar su propio PHP.
+  - Decisiones del pipeline de dev (por qué se retira la CSP en el proxy, `ghostMode: false`, CSS inyectado
+    vs. PHP recargado): `docs/build-assets.md`.
   - ✅ **Requisito TLS (Windows) para SMTP — CUMPLIDO (2026-07-16).** En `C:\xampp\php\php.ini`,
     `openssl.cafile` y `curl.cainfo` apuntan a `C:\xampp\apache\bin\curl-ca-bundle.crt`. Verificado:
     HTTPS por streams y handshake TLS verificado contra `smtp.gmail.com:465` OK. El día que se configure
@@ -89,18 +119,25 @@
 
 **Pasos de arranque:**
 ```bash
-composer install                      # vendor/  (PhpSpreadsheet, PHPMailer, intervention/image…)
-npm install                           # node_modules/ (Gulp)
-npm run dev                           # = gulp; recompila build/ (opcional: build/ ya viene compilado)
+composer install                      # vendor/  (PhpSpreadsheet, PHPMailer, bootstrap-icons)
+npm install                           # node_modules/ (Gulp + BrowserSync)
 
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
-php database/migrate.php                                                       # aplica migrations/001-034
+php database/migrate.php                                                       # aplica migrations/001-035
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
-local3000                             # php -S localhost:3000  → http://localhost:3000
+npm run dev                           # = gulp: compila + php -S + BrowserSync + watchers
+                                      #   → http://localhost:3001  la app (con recarga automática)
+                                      #   → http://localhost:3002  panel de BrowserSync
+                                      #   Ctrl+C cierra también el php.exe que levantó.
+
+# Alternativas:
+npx gulp                              # idéntico a npm run dev (NO existe `gulp` global)
+local3000                             # solo backend, sin recarga: php -S localhost:3000
+npx gulp build                        # solo compilar assets, sin servidor ni watcher (CI/prod)
 ```
 
 > **Para vaciar/recrear la BD local antes de reimportar** (XAMPP): phpMyAdmin trae `DROP DATABASE`
@@ -114,10 +151,35 @@ local3000                             # php -S localhost:3000  → http://localh
   (2026-07-16): todo truncamiento/overflow es error ruidoso, idéntico en dev y Hostinger (por sesión, sin tocar
   `my.cnf`). Cubre también `database/migrate.php` (reutiliza `conectarDB()`). Verificado: replay greenfield
   completo (baseline + migr. 001-032 + seeds) y suite QA 131/131 bajo modo estricto.
+- **Correo en desarrollo = Mailpit, sin credenciales (2026-08-14).** `npm run dev` levanta un SMTP local
+  en `127.0.0.1:1025` que **acepta todo y no reenvía nada a Internet**; los correos se leen en
+  **http://localhost:8025**. Instalación por equipo: `winget install Axllent.Mailpit`. Gracias a esto el
+  `.env` de desarrollo **no contiene ni un secreto** (BD local sin contraseña + correo local), que es
+  justamente el objetivo: nada que proteger, rotar ni trasladar entre equipos.
+  `MAIL_TRANSPORT` = `smtp` | `log` | `auto`. Detalle y razones: `docs/plan-secretos-y-hardening.md`.
+  ⚠️ **En producción el `.env` va FUERA del document root** (`../secrets/.env`, permisos 600, o la ruta
+  en `$SYSAI_ENV_FILE`): la app lo busca ahí primero.
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
-  ✅ Credenciales ya externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env` (helper
-  `enviarTokenRecuperacion()`). En **modo DEV** (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) el token solo se
-  escribe en `includes/logs/mail.log`, no se envía correo real.
+  ✅ Credenciales externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env`; el envío lo
+  arma `construirMailer()` y lo usa `enviarTokenRecuperacion()` (ambos en `includes/funciones.php`).
+  ⚠️ **Histórico:** el 2026-08-13 se verificó SMTP real con Gmail `korteccor@gmail.com` + App Password
+  (587/TLS). **Esa configuración ya no existe:** el `.env` se perdió al reinstalarse el equipo y Google no
+  permite recuperar una App Password. **No se ha vuelto a configurar a propósito** — desarrollar contra
+  Mailpit no necesita credenciales, y una App Password abre la cuenta de Gmail entera (decisión
+  2026-08-14, `docs/plan-secretos-y-hardening.md`). Si hiciera falta probar entrega real: generarla,
+  usarla y **revocarla** en el momento. Gmail exige que `MAIL_FROM_EMAIL` sea **la misma** de
+  `MAIL_USERNAME` (si no, reescribe el remitente). ⏸ Destino final: `no-reply@<dominio>` en Hostinger
+  (`smtp.hostinger.com`, 465/ssl) **con SPF y DKIM**, cuando haya dominio contratado.
+  - **Diagnóstico:** `php database/smtp_test.php <destinatario>` — comprueba por separado credenciales,
+    openssl/CA de Windows, handshake y envío real. No toca la BD ni genera tokens. `MAIL_DEBUG=1` vuelca el
+    diálogo SMTP al `error_log`.
+  - **Bitácora:** todo envío deja línea en `includes/logs/mail.log` (ruta configurable con
+    `MAIL_LOG_PATH`, para sacarla del document root en producción). ⚠️ **El token NUNCA se escribe**
+    (2026-08-14): es una credencial temporal y ese archivo llegó a ser descargable por HTTP. Para verlo,
+    la bandeja de Mailpit; en su defecto, `usuario.reset_token`. `LoginController` ya no ignora el fallo
+    de envío (queda en el log), pero la respuesta al usuario sigue siendo **neutra** (A5, anti-enumeración).
+  - ⚠️ **Con `APP_ENV=production` y sin transporte, el envío FALLA (devuelve `false` + `[ERROR]`)** en vez
+    de fingir éxito: sin correo nadie puede activar su cuenta, y antes el sistema lo ocultaba.
 - **Credenciales de prueba / QA local:** coordinador `coordinador@sysai.test` / `Test1234*` (programa 1);
   contador `contador@sysai.test` / `admin1234` (= admin local `robertokar97@gmail.com`).
   ⚠️ **No re-sembrar ni resetear `usuario.password`** en la BD local — el usuario gestiona sus contraseñas
@@ -467,9 +529,9 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
 - **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-034** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3); **033** Programa Institucional: flag `es_institucional`, tabla `transferencia_institucional` y siembra de `PRG000` (item 9); **034** `reporte_poa_rendicion` por rubro×fuente, solo aprobadas del ejercicio vigente (item 9).
-- **BD local `sysai`:** migraciones aplicadas hasta 034. Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-034 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
+  Migraciones vigentes: **001-034** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3); **033** Programa Institucional: flag `es_institucional`, tabla `transferencia_institucional` y siembra de `PRG000` (item 9); **034** `reporte_poa_rendicion` por rubro×fuente, solo aprobadas del ejercicio vigente (item 9); **035** vistas `reporte_ingresos`/`reporte_egresos`/`reporte_rendiciones` saneadas (se retira el JOIN a `detalle_financiamiento` que hacía DESAPARECER los movimientos de fuentes sin sobres y los duplicaba con ≥2 sobres; + programa, rubro, estado y tipo de comprobante — Fase 1 de `docs/plan-reportes-ingresos-y-rendiciones.md`).
+- **BD local `sysai`:** migraciones aplicadas hasta 035. Despliegue **greenfield** (Hostinger dado de baja):
+  importar baseline + 001-035 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
   Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
 - **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
 

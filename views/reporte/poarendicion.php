@@ -8,7 +8,6 @@ use Model\Programa;
 use Model\TransferenciaInstitucional;
 use Model\ReporteRendicionXlsxBuilder;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 // Coordinador: solo su programa. Contador/Admin: todos.
 $soloPrograma = ($_SESSION['cargo_id'] == 3) ? (int) ($_SESSION['programa_id'] ?? 0) : null;
@@ -59,15 +58,6 @@ $spreadsheet = new Spreadsheet();
 $builder = new ReporteRendicionXlsxBuilder($tcdolar, $tceuro, 'RENDICIÓN');
 $builder->construir($spreadsheet, $bloques);
 
-// Guardado en el servidor + botón de descarga (mismo archivo y ruta de siempre).
-$directory = __DIR__ . "/storage/reports/";
-if (!is_dir($directory)) {
-    mkdir($directory, 0777, true);
-}
-$filename = "reporte_poa_rendicion_{$usrcod}.xlsx";
-$writer = new Xlsx($spreadsheet);
-$writer->save($directory . $filename);
-
-echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
-        <i class='bi bi-file-earmark-excel'></i> Ver Rendiciones
-      </a>";
+// Descarga directa (Fase 0, 2026-08-14): antes se escribía el .xlsx dentro del
+// document root y se devolvía un enlace a /descargar. Ver descargarXlsx().
+descargarXlsx($spreadsheet, "reporte_poa_rendicion_{$usrcod}");

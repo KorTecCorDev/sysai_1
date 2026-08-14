@@ -1,12 +1,27 @@
 vendor/
 node_modules/
 .env
+# Cualquier variante (.env.bak, .env.local, .env.produccion…): son secretos igual
+# que el original, y una copia de respaldo es la forma tipica de colar uno al repo.
+.env.*
 !.env.example
+# EXCEPCION: el .env CIFRADO sí viaja en el repo — es como la configuración pasa
+# de un equipo a otro (scripts/env.js). Sin esta línea el patrón `.env.*` de
+# arriba lo ignoraría en silencio: harías `git add` y nunca llegaría al repo,
+# y lo descubrirías desde el otro equipo, con la configuración sin actualizar.
+!secrets/.env.enc
 *.log
 *.cache
 # Reportes generados en runtime (PhpSpreadsheet)
 views/reporte/storage/
 # Volcado de BD con datos reales (solo schema/seed de prueba se versionan)
 *sysai_schema_*.sql
+# Respaldos de database/respaldo.ps1. Tras la capacitacion contendran datos
+# personales reales de los participantes (nombres y correos): un volcado de la
+# base no tiene por que acabar en el historial del repositorio.
+database/respaldos/
+# Lista de participantes de la capacitacion: nombres, documentos, telefonos y
+# correos REALES de terceros. El script la crea como plantilla si no existe.
+database/participantes.csv
 # Worktrees efimeros creados por sesiones de Claude Code
 .claude/worktrees/

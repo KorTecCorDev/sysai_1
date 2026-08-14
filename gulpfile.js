@@ -11,11 +11,281 @@ const imagemin = require('gulp-imagemin');
 const notify = require('gulp-notify');
 const cache = require('gulp-cache');
 const webp = require('gulp-webp');
+const browserSync = require('browser-sync').create();
+const { spawn } = require('child_process');
+const net = require('net');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
 
 const paths = {
     scss: 'src/scss/**/*.scss',
     js: 'src/js/**/*.js',
-    imagenes: 'src/img/**/*'
+    imagenes: 'src/img/**/*',
+    // El backend es PHP: al tocar una vista o un controlador hay que RECARGAR,
+    // no inyectar. Se excluye lo que no es fuente propia.
+    php: ['*.php', 'controllers/**/*.php', 'models/**/*.php', 'views/**/*.php', 'includes/**/*.php',
+          '!node_modules/**', '!vendor/**']
+}
+
+// ---------------------------------------------------------------------------
+// Servidor de desarrollo
+// ---------------------------------------------------------------------------
+// BrowserSync NO ejecuta PHP: solo sabe servir estáticos. Por eso trabaja en
+// modo PROXY delante de un servidor PHP real. `gulp` levanta ese servidor
+// (php -S) y pone BrowserSync por delante, de modo que un solo comando deja
+// todo listo.
+//
+// Para trabajar contra el vhost de Apache (multiproceso y con .htaccess activo,
+// que es lo más parecido a producción):
+//     PHP_PORT=8080 npx gulp        (PowerShell: $env:PHP_PORT=8080; npx gulp)
+const PHP_HOST = '127.0.0.1';
+const PHP_PORT = process.env.PHP_PORT || 3000;
+const BS_PORT  = 3001;   // no puede coincidir con PHP_PORT ni con el 8080 de Apache
+
+// Mailpit: servidor SMTP de desarrollo que ACEPTA TODO y NO REENVIA NADA a
+// Internet, con bandeja web para leer los correos. Desarrollar contra el no
+// requiere ninguna credencial: por eso el .env de desarrollo no guarda secretos
+// (ver docs/plan-secretos-y-hardening.md).
+const MAILPIT_SMTP = 1025;
+const MAILPIT_UI   = 8025;
+
+// Puerto del vhost de Apache (conf/extra/httpd-vhosts.conf). Es la ÚNICA vía de
+// acceso desde otros equipos de la red — ver `avisoAccesos()` más abajo.
+// Configurable por si el vhost se mueve de puerto:  $env:APACHE_PORT=8081; npx gulp
+const APACHE_PORT = process.env.APACHE_PORT || 8080;
+
+let procesoPhp = null;
+let procesoMailpit = null;
+
+// ¿Hay algo escuchando ya en ese puerto? (Apache, u otra consola con php -S)
+function puertoOcupado(puerto) {
+    return new Promise((resolve) => {
+        const socket = net.createConnection({ host: PHP_HOST, port: puerto });
+        socket.setTimeout(800);
+        socket.on('connect', () => { socket.destroy(); resolve(true); });
+        socket.on('error',   () => { resolve(false); });
+        socket.on('timeout', () => { socket.destroy(); resolve(false); });
+    });
+}
+
+// Levanta `php -S` salvo que el puerto ya esté servido (así `gulp` no pelea con
+// un servidor que ya tengas abierto, ni con Apache si apuntas al 8080).
+// `async` sin callback: Gulp espera la promesa devuelta. Mezclar ambos (recibir
+// `cb` y ademas ser async) hacia que la tarea se diera por terminada de
+// inmediato, sin esperar a que el socket estuviera listo.
+async function servidorPhp() {
+    if (await puertoOcupado(PHP_PORT)) {
+        console.log(`[gulp] Ya hay un servidor escuchando en ${PHP_HOST}:${PHP_PORT}; lo reutilizo.`);
+        return;
+    }
+    console.log(`[gulp] Levantando php -S ${PHP_HOST}:${PHP_PORT}`);
+    procesoPhp = spawn('php', ['-S', `${PHP_HOST}:${PHP_PORT}`], {
+        cwd: __dirname,
+        shell: true,
+        stdio: ['ignore', 'ignore', 'inherit']   // los errores de PHP sí se ven
+    });
+    procesoPhp.on('error', (err) => console.error('[gulp] No se pudo iniciar PHP:', err.message));
+    // Pequeña espera a que el socket acepte conexiones antes de proxear.
+    await new Promise((r) => setTimeout(r, 1200));
+}
+
+// Arranca Mailpit si no hay uno escuchando ya. Degrada limpiamente: si el
+// binario no esta instalado NO se aborta el arranque -- se avisa y el correo
+// sigue funcionando en modo log (MAIL_TRANSPORT=log en el .env).
+//   Instalacion:  winget install Axllent.Mailpit
+// Localiza el binario. `mailpit` a secas solo funciona si la consola se abrio
+// DESPUES de instalarlo (winget modifica el PATH y avisa de que hay que
+// reiniciar la shell), asi que se prueba tambien la ruta donde winget lo deja.
+// MAILPIT_BIN en el entorno tiene prioridad sobre todo lo demas.
+function rutaMailpit() {
+    if (process.env.MAILPIT_BIN) {
+        return process.env.MAILPIT_BIN;
+    }
+    const base = path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WinGet', 'Packages');
+    try {
+        const dir = fs.readdirSync(base).find((d) => d.toLowerCase().startsWith('axllent.mailpit'));
+        if (dir) {
+            const exe = path.join(base, dir, 'mailpit.exe');
+            if (fs.existsSync(exe)) return exe;
+        }
+    } catch (e) { /* no es Windows, o no hay paquetes de winget */ }
+    return 'mailpit';   // confiamos en el PATH
+}
+
+async function servidorMailpit() {
+    if (await puertoOcupado(MAILPIT_SMTP)) {
+        console.log(`[gulp] Mailpit ya escucha en ${PHP_HOST}:${MAILPIT_SMTP}; lo reutilizo.`);
+        return;
+    }
+    // Ambos sockets atados a 127.0.0.1 A PROPOSITO: por defecto Mailpit escucha
+    // en todas las interfaces y la bandeja -con los correos y sus tokens de
+    // recuperacion- quedaria legible desde cualquier equipo de la red local.
+    // Sin `shell: true`: es un .exe y Node lo resuelve por si mismo. Pasar
+    // argumentos a traves de un shell los concatena sin escapar (Node avisa con
+    // DEP0190) y admite rutas con espacios sin comillas -- aqui no hace falta.
+    procesoMailpit = spawn(rutaMailpit(), [
+        '--listen', `${PHP_HOST}:${MAILPIT_UI}`,
+        '--smtp',   `${PHP_HOST}:${MAILPIT_SMTP}`,
+    ], { cwd: __dirname, stdio: ['ignore', 'ignore', 'ignore'] });
+
+    procesoMailpit.on('error', () => { procesoMailpit = null; });
+
+    // La tarea es `async`: Gulp espera la PROMESA que devuelve, no un callback
+    // (mezclar ambos hacia que la tarea se diera por terminada al instante).
+    await new Promise((r) => setTimeout(r, 1500));
+
+    if (await puertoOcupado(MAILPIT_SMTP)) {
+        console.log(`[gulp] Mailpit: SMTP en ${MAILPIT_SMTP} · bandeja en http://localhost:${MAILPIT_UI}`);
+    } else {
+        procesoMailpit = null;
+        console.log('[gulp] Mailpit no disponible (winget install Axllent.Mailpit).');
+        console.log('       Sin el, poner MAIL_TRANSPORT=log en el .env; ver docs/plan-secretos-y-hardening.md');
+    }
+}
+
+// En Windows, `spawn(..., {shell:true})` cuelga php.exe de un cmd.exe intermedio:
+// matar el hijo directo puede dejar php.exe VIVO y aferrado al puerto, y el
+// siguiente `gulp` "reutilizaria" un servidor fantasma de la sesion anterior.
+// `taskkill /T` se lleva el arbol completo.
+function matarArbol(proceso) {
+    if (!proceso || proceso.killed) {
+        return;
+    }
+    const pid = proceso.pid;
+    if (process.platform === 'win32') {
+        try {
+            require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+        } catch (e) { /* ya habia muerto */ }
+    } else {
+        try { process.kill(-pid); } catch (e) { /* ya habia muerto */ }
+    }
+}
+
+// Se cierran los DOS servicios que levanta gulp. Dejar Mailpit vivo seria peor
+// que dejar PHP: mantiene abierta una bandeja con los correos de la sesion.
+function cerrarServicios() {
+    matarArbol(procesoPhp);     procesoPhp = null;
+    matarArbol(procesoMailpit); procesoMailpit = null;
+}
+process.on('exit',    cerrarServicios);
+process.on('SIGINT',  () => { cerrarServicios(); process.exit(0); });
+process.on('SIGTERM', () => { cerrarServicios(); process.exit(0); });
+process.on('SIGBREAK',() => { cerrarServicios(); process.exit(0); });   // Ctrl+Break en Windows
+
+function servidor(cb) {
+    browserSync.init({
+        proxy: {
+            target: `http://${PHP_HOST}:${PHP_PORT}`,
+            // La app emite una CSP estricta (script-src 'self'; connect-src 'self').
+            // BrowserSync inyecta un script INLINE y abre un WebSocket a otro
+            // puerto: con esa CSP el navegador bloquea ambos y la recarga falla
+            // EN SILENCIO (solo se ve en la consola del navegador). Se retira la
+            // cabecera aquí, en el proxy de desarrollo: el CSP del código queda
+            // intacto y producción no se entera de esto.
+            proxyRes: [
+                function (proxyRes) {
+                    delete proxyRes.headers['content-security-policy'];
+                    delete proxyRes.headers['Content-Security-Policy'];
+                }
+            ]
+        },
+        port: BS_PORT,
+        ui: { port: BS_PORT + 1 },
+        // Atado a la maquina local. Por defecto BrowserSync escucha en TODAS las
+        // interfaces y anuncia una "External URL": eso publicaba la aplicacion
+        // entera en la red local SIN autenticacion y, como el proxy no filtra
+        // rutas, cualquiera en esa red se descargaba /.env con las credenciales
+        // de la base de datos (verificado). El .htaccess no protege aqui: php -S
+        // no lo procesa. Si algun dia hace falta probar desde el movil, levantar
+        // el tunel a mano y solo mientras dure la prueba.
+        listen: PHP_HOST,
+        // ghostMode APAGADO a propósito: por defecto BrowserSync espeja clics,
+        // scroll y formularios entre TODOS los navegadores conectados. En este
+        // proyecto se trabaja con dos sesiones abiertas a la vez (coordinador y
+        // contador) para probar el flujo de aprobación: con el espejo activo, un
+        // clic en una ventana movería la otra y las pruebas serían inservibles.
+        ghostMode: false,
+        // Sin el cartel "Connected to BrowserSync": es un <div id="__bs_notify__">
+        // que el cliente inyecta EN LA PROPIA PÁGINA al conectar y en cada recarga.
+        // Se superpone a la UI (en /login cae sobre el formulario) y ensucia las
+        // capturas y las pruebas manuales. Apagarlo no afecta la recarga: solo
+        // silencia el aviso visual. La consola de gulp sigue informando.
+        notify: false,
+        open: false          // no secuestra el navegador en cada arranque
+    }, cb);
+}
+
+// ---------------------------------------------------------------------------
+// Aviso de accesos
+// ---------------------------------------------------------------------------
+// Direcciones IPv4 de este equipo en la red local. Se descartan la de loopback
+// y las APIPA (169.254.x.x, que son las que Windows se autoasigna cuando la
+// interfaz NO tiene conectividad real: anunciarlas sería anunciar una URL
+// muerta). Si hay varias (Wi-Fi + Ethernet, o adaptadores de VirtualBox/WSL) se
+// listan todas: cuál es la buena depende de a qué red estén conectados los
+// demás equipos, y eso no lo puede saber gulp.
+function ipsLan() {
+    const interfaces = os.networkInterfaces();
+    const encontradas = [];
+    for (const [nombre, direcciones] of Object.entries(interfaces)) {
+        for (const dir of direcciones || []) {
+            if (dir.family !== 'IPv4' || dir.internal) continue;
+            if (dir.address.startsWith('169.254.')) continue;
+            encontradas.push({ nombre, ip: dir.address });
+        }
+    }
+    return encontradas;
+}
+
+// Imprime, al final del arranque, dónde está cada cosa.
+//
+// ⚠️ La URL externa es la de APACHE (8080), NUNCA la de BrowserSync. No es un
+// detalle de estilo: BrowserSync está atado a 127.0.0.1 a propósito (ver
+// `listen` en `servidor()`). Cuando escuchaba en todas las interfaces publicaba
+// la app en la red local SIN autenticación y, como el proxy no filtra rutas y
+// `php -S` no procesa .htaccess, cualquiera en esa red se descargaba /.env con
+// las credenciales de la base de datos. Apache sí aplica el .htaccess, así que
+// por el 8080 /.env, controllers/ y models/ no sirven contenido (verificado).
+// Si algún día esto "no muestra la URL externa", el arreglo es levantar Apache,
+// no reabrir BrowserSync a la red.
+async function avisoAccesos(cb) {
+    const linea = '─'.repeat(64);
+    const apacheArriba = await puertoOcupado(APACHE_PORT);
+    const ips = ipsLan();
+
+    console.log('');
+    console.log(`[gulp] ${linea}`);
+    console.log('[gulp]  DESARROLLO (solo este equipo)');
+    console.log(`[gulp]    App con recarga automática  →  http://localhost:${BS_PORT}`);
+    console.log(`[gulp]    Panel de BrowserSync        →  http://localhost:${BS_PORT + 1}`);
+    console.log(`[gulp]    Bandeja de correo (Mailpit) →  http://localhost:${MAILPIT_UI}`);
+    console.log('[gulp]');
+    console.log('[gulp]  ACCESO EXTERNO (otros equipos de la red) — vía Apache');
+
+    if (!apacheArriba) {
+        console.log(`[gulp]    ✗ Apache no responde en el puerto ${APACHE_PORT}.`);
+        console.log('[gulp]      Arráncalo desde el panel de XAMPP (botón Start de Apache).');
+    } else if (ips.length === 0) {
+        console.log(`[gulp]    ✓ Apache escucha en el ${APACHE_PORT}, pero este equipo no tiene`);
+        console.log('[gulp]      dirección de red: ¿Wi-Fi desconectado?');
+    } else {
+        for (const { nombre, ip } of ips) {
+            console.log(`[gulp]    →  http://${ip}:${APACHE_PORT}   (${nombre})`);
+        }
+        console.log('[gulp]    Sin recarga automática, y con el .htaccess aplicado.');
+        console.log('[gulp]    Si desde otro equipo no abre: revisa que estén en la MISMA red.');
+    }
+
+    console.log(`[gulp] ${linea}`);
+    console.log('');
+    cb();
+}
+
+// Recarga completa (cambios de PHP, JS o imágenes).
+function recargar(cb) {
+    browserSync.reload();
+    cb();
 }
 
 // css es una función que se puede llamar automaticamente
@@ -26,7 +296,11 @@ function css() {
         .pipe(postcss([autoprefixer(), cssnano()]))
         // .pipe(postcss([autoprefixer()]))
         .pipe(sourcemaps.write('.'))
-        .pipe( dest('./build/css') );
+        .pipe( dest('./build/css') )
+        // Inyecta el CSS sin recargar: se conservan el scroll y el estado del
+        // formulario que estés probando. Si BrowserSync no está activo (p. ej.
+        // `gulp build`), stream() es inocuo.
+        .pipe( browserSync.stream() );
 }
 
 
@@ -55,11 +329,18 @@ function versionWebp() {
 }
 
 
-function watchArchivos() {
-    watch( paths.scss, css );
-    watch( paths.js, javascript );
-    watch( paths.imagenes, imagenes );
+// Recibe `cb` y lo llama en cuanto los vigilantes quedan registrados. Sin eso,
+// Gulp 4 considera que la tarea nunca termino y al cerrar con Ctrl+C imprime
+// "The following tasks did not complete / Did you forget to signal async
+// completion?". El proceso NO se cierra al llamar cb(): los watchers de chokidar
+// mantienen vivo el bucle de eventos, que es justo lo que queremos.
+function watchArchivos(cb) {
+    watch( paths.scss, css );                              // inyecta (sin recargar)
+    watch( paths.js, series( javascript, recargar ) );
+    watch( paths.imagenes, series( imagenes, recargar ) );
     watch( paths.imagenes, versionWebp );
+    watch( paths.php, recargar );                          // vistas y controladores
+    cb();
 }
 
 // Solo estilos: vigila src/scss y recompila el CSS al detectar cambios.
@@ -79,5 +360,31 @@ exports.webp = versionWebp;
 // Build completo SIN watcher (útil para producción / CI)
 exports.build = parallel(css, javascript, imagenes, versionWebp);
 
-// Por defecto (`gulp` / `npm run dev`): compila todo y queda escuchando cambios.
-exports.default = parallel(css, javascript,  imagenes, versionWebp, watchArchivos );
+// `gulp servidor`: solo levanta los servicios, sin recompilar nada.
+exports.servidor = series(servidorMailpit, servidorPhp, servidor, avisoAccesos);
+
+// `gulp accesos`: solo imprime dónde está cada cosa, sin levantar nada. Útil
+// para recuperar la URL externa cuando el arranque ya se perdió hacia arriba en
+// el historial de la consola.
+exports.accesos = avisoAccesos;
+
+// `gulp correo`: solo el catcher de correo (bandeja en http://localhost:8025).
+exports.correo = servidorMailpit;
+
+// Por defecto (`gulp` / `npm run dev`): compila todo, levanta el servidor PHP,
+// pone BrowserSync por delante y queda escuchando cambios.
+//   → http://localhost:3001   (la app, con recarga automática)
+//   → http://localhost:3002   (panel de BrowserSync)
+//   → http://localhost:8025   (bandeja de correo de desarrollo — Mailpit)
+//   → http://<ip-de-la-red>:8080  (acceso desde otros equipos, vía Apache)
+// El aviso va DESPUÉS de `servidor` (para no imprimirse antes de que BrowserSync
+// escupa su propio arranque) y ANTES de `watchArchivos`, que ya no imprime nada:
+// así el recuadro queda al final y a la vista.
+exports.default = series(
+    parallel(css, javascript, imagenes, versionWebp),
+    servidorMailpit,
+    servidorPhp,
+    servidor,
+    avisoAccesos,
+    watchArchivos
+);

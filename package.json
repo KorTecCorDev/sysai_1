@@ -5,11 +5,14 @@
   "main": "gulpfile.js",
   "scripts": {
     "dev": "gulp",
-    "css": "gulp css"
+    "css": "gulp css",
+    "env:pull": "node scripts/env.js pull",
+    "env:push": "node scripts/env.js push"
   },
   "author": "Karlos Colonia Arellano",
   "license": "ISC",
   "devDependencies": {
+    "browser-sync": "^3.0.4",
     "cssnano": "^6.0.3",
     "gulp": "^4.0.2",
     "gulp-autoprefixer": "^9.0.0",
@@ -25,11 +28,7 @@
     "gulp-terser-js": "^5.2.2",
     "gulp-webp": "^4.0.1",
     "sass": "^1.71.0",
-    "terser": "^5.27.2"
-  },
-  "dependencies": {
-    "browserslist": "^4.23.0",
-    "cypress": "^13.6.4",
-    "nvm": "^0.0.4"
+    "terser": "^5.27.2",
+    "browserslist": "^4.23.0"
   }
 }

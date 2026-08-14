@@ -19,7 +19,10 @@
  */
 
 if (PHP_SAPI !== 'cli') {
-    exit("Este script solo corre por CLI.\n");
+    // 404 en vez de un mensaje: responder 200 confirmaba a un desconocido que
+    // el script existe y esta desplegado.
+    http_response_code(404);
+    exit;
 }
 
 $moneda = strtoupper($argv[1] ?? '');

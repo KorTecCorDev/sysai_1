@@ -1,126 +1,37 @@
 <?php
-use Model\ReportePoaRubros;
-use Model\ReporteIngresosVista;
+// Reporte Excel de INGRESOS del periodo. Orquestador delgado: arma las secciones
+// y delega el dibujo en ReporteMovimientosXlsxBuilder (Fase 2-3 del plan de
+// reportes, 2026-08-14). El filtro por fecha de operación y la carga de datos
+// viven en el controlador y los modelos.
+
+use Model\ReporteMovimientosXlsxBuilder;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 $spreadsheet = new Spreadsheet();
-$sheet = $spreadsheet->getActiveSheet();
 
-//Creando el nuevo array de resultados
-// Definir las claves a eliminar de cada array
-$claves_a_excluir_ingresos = [
-    'otros_ingresos_egresos_id',
-    'otros_ingresos_egresos_oie_tipo_id',
-    'oie_tipo_comprobante_id',
-    'fuente_financiamiento_id',
-];
-$claves_a_excluir_fuentes = [];
+$tasas = [];
+if ($tcdolar) { $tasas[] = 'USD ' . rtrim(rtrim((string) $tcdolar->venta, '0'), '.') . ' (' . $tcdolar->fecha_vigencia . ')'; }
+if ($tceuro)  { $tasas[] = 'EUR ' . rtrim(rtrim((string) $tceuro->venta, '0'), '.') . ' (' . $tceuro->fecha_vigencia . ')'; }
+$notaFuentes = 'Presupuesto inicial de cada fuente. NO depende del rango de fechas: es el contexto del periodo, no un ingreso. '
+    . ($tasas
+        ? 'Convertido con el tipo de cambio de venta al cierre — ' . implode(' · ', $tasas) . '.'
+        : 'Sin tipo de cambio registrado: las columnas USD y EUR quedan en blanco.');
 
+$builder = new ReporteMovimientosXlsxBuilder($tcdolar, $tceuro);
+$builder->construir($spreadsheet, 'REPORTE DE INGRESOS', $desde, $hasta, [
+    [
+        'titulo' => 'INGRESOS DEL PERIODO',
+        'nota'   => 'Otros ingresos (OIE) con fecha de operación dentro del rango. Un PROGRAMA vacío significa que el ingreso va al remanente de la fuente, sin asignar a un sobre.',
+        'origen' => 'oie',
+        'estado' => 'Aprobado (automático)',
+        'filas'  => $ingresos,
+    ],
+    [
+        'titulo' => 'PRESUPUESTO DE LAS FUENTES',
+        'nota'   => $notaFuentes,
+        'origen' => 'fuente',
+        'filas'  => $fuentes,
+    ],
+]);
 
-// Inicializar el nuevo array combinado
-$nuevo_array = [];
-// Agregar los objetos del primer array ($resreporteegresos) excluyendo las claves específicas
-foreach ($resreporteingresos as $obj) {
-    $nuevo_obj = (array) $obj; // Convertir el objeto a array
-
-    // Eliminar las claves específicas de los egresos
-    foreach ($claves_a_excluir_ingresos as $clave) {
-        unset($nuevo_obj[$clave]);
-    }
-
-    // Convertir de nuevo a objeto y agregar al nuevo array
-    $nuevo_array[] = (object) $nuevo_obj;
-}
-
-// Agregar los objetos del segundo array ($resreporterendiciones) excluyendo las claves específicas
-
-foreach ($resreportefuentes as $obj) {
-    $nuevo_obj = (array) $obj; // Convertir el objeto a array
-
-    // Eliminar las claves específicas de las rendiciones
-    foreach ($claves_a_excluir_fuentes as $clave) {
-        unset($nuevo_obj[$clave]);
-    }
-
-    // Convertir de nuevo a objeto y agregar al nuevo array
-    $nuevo_array[] = (object) $nuevo_obj;
-}
-// Ahora $nuevo_array contiene la combinación de ambos arrays con las modificaciones requeridas
-
-
-// Definir el array de encabezados
-$encabezados = [
-    'FECHA',
-    'CODIGO',
-    'DESCRIPCION',
-    'FUENTE_FINANCIAMIENTO',
-    'TIPO_COMPROBANTE',
-    'FECHA_COMPROBANTE',
-    'RUC',
-    'RAZON_SOCIAL',
-    'SERIE',
-    'NUMERO',
-    'DETALLE',
-    'MONTO',
-    // Conversión con TC CONGELADO a la fecha de operación de cada fila (migr. 030).
-    // Vacío/"—" = fila pendiente de tipo de cambio.
-    'MONTO USD (TC congelado)',
-    'MONTO EUR (TC congelado)'
-];
-
-// Establecer la fila inicial para el título y los encabezados
-$cntrows = 1;
-$startColumn = 'A';
-$endColumn = chr(ord($startColumn) + count($encabezados) - 1); // Calcula la última columna
-
-// 1Insertar el título del reporte
-$sheet->mergeCells("$startColumn$cntrows:$endColumn$cntrows"); // Combinar celdas
-$sheet->setCellValue("$startColumn$cntrows", "REPORTE INGRESOS");
-$sheet->getStyle("$startColumn$cntrows")->getFont()->setBold(true)->setSize(14);
-$sheet->getStyle("$startColumn$cntrows")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-$sheet->getStyle("$startColumn$cntrows")->getFill()->setFillType(Fill::FILL_SOLID)
-    ->getStartColor()->setRGB('FFA500'); // Color naranja
-
-$cntrows++; // Pasar a la siguiente fila para los encabezados
-
-// Insertar los encabezados de las columnas
-$colIndex = $startColumn;
-foreach ($encabezados as $encabezado) {
-    $sheet->setCellValue($colIndex . $cntrows, $encabezado);
-    $sheet->getStyle($colIndex . $cntrows)->getFont()->setBold(true)->setSize(12);
-    $sheet->getStyle($colIndex . $cntrows)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle($colIndex . $cntrows)->getAlignment()->setWrapText(true);
-    $sheet->getStyle($colIndex . $cntrows)->getFill()->setFillType(Fill::FILL_SOLID)
-        ->getStartColor()->setRGB('FFD700'); // Color dorado para los encabezados
-    $colIndex++;
-}
-
-// Ajustar automáticamente el ancho de las columnas
-foreach (range($startColumn, $endColumn) as $col) {
-    $sheet->getColumnDimension($col)->setAutoSize(true);
-}
-$reporterendi = ReporteIngresosVista::insertarDatosDesdeArray($sheet, $nuevo_array, 3);
-
-// Guardando el archivo Excel
-
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
-// Guardando el archivo Excel
-$directory = __DIR__ . "/storage/reports/";
-if (!is_dir($directory)) {
-    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
-}
-$filename = "resultados_reporte_ingresos_{$usrcod}.xlsx";
-$file = $directory . $filename;
-$writer = new Xlsx($spreadsheet);
-$writer->save($file);
-
-// Genera el nombre del archivo
-$filename = "resultados_reporte_ingresos_{$usrcod}.xlsx";
-echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
-        <i class='bi bi-file-earmark-excel'></i> Ver Ingresos
-      </a>";
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
-?>
+descargarXlsx($spreadsheet, "reporte_ingresos_{$usrcod}");

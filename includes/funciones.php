@@ -477,6 +477,10 @@ function mostrarNotificacion($codigo)
         case 28:
             $mensaje = 'El programa Institucional no puede eliminarse: es parte permanente de la organización';
             break;
+        //RANGO DE FECHAS INVÁLIDO EN UN REPORTE (Fase 3 del plan de reportes)
+        case 29:
+            $mensaje = 'Revisa las fechas del reporte: hacen falta ambas, con formato válido, y la de inicio no puede ser posterior a la de fin';
+            break;
         default:
             $mensaje = false;
             break;
@@ -594,61 +598,165 @@ function validarId($tb)
 }
 
 /**
- * Envía el código (token) de recuperación de contraseña.
- *  - Con SMTP configurado en includes/config/mail.php → envía el email real.
- *  - Sin SMTP (entorno de desarrollo) → registra el token en includes/logs/mail.log
- *    y lo trata como "enviado", para poder continuar el flujo sin servidor de correo.
- *
- * @return bool true si se envió (o se registró en modo dev), false si falló el SMTP.
+ * Registra una línea en includes/logs/mail.log (bitácora del correo saliente).
+ * Es el único rastro que queda cuando el envío falla: sin esto, un SMTP caído
+ * en producción es invisible (el usuario ve la misma pantalla neutra de siempre
+ * y se queda esperando un código que nunca sale).
  */
-function enviarTokenRecuperacion(string $email, string $nombre, string $token): bool
+function registrarMailLog(string $linea): void
+{
+    // Ruta configurable para poder situar la bitacora FUERA del document root en
+    // produccion (p. ej. MAIL_LOG_PATH=/home/uXXXX/logs/mail.log). Servido por
+    // HTTP, este archivo era descargable: ver docs/plan-secretos-y-hardening.md.
+    $ruta = $_ENV['MAIL_LOG_PATH'] ?? getenv('MAIL_LOG_PATH');
+    if (!is_string($ruta) || $ruta === '') {
+        $ruta = __DIR__ . '/logs/mail.log';
+    }
+    $logDir = dirname($ruta);
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+    @file_put_contents(
+        $ruta,
+        sprintf("[%s] %s%s", date('Y-m-d H:i:s'), $linea, PHP_EOL),
+        FILE_APPEND | LOCK_EX
+    );
+}
+
+/**
+ * Construye un PHPMailer ya configurado con el SMTP del .env.
+ * Devuelve null si no hay credenciales (modo desarrollo).
+ * Lo comparten el envío del token y el diagnóstico database/smtp_test.php.
+ */
+function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
 {
     $cfg = require __DIR__ . '/config/mail.php';
 
-    // Modo desarrollo: sin credenciales SMTP no se puede enviar de verdad.
-    if (empty($cfg['username']) || empty($cfg['password'])) {
-        $logDir = __DIR__ . '/logs';
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
+    // Resolución del transporte. 'auto' conserva el comportamiento histórico
+    // (sin credenciales ⇒ modo log) para no romper entornos ya configurados.
+    $transporte = strtolower(trim((string) $cfg['transport']));
+    if ($transporte === 'log') {
+        return null;
+    }
+    if ($transporte !== 'smtp' && (empty($cfg['username']) || empty($cfg['password']))) {
+        return null;
+    }
+    if ($cfg['host'] === '') {
+        return null;
+    }
+
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host       = $cfg['host'];
+    // Sin usuario no se autentica: es el caso del catcher local de desarrollo
+    // (Mailpit), que acepta todo y no reenvía nada a Internet.
+    $mail->SMTPAuth   = $cfg['username'] !== '';
+    $mail->Username   = $cfg['username'];
+    $mail->Password   = $cfg['password'];
+    // MAIL_SECURE vacío ⇒ sin cifrado. Se desactiva además el STARTTLS
+    // automático de PHPMailer: contra un catcher local no hay TLS que negociar.
+    $mail->SMTPSecure = $cfg['secure'] !== '' ? $cfg['secure'] : false;
+    if ($cfg['secure'] === '') {
+        $mail->SMTPAutoTLS = false;
+    }
+    $mail->Port       = (int) $cfg['port'];
+    // Un SMTP que no responde no puede colgar la petición del usuario.
+    $mail->Timeout    = 15;
+    $mail->CharSet    = 'UTF-8';
+    if (!empty($cfg['debug'])) {
+        $mail->SMTPDebug   = 2; // solo para diagnóstico (MAIL_DEBUG=1 en el .env)
+        $mail->Debugoutput = 'error_log';
+    }
+
+    // Gmail —y la mayoría de SMTP autenticados— reescriben o rechazan un remitente
+    // distinto de la cuenta que autentica. Si el .env conserva el placeholder de
+    // desarrollo, se usa la propia cuenta SMTP en vez de un dominio inexistente.
+    // El usuario SMTP solo sirve como remitente si ES una direccion de correo.
+    // Gmail exige que coincidan (si no, reescribe el From), pero esa regla no es
+    // universal: en Mailtrap el usuario es un identificador tipo "660ee906edffcf"
+    // y PHPMailer aborta con excepcion al recibirlo como From. Sin credenciales
+    // (catcher local) el placeholder ya es una direccion perfectamente valida.
+    $remitente = $cfg['from_email'];
+    if (($remitente === '' || $remitente === 'no-reply@sysai.local')
+        && filter_var($cfg['username'], FILTER_VALIDATE_EMAIL)) {
+        $remitente = $cfg['username'];
+    }
+    if (!filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
+        $remitente = 'no-reply@sysai.local';
+    }
+    $mail->setFrom($remitente, $cfg['from_name']);
+
+    return $mail;
+}
+
+/**
+ * Envía el código (token) de recuperación de contraseña.
+ *  - Con transporte SMTP configurado (includes/config/mail.php) → envía el correo.
+ *  - Sin transporte → deja constancia en la bitácora (NUNCA el token) y, en
+ *    desarrollo, permite continuar el flujo; en producción devuelve false.
+ *
+ * El token no se escribe jamás en la bitácora: es una credencial temporal.
+ *
+ * @return bool true si se envió (o se registró en desarrollo), false si falló.
+ */
+function enviarTokenRecuperacion(string $email, string $nombre, string $token): bool
+{
+    // Una configuracion de correo invalida no puede tumbar la peticion. PHPMailer
+    // lanza excepcion, por ejemplo, ante un remitente mal formado, y esta llamada
+    // quedaba FUERA del try: el usuario recibia un error fatal de PHP en
+    // /chgpsswd en vez de un aviso, y el rastro se perdia.
+    try {
+        $mail = construirMailer();
+    } catch (\Throwable $e) {
+        registrarMailLog("[ERROR] Configuración de correo inválida: " . $e->getMessage());
+        error_log('Configuración de correo inválida: ' . $e->getMessage());
+        return false;
+    }
+
+    // Modo log: no hay transporte, no se envia nada.
+    if ($mail === null) {
+        // En PRODUCCION esto no puede reportarse como exito. El alta de usuarios
+        // genera una contraseña aleatoria que nadie conoce, asi que el correo es
+        // la UNICA via de activar una cuenta: un despliegue sin transporte deja
+        // el sistema respondiendo "te enviamos un codigo" mientras nadie puede
+        // entrar, y sin rastro de por que. Falla ruidosamente y devuelve false.
+        $entorno = strtolower((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'development'));
+        if ($entorno === 'production') {
+            registrarMailLog("[ERROR] Sin transporte de correo en produccion: NO se envio a {$email}. Revisar MAIL_* en el .env.");
+            error_log('Correo de recuperación NO enviado: no hay transporte SMTP configurado en producción.');
+            return false;
         }
-        $linea = sprintf(
-            "[%s] [DEV - correo NO enviado] PARA: %s | NOMBRE: %s | TOKEN: %s%s",
-            date('Y-m-d H:i:s'),
-            $email,
-            $nombre,
-            $token,
-            PHP_EOL
-        );
-        @file_put_contents($logDir . '/mail.log', $linea, FILE_APPEND | LOCK_EX);
-        error_log("[DEV] Token de recuperación para {$email}: {$token}");
+        // El TOKEN ya no se escribe en la bitacora. Es una credencial temporal
+        // -quien lo lee toma la cuenta- y ese archivo llego a ser descargable por
+        // HTTP. Para desarrollo esta Mailpit, que muestra el correo completo; el
+        // token tambien queda en usuario.reset_token si hiciera falta consultarlo.
+        registrarMailLog("[LOG - correo NO enviado] PARA: {$email}");
         return true;
     }
 
     try {
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host       = $cfg['host'];
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $cfg['username'];
-        $mail->Password   = $cfg['password'];
-        $mail->SMTPSecure = $cfg['secure'];
-        $mail->Port       = (int) $cfg['port'];
-        $mail->setFrom($cfg['from_email'], $cfg['from_name']);
         $mail->addAddress($email, $nombre);
         $mail->isHTML(true);
-        $mail->CharSet = 'UTF-8';
-        $mail->Subject = 'Respuesta a Solicitud de cambio de Contraseña';
+        $mail->Subject = 'Código para cambiar tu contraseña — Arca';
         $mail->Body =
             '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">'
-            . '<h2 style="color:#42A5F5">Cambio de Contraseña</h2>'
+            . '<h2 style="color:#42A5F5">Cambio de contraseña</h2>'
             . '<p>Hola, ' . htmlspecialchars($nombre) . '.</p>'
             . '<p>Usa el siguiente código para completar el proceso:</p>'
             . '<p style="font-size:24px;font-weight:bold;color:#42A5F5">' . htmlspecialchars($token) . '</p>'
             . '<p>Si no solicitaste este cambio, ignora este correo electrónico.</p>'
-            . '<hr><small>Cronos Soluciones</small></div>';
+            . '<hr><small>Arca — Organización Arco Iris</small></div>';
         $mail->AltBody = "Tu código de recuperación es: {$token}";
-        return $mail->send();
+
+        if (!$mail->send()) {
+            registrarMailLog("[ERROR] No se pudo enviar a {$email}: {$mail->ErrorInfo}");
+            error_log('Error al enviar correo de recuperación: ' . $mail->ErrorInfo);
+            return false;
+        }
+        registrarMailLog("[OK] Código de recuperación enviado a {$email}");
+        return true;
     } catch (\Throwable $e) {
+        registrarMailLog("[ERROR] Excepción enviando a {$email}: " . $e->getMessage());
         error_log('Error al enviar correo de recuperación: ' . $e->getMessage());
         return false;
     }
@@ -659,5 +767,55 @@ function validarPropiedadArray(array $array, string $propiedad, string $subpropi
 {
     // true solo si la clave existe y su valor no es 0/'' (B6: sin warnings cuando la clave falta)
     return !empty($array[$propiedad][$subpropiedad]);
+}
+
+/**
+ * Envía un libro de PhpSpreadsheet al navegador como descarga y TERMINA la petición.
+ *
+ * Sustituye (2026-08-14, Fase 0 del plan de reportes) al mecanismo anterior, que
+ * escribía el .xlsx en `views/reporte/storage/reports/` y devolvía un enlace a
+ * `/descargar?rprt=<archivo>`. Aquel esquema tenía dos agujeros verificados:
+ *
+ *   1) `/descargar` concatenaba el parámetro del cliente a la ruta sin sanear, así
+ *      que `?rprt=../../../../.env` servía el .env —con la App Password de Gmail—
+ *      a cualquier usuario autenticado, coordinadores incluidos. Además esquivaba
+ *      el bloqueo del .htaccess, porque el archivo lo leía PHP y no Apache.
+ *   2) Los .xlsx quedaban DENTRO del document root con nombres predecibles
+ *      (`<tipo>_<parte-local-del-email>.xlsx`) y el .htaccess no filtra .xlsx:
+ *      se descargaban por URL SIN SESIÓN, y se acumulaban sin limpieza.
+ *
+ * Al no tocar el disco, ambos desaparecen: no hay archivo que adivinar ni ruta que
+ * recorrer, y el nombre lo compone siempre el servidor.
+ *
+ * @param  object $spreadsheet  \PhpOffice\PhpSpreadsheet\Spreadsheet ya construido.
+ * @param  string $nombre       Nombre propuesto al navegador, sin extensión.
+ * @return never
+ */
+function descargarXlsx($spreadsheet, string $nombre)
+{
+    // El nombre NUNCA viene del cliente, pero se sanea igual: es lo que viaja en la
+    // cabecera Content-Disposition y no debe poder inyectar comillas ni saltos.
+    $nombre = preg_replace('/[^A-Za-z0-9._-]/', '_', $nombre);
+    if ($nombre === '' || $nombre === null) {
+        $nombre = 'reporte';
+    }
+
+    // Router::render() envuelve la vista en un ob_start(); si queda algún búfer
+    // abierto, su contenido se colaría dentro del .xlsx y lo dejaría corrupto.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $nombre . '.xlsx"');
+    header('Cache-Control: max-age=0, must-revalidate');
+    header('Pragma: public');
+    header('Expires: 0');
+
+    // Sin Content-Length: el escritor genera al vuelo y calcular el tamaño exigiría
+    // materializar el libro en memoria o en un temporal, que es justo lo que se evita.
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
 }
 

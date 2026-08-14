@@ -3,7 +3,6 @@
 use Model\ReportePoaRubros;
 use Model\TransferenciaInstitucional;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
@@ -236,23 +235,9 @@ foreach ($resbienesAgrupados as $respoas) {
 // hacía desaparecer importes visualmente.
 ReportePoaRubros::combinarCeldasRepetidas($sheet, ['A', 'B']);
 
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
-// Guardando el archivo Excel
-$directory = __DIR__ . "/storage/reports/";
-if (!is_dir($directory)) {
-  mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
-}
-$filename = "reporte_poa_{$usrcod}.xlsx";
-$file = $directory . $filename;
-$writer = new Xlsx($spreadsheet);
-$writer->save($file);
-
-// Genera el nombre del archivo
-$filename = "reporte_poa_{$usrcod}.xlsx";
-echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
-        <i class='bi bi-file-earmark-excel'></i> Ver POA
-      </a>";
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
+// Descarga directa (Fase 0, 2026-08-14): antes se escribía el .xlsx dentro del
+// document root y se devolvía un enlace a /descargar. Ver descargarXlsx().
+descargarXlsx($spreadsheet, "reporte_poa_{$usrcod}");
 
 
 // El modal "¿Desea guardar el POA en la base de datos?" se retiró el 2026-08-13:

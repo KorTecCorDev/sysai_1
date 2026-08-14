@@ -1,6 +1,18 @@
+<?php
+// Aviso de rango de fechas inválido (resultado=29), emitido por el controlador.
+?>
 <main>
     <div class="header-admin">
         <h1>Elija las fechas para el Reporte</h1>
+        <?php
+        if ($resultado) {
+            $mensaje = mostrarNotificacion(intval($resultado));
+            if ($mensaje) { ?>
+                <p class="alert alert-warning"><?php echo s($mensaje); ?></p>
+        <?php
+            }
+        }
+        ?>
         <form method="POST" action="" class="p-4 bg-light rounded shadow-sm" style="max-width: 350px;"><?php echo csrf_input(); ?>
             <h5 class="fw-bold mb-3">Filtrar Reportes</h5>
 
@@ -19,4 +31,4 @@
             </button>
         </form>
     </div>
-</main>
+</main>

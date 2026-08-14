@@ -13,6 +13,16 @@
  * del .env mediante includes/config/database.php (mismo que usa la app).
  */
 
+// Solo por linea de comandos. Servido por HTTP, este archivo ejecutaba
+// migraciones contra la base de datos sin autenticacion alguna: la regla del
+// .htaccess que bloquea directorios nombraba `db/` y la carpeta se llama
+// `database/`, asi que nunca lo cubrio. Se responde 404 para no delatar que
+// existe.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 require __DIR__ . '/../includes/config/database.php';
 
 $db = conectarDB();

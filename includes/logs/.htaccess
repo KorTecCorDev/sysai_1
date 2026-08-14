@@ -1,0 +1,17 @@
+# Bitacoras: nunca servibles por HTTP.
+# Defensa en profundidad: la regla de directorios del .htaccess raiz ya bloquea
+# includes/, pero esa regla depende de mod_rewrite y de que la ruta case. Aqui
+# la denegacion es directa y no depende de ningun modulo de reescritura.
+# En produccion, ademas, la bitacora deberia vivir FUERA del document root
+# (MAIL_LOG_PATH en el .env) -- ver docs/plan-secretos-y-hardening.md.
+
+# Apache 2.4
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2 (o 2.4 con mod_access_compat)
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
