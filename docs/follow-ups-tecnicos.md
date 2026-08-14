@@ -9,6 +9,20 @@
 - [x] ✅ Relación rendición↔rubro resuelta (migr. 017): `rendicion.rubro_id` reemplaza a `actividad_id`; límite Σ rendiciones ≤ monto del rubro. Ver item 5 del backlog (`docs/historial-implementacion-items-2-6.md`).
 
 ## Pendientes abiertos
+
+- [ ] **B9 — una variable de entorno real no sobreescribe el `.env`: lo BORRA.** Hallado el
+  2026-08-14 al intentar `DB_NAME=sysai_replay php database/migrate.php` para un replay greenfield:
+  la conexión falló sin base seleccionada. Causa: `includes/config/database.php` lee
+  `$_ENV['DB_NAME']` (líneas 108-111), pero **PHP CLI no puebla `$_ENV`** salvo que
+  `variables_order` incluya `E` — y `cargarEnv()` **omite** cargar del archivo cualquier clave que
+  ya exista en el entorno real (`getenv($clave) === false && !array_key_exists($clave, $_ENV)`).
+  Resultado: definir la variable hace que el valor **desaparezca** en vez de imponerse, justo lo
+  contrario de lo que declara el comentario del propio archivo ("el entorno real manda sobre el
+  archivo"). `SYSAI_ENV_FILE` **sí** funciona, porque usa `getenv()`.
+  **Impacto real:** en Hostinger la configuración suele inyectarse por variables de entorno; ahí
+  esto muerde. **Arreglo:** leer con `getenv()` y caer a `$_ENV` como respaldo, o poblar `$_ENV`
+  desde `getenv()` al arrancar. Sin decidir todavía si se corrige o se deja documentado.
+
 - [x] ~~`usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia~~ — **CERRADO 2026-07-15:** resuelto en `main` (migr. 011 creó `login_intentos`; `models/Login.php` la usa).
 - [x] ~~Retirar/limpiar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (plan de montos §5.4): modelo eliminado junto con sus llamadas en `ReportePoaRubrosController`; `$ffnro` no se usaba en ninguna vista.
 - [x] ~~**B2 — Reportes POA/Excel inflados** (fan-out por fuentes)~~ — **CERRADO 2026-07-16 (item 9):** al
