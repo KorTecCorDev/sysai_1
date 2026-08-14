@@ -14,6 +14,8 @@ const webp = require('gulp-webp');
 const browserSync = require('browser-sync').create();
 const { spawn } = require('child_process');
 const net = require('net');
+const path = require('path');
+const fs = require('fs');
 
 const paths = {
     scss: 'src/scss/**/*.scss',
@@ -40,7 +42,15 @@ const PHP_HOST = '127.0.0.1';
 const PHP_PORT = process.env.PHP_PORT || 3000;
 const BS_PORT  = 3001;   // no puede coincidir con PHP_PORT ni con el 8080 de Apache
 
+// Mailpit: servidor SMTP de desarrollo que ACEPTA TODO y NO REENVIA NADA a
+// Internet, con bandeja web para leer los correos. Desarrollar contra el no
+// requiere ninguna credencial: por eso el .env de desarrollo no guarda secretos
+// (ver docs/plan-secretos-y-hardening.md).
+const MAILPIT_SMTP = 1025;
+const MAILPIT_UI   = 8025;
+
 let procesoPhp = null;
+let procesoMailpit = null;
 
 // ¿Hay algo escuchando ya en ese puerto? (Apache, u otra consola con php -S)
 function puertoOcupado(puerto) {
@@ -55,10 +65,13 @@ function puertoOcupado(puerto) {
 
 // Levanta `php -S` salvo que el puerto ya esté servido (así `gulp` no pelea con
 // un servidor que ya tengas abierto, ni con Apache si apuntas al 8080).
-async function servidorPhp(cb) {
+// `async` sin callback: Gulp espera la promesa devuelta. Mezclar ambos (recibir
+// `cb` y ademas ser async) hacia que la tarea se diera por terminada de
+// inmediato, sin esperar a que el socket estuviera listo.
+async function servidorPhp() {
     if (await puertoOcupado(PHP_PORT)) {
         console.log(`[gulp] Ya hay un servidor escuchando en ${PHP_HOST}:${PHP_PORT}; lo reutilizo.`);
-        return cb();
+        return;
     }
     console.log(`[gulp] Levantando php -S ${PHP_HOST}:${PHP_PORT}`);
     procesoPhp = spawn('php', ['-S', `${PHP_HOST}:${PHP_PORT}`], {
@@ -68,19 +81,69 @@ async function servidorPhp(cb) {
     });
     procesoPhp.on('error', (err) => console.error('[gulp] No se pudo iniciar PHP:', err.message));
     // Pequeña espera a que el socket acepte conexiones antes de proxear.
-    setTimeout(cb, 1200);
+    await new Promise((r) => setTimeout(r, 1200));
+}
+
+// Arranca Mailpit si no hay uno escuchando ya. Degrada limpiamente: si el
+// binario no esta instalado NO se aborta el arranque -- se avisa y el correo
+// sigue funcionando en modo log (MAIL_TRANSPORT=log en el .env).
+//   Instalacion:  winget install Axllent.Mailpit
+// Localiza el binario. `mailpit` a secas solo funciona si la consola se abrio
+// DESPUES de instalarlo (winget modifica el PATH y avisa de que hay que
+// reiniciar la shell), asi que se prueba tambien la ruta donde winget lo deja.
+// MAILPIT_BIN en el entorno tiene prioridad sobre todo lo demas.
+function rutaMailpit() {
+    if (process.env.MAILPIT_BIN) {
+        return process.env.MAILPIT_BIN;
+    }
+    const base = path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WinGet', 'Packages');
+    try {
+        const dir = fs.readdirSync(base).find((d) => d.toLowerCase().startsWith('axllent.mailpit'));
+        if (dir) {
+            const exe = path.join(base, dir, 'mailpit.exe');
+            if (fs.existsSync(exe)) return exe;
+        }
+    } catch (e) { /* no es Windows, o no hay paquetes de winget */ }
+    return 'mailpit';   // confiamos en el PATH
+}
+
+async function servidorMailpit() {
+    if (await puertoOcupado(MAILPIT_SMTP)) {
+        console.log(`[gulp] Mailpit ya escucha en ${PHP_HOST}:${MAILPIT_SMTP}; lo reutilizo.`);
+        return;
+    }
+    // Ambos sockets atados a 127.0.0.1 A PROPOSITO: por defecto Mailpit escucha
+    // en todas las interfaces y la bandeja -con los correos y sus tokens de
+    // recuperacion- quedaria legible desde cualquier equipo de la red local.
+    procesoMailpit = spawn(rutaMailpit(), [
+        '--listen', `${PHP_HOST}:${MAILPIT_UI}`,
+        '--smtp',   `${PHP_HOST}:${MAILPIT_SMTP}`,
+    ], { cwd: __dirname, shell: true, stdio: ['ignore', 'ignore', 'ignore'] });
+
+    procesoMailpit.on('error', () => { procesoMailpit = null; });
+
+    // La tarea es `async`: Gulp espera la PROMESA que devuelve, no un callback
+    // (mezclar ambos hacia que la tarea se diera por terminada al instante).
+    await new Promise((r) => setTimeout(r, 1500));
+
+    if (await puertoOcupado(MAILPIT_SMTP)) {
+        console.log(`[gulp] Mailpit: SMTP en ${MAILPIT_SMTP} · bandeja en http://localhost:${MAILPIT_UI}`);
+    } else {
+        procesoMailpit = null;
+        console.log('[gulp] Mailpit no disponible (winget install Axllent.Mailpit).');
+        console.log('       Sin el, poner MAIL_TRANSPORT=log en el .env; ver docs/plan-secretos-y-hardening.md');
+    }
 }
 
 // En Windows, `spawn(..., {shell:true})` cuelga php.exe de un cmd.exe intermedio:
 // matar el hijo directo puede dejar php.exe VIVO y aferrado al puerto, y el
 // siguiente `gulp` "reutilizaria" un servidor fantasma de la sesion anterior.
 // `taskkill /T` se lleva el arbol completo.
-function cerrarPhp() {
-    if (!procesoPhp || procesoPhp.killed) {
+function matarArbol(proceso) {
+    if (!proceso || proceso.killed) {
         return;
     }
-    const pid = procesoPhp.pid;
-    procesoPhp = null;
+    const pid = proceso.pid;
     if (process.platform === 'win32') {
         try {
             require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
@@ -89,10 +152,17 @@ function cerrarPhp() {
         try { process.kill(-pid); } catch (e) { /* ya habia muerto */ }
     }
 }
-process.on('exit',    cerrarPhp);
-process.on('SIGINT',  () => { cerrarPhp(); process.exit(0); });
-process.on('SIGTERM', () => { cerrarPhp(); process.exit(0); });
-process.on('SIGBREAK',() => { cerrarPhp(); process.exit(0); });   // Ctrl+Break en Windows
+
+// Se cierran los DOS servicios que levanta gulp. Dejar Mailpit vivo seria peor
+// que dejar PHP: mantiene abierta una bandeja con los correos de la sesion.
+function cerrarServicios() {
+    matarArbol(procesoPhp);     procesoPhp = null;
+    matarArbol(procesoMailpit); procesoMailpit = null;
+}
+process.on('exit',    cerrarServicios);
+process.on('SIGINT',  () => { cerrarServicios(); process.exit(0); });
+process.on('SIGTERM', () => { cerrarServicios(); process.exit(0); });
+process.on('SIGBREAK',() => { cerrarServicios(); process.exit(0); });   // Ctrl+Break en Windows
 
 function servidor(cb) {
     browserSync.init({
@@ -207,15 +277,20 @@ exports.webp = versionWebp;
 // Build completo SIN watcher (útil para producción / CI)
 exports.build = parallel(css, javascript, imagenes, versionWebp);
 
-// `gulp servidor`: solo levanta PHP + BrowserSync, sin recompilar nada.
-exports.servidor = series(servidorPhp, servidor);
+// `gulp servidor`: solo levanta los servicios, sin recompilar nada.
+exports.servidor = series(servidorMailpit, servidorPhp, servidor);
+
+// `gulp correo`: solo el catcher de correo (bandeja en http://localhost:8025).
+exports.correo = servidorMailpit;
 
 // Por defecto (`gulp` / `npm run dev`): compila todo, levanta el servidor PHP,
 // pone BrowserSync por delante y queda escuchando cambios.
 //   → http://localhost:3001   (la app, con recarga automática)
 //   → http://localhost:3002   (panel de BrowserSync)
+//   → http://localhost:8025   (bandeja de correo de desarrollo — Mailpit)
 exports.default = series(
     parallel(css, javascript, imagenes, versionWebp),
+    servidorMailpit,
     servidorPhp,
     servidor,
     watchArchivos

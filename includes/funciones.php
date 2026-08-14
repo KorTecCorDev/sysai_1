@@ -620,17 +620,34 @@ function registrarMailLog(string $linea): void
 function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
 {
     $cfg = require __DIR__ . '/config/mail.php';
-    if (empty($cfg['username']) || empty($cfg['password'])) {
+
+    // Resolución del transporte. 'auto' conserva el comportamiento histórico
+    // (sin credenciales ⇒ modo log) para no romper entornos ya configurados.
+    $transporte = strtolower(trim((string) $cfg['transport']));
+    if ($transporte === 'log') {
+        return null;
+    }
+    if ($transporte !== 'smtp' && (empty($cfg['username']) || empty($cfg['password']))) {
+        return null;
+    }
+    if ($cfg['host'] === '') {
         return null;
     }
 
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
     $mail->isSMTP();
     $mail->Host       = $cfg['host'];
-    $mail->SMTPAuth   = true;
+    // Sin usuario no se autentica: es el caso del catcher local de desarrollo
+    // (Mailpit), que acepta todo y no reenvía nada a Internet.
+    $mail->SMTPAuth   = $cfg['username'] !== '';
     $mail->Username   = $cfg['username'];
     $mail->Password   = $cfg['password'];
-    $mail->SMTPSecure = $cfg['secure'];
+    // MAIL_SECURE vacío ⇒ sin cifrado. Se desactiva además el STARTTLS
+    // automático de PHPMailer: contra un catcher local no hay TLS que negociar.
+    $mail->SMTPSecure = $cfg['secure'] !== '' ? $cfg['secure'] : false;
+    if ($cfg['secure'] === '') {
+        $mail->SMTPAutoTLS = false;
+    }
     $mail->Port       = (int) $cfg['port'];
     // Un SMTP que no responde no puede colgar la petición del usuario.
     $mail->Timeout    = 15;
@@ -643,9 +660,15 @@ function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
     // Gmail —y la mayoría de SMTP autenticados— reescriben o rechazan un remitente
     // distinto de la cuenta que autentica. Si el .env conserva el placeholder de
     // desarrollo, se usa la propia cuenta SMTP en vez de un dominio inexistente.
+    // Solo se sustituye si HAY cuenta SMTP: sin autenticación (catcher local) el
+    // placeholder es una dirección válida y perfectamente utilizable; sustituirlo
+    // por una cadena vacía haría fallar setFrom().
     $remitente = $cfg['from_email'];
-    if ($remitente === '' || $remitente === 'no-reply@sysai.local') {
+    if (($remitente === '' || $remitente === 'no-reply@sysai.local') && $cfg['username'] !== '') {
         $remitente = $cfg['username'];
+    }
+    if ($remitente === '') {
+        $remitente = 'no-reply@sysai.local';
     }
     $mail->setFrom($remitente, $cfg['from_name']);
 

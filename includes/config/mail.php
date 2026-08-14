@@ -1,22 +1,60 @@
 <?php
 
 // ============================================================================
-// Configuración SMTP (recuperación de contraseña).
+// Configuración del correo saliente (recuperación de contraseña).
 // SIN secretos: los valores se leen del .env (igual que database.php).
 // El .env se carga en el bootstrap (includes/config/database.php → cargarEnv()).
-// Si MAIL_USERNAME/MAIL_PASSWORD están vacíos → modo desarrollo: el token se
-// registra en includes/logs/mail.log y no se envía correo real.
+//
+// Transporte (MAIL_TRANSPORT):
+//   smtp → se habla SMTP de verdad. Con MAIL_USERNAME vacío va SIN autenticar:
+//          es como funciona el catcher local de desarrollo (Mailpit), que acepta
+//          todo y no reenvía nada a Internet ⇒ desarrollo SIN credenciales.
+//   log  → no se envía nada; queda constancia en includes/logs/ (sin el token).
+//   auto → compatibilidad con la configuración histórica: smtp si hay
+//          credenciales, log si no.
 // ============================================================================
 
+/**
+ * Lee una variable del entorno distinguiendo "no definida" de "definida vacía".
+ *
+ * El patrón anterior —`$_ENV[$k] ?? getenv($k) ?: $porDefecto`— agrupa como
+ * `($_ENV[$k] ?? getenv($k)) ?: $porDefecto` porque `??` liga más fuerte que
+ * `?:`, de modo que un valor VACÍO A PROPÓSITO caía siempre en el valor por
+ * defecto. Eso hacía imposible expresar `MAIL_SECURE=` ("sin cifrado") y
+ * PHPMailer terminaba negociando STARTTLS contra un servidor local sin TLS.
+ *
+ * @param bool $vacioEsAusente true para claves donde la cadena vacía no tiene
+ *                             sentido (host, puerto): ahí sí se usa el default.
+ */
+// Este archivo se incluye con `require` (no `require_once`) desde
+// construirMailer(): sin esta guarda, una segunda llamada en la misma petición
+// abortaría con "Cannot redeclare mailEnv()".
+if (!function_exists('mailEnv')) {
+    function mailEnv(string $clave, string $porDefecto = '', bool $vacioEsAusente = false): string
+    {
+        $valor = $_ENV[$clave] ?? getenv($clave);
+        if ($valor === false || $valor === null) {
+            return $porDefecto;                       // no definida
+        }
+        $valor = (string) $valor;
+        if ($valor === '' && $vacioEsAusente) {
+            return $porDefecto;
+        }
+        return $valor;                                // definida: se respeta, aunque sea ''
+    }
+}
+
 return [
-    'host'       => $_ENV['MAIL_HOST']       ?? getenv('MAIL_HOST')       ?: 'smtp.gmail.com',
-    'username'   => $_ENV['MAIL_USERNAME']   ?? getenv('MAIL_USERNAME')   ?: '',
-    'password'   => $_ENV['MAIL_PASSWORD']   ?? getenv('MAIL_PASSWORD')   ?: '',
-    'port'       => $_ENV['MAIL_PORT']       ?? getenv('MAIL_PORT')       ?: 587,
-    'secure'     => $_ENV['MAIL_SECURE']     ?? getenv('MAIL_SECURE')     ?: 'tls',
-    'from_email' => $_ENV['MAIL_FROM_EMAIL'] ?? getenv('MAIL_FROM_EMAIL') ?: 'no-reply@sysai.local',
-    'from_name'  => $_ENV['MAIL_FROM_NAME']  ?? getenv('MAIL_FROM_NAME')  ?: 'Área de TI - Arca',
+    'transport'  => strtolower(mailEnv('MAIL_TRANSPORT', 'auto', true)),
+    'host'       => mailEnv('MAIL_HOST', 'smtp.gmail.com', true),
+    'username'   => mailEnv('MAIL_USERNAME'),
+    'password'   => mailEnv('MAIL_PASSWORD'),
+    'port'       => (int) mailEnv('MAIL_PORT', '587', true),
+    // Vacío = sin cifrado (catcher local). 'tls' = STARTTLS, 'ssl' = SMTPS.
+    'secure'     => mailEnv('MAIL_SECURE'),
+    'from_email' => mailEnv('MAIL_FROM_EMAIL', 'no-reply@sysai.local', true),
+    'from_name'  => mailEnv('MAIL_FROM_NAME', 'Área de TI - Arca', true),
     // MAIL_DEBUG=1 → PHPMailer vuelca el diálogo SMTP al error_log. Solo para
     // diagnosticar un envío que falla; dejar vacío en operación normal.
-    'debug'      => $_ENV['MAIL_DEBUG']      ?? getenv('MAIL_DEBUG')      ?: '',
+    'debug'      => mailEnv('MAIL_DEBUG'),
 ];
