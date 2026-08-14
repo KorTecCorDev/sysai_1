@@ -1,0 +1,144 @@
+# Gestión de secretos y hardening
+
+> **Estado:** ✅ P0 y P1 implementados y verificados el **2026-08-14** (commits `2362431`, `b54272f`,
+> `a7d357c`). P2 queda abierto hasta que exista dominio propio.
+>
+> Origen: la pregunta de cómo configurar el SMTP **una sola vez** sin arrastrar una contraseña de
+> aplicación entre equipos. Al auditarlo aparecieron tres exposiciones activas, más graves que el
+> problema original.
+
+## 1. Contexto que condiciona las decisiones
+
+| Dato | Valor | Consecuencia |
+|---|---|---|
+| Hosting | Hostinger **compartido** (hPanel) | Sin root ni systemd. El `.htaccess` es la única defensa de servidor. Sí se puede escribir fuera del `public_html`. |
+| Accesos | **Un solo desarrollador** | No hacen falta secretos compartidos ni cifrado de equipo; basta un gestor de contraseñas personal. |
+| Dominio propio | **Aún no contratado** | No hay `no-reply@<dominio>` todavía; producción sigue sin desplegar (greenfield). |
+| Complejidad aceptada | **Mínima robusta** | Nada de Vault/SOPS/Doppler: sin herramientas nuevas ni dependencias de red. |
+
+## 2. Hallazgos de la auditoría (2026-08-14)
+
+Todos verificados en la máquina de desarrollo; los marcados como *estático* no pudieron probarse
+contra un Apache real (el de XAMPP redirige a `/dashboard/`).
+
+| # | Hallazgo | Severidad | Estado |
+|---|---|---|---|
+| 1 | `.env` **descargable desde la red local** vía BrowserSync | Crítico | ✅ corregido (P0) |
+| 2 | Scripts de `database/` ejecutables por HTTP, sin guarda CLI | Alto | ✅ corregido (P0) |
+| 3 | Token de recuperación **en claro** en `mail.log`, servible por HTTP | Alto | ✅ corregido (P0) |
+| 4 | `.htaccess` con sintaxis Apache 2.2 (`Order allow,deny`) | Alto *(estático)* | ✅ corregido (P1) |
+| 5 | Autorización anidada dentro de `<IfModule mod_rewrite.c>` | Medio *(estático)* | ✅ corregido (P1) |
+| 6 | `<IfModule mod_php.c>` inerte bajo LiteSpeed/PHP-FPM | Medio *(estático)* | ⚠️ anotado, no corregible desde el repo |
+| 7 | Modo log **fingía envíos exitosos** en producción | Alto | ✅ corregido (P1) |
+| 8 | El `.env` pisaba las variables de entorno reales | Medio | ✅ corregido (P1) |
+| 9 | `MAIL_SECURE=` vacío se convertía en `'tls'` | Medio | ✅ corregido |
+
+### Detalle de los tres que importaban
+
+**#1 — el `.env` en la LAN.** BrowserSync escuchaba en `::` (todas las interfaces) y su proxy no filtra
+rutas. `curl http://192.168.x.x:3001/.env` devolvía las credenciales de la base de datos: **200, 1955
+bytes**. El `.htaccess` no interviene porque `php -S` no lo procesa. Tras el arreglo, la misma petición
+devuelve `000` (inalcanzable) y `127.0.0.1` sigue respondiendo `200`.
+
+**#2 — scripts administrativos por HTTP.** La regla que bloquea directorios nombraba `db/`, pero la
+carpeta se llama `database/`: nunca la cubrió. Con `register_argc_argv` activo —lo está— `$argv` se
+puebla desde la *query string*, de modo que `smtp_test.php` era un **enviador de correo a un
+destinatario arbitrario** usando las credenciales del `.env`, y `migrate.php` ejecutaba migraciones sin
+autenticación.
+
+**#3 — tokens en la bitácora.** Un token de recuperación es una credencial temporal: quien lo lee toma
+la cuenta. Estaba en claro en un archivo descargable.
+
+### Sobre la premisa inicial
+
+«El `.env` guarda mucha información y es inseguro» es media verdad. El `.env` es el estándar de facto y
+no tiene nada malo *como formato*; el riesgo está en **la alcanzabilidad**, **la vecindad** (hosting
+compartido) y **el valor de lo que contiene**. Y una advertencia: **cifrar el `.env` sin resolver dónde
+vive la clave es teatro de seguridad** — si la clave queda en el mismo disco, solo se añadió un paso y un
+modo de fallo. Por eso la estrategia elegida ataca los otros dos vectores.
+
+## 3. La arquitectura
+
+**Principio rector: en desarrollo no debe existir ningún secreto que proteger.**
+
+El `.env` de desarrollo contiene hoy `DB_USER=root`, `DB_PASS=` vacío y el correo apuntando a un catcher
+local. **No hay un solo secreto**: el problema no se gestiona, se disuelve.
+
+| Entorno | Correo | Secretos | Ubicación del `.env` |
+|---|---|---|---|
+| **Desarrollo** | Mailpit (`127.0.0.1:1025`, bandeja `:8025`) | **ninguno** | raíz del proyecto |
+| **Prueba de entrega real** (excepcional) | App Password **efímera**: generar → probar → **revocar** | vive minutos | sin persistir |
+| **Producción** | `no-reply@<dominio>` (Hostinger, 465/ssl) | 1 credencial acotada y rotable | `../secrets/.env`, permisos 600 |
+
+### Por qué Mailpit y no una App Password permanente
+
+Una contraseña de aplicación de Gmail **abre la cuenta personal entera** (incluido IMAP), no es
+recuperable —Google la muestra una vez—, obliga a generar una nueva por cada equipo, tiene límite de
+~500 envíos/día y Google la está restringiendo por política. Replicarla en varias máquinas multiplica la
+exposición del activo más valioso para resolver un problema de desarrollo.
+
+Mailpit acepta todo, **no reenvía nada a Internet**, no pide credenciales, funciona sin conexión y
+muestra el correo renderizado —HTML, cabeceras, acentos— que la bitácora nunca mostró. En un equipo
+nuevo: `winget install Axllent.Mailpit` y `npm run dev`.
+
+> Ambos puertos se atan a `127.0.0.1` **a propósito**: por defecto Mailpit escucha en todas las
+> interfaces, y su bandeja contiene los tokens de recuperación.
+
+### Por qué el `.env` fuera del document root
+
+Dentro del directorio publicado, que el archivo no se descargue depende de que la configuración del
+servidor sea correcta: un módulo ausente, una regla que no casa, un servidor que no procesa `.htaccess`.
+**Fuera del docroot, ningún request puede alcanzarlo**: desaparece la clase entera de fallo. El
+`.htaccess` pasa a ser la segunda capa, no la única.
+
+```
+/home/uXXXX/domains/<dominio>/
+├── secrets/.env          ← 600, fuera del alcance de Apache
+└── public_html/          ← el proyecto: sin .env, sin database/, sin .git/
+```
+
+Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proyecto.
+
+## 4. Qué se implementó
+
+**P0 — exposición activa** (`b54272f`)
+- `listen: 127.0.0.1` en BrowserSync.
+- Guarda `PHP_SAPI !== 'cli'` → **404** en los cuatro scripts de `database/` (404 y no un mensaje:
+  responder 200 confirmaba que el script existe).
+- El token deja de escribirse en la bitácora; `MAIL_LOG_PATH` permite sacarla del docroot;
+  `includes/logs/.htaccess` deniega directamente. El log existente, que tenía un token, fue purgado.
+
+**P1 — despliegue** (`a7d357c`)
+- `rutaEnv()` con prioridad fuera del docroot.
+- `.htaccess`: autorización fuera de `<IfModule>`, `Require all denied` con respaldo 2.2, `FilesMatch`
+  para nombres con punto inicial, `db` → `database`.
+- `APP_ENV=production` + sin transporte ⇒ `false` y `[ERROR]`, en vez de fingir éxito.
+- `cargarEnv()`: el entorno real manda sobre el archivo.
+
+**Correo** (`2362431`)
+- `MAIL_TRANSPORT` (`smtp` | `log` | `auto`), SMTP sin autenticar cuando no hay usuario, `MAIL_SECURE`
+  vacío = sin cifrado (desactivando el STARTTLS automático de PHPMailer).
+- Mailpit integrado en `npm run dev`, con degradación limpia si no está instalado.
+
+## 5. Pendiente (P2 — cuando exista el dominio)
+
+- [ ] Crear `no-reply@<dominio>` en Hostinger y configurar `smtp.hostinger.com` 465/ssl.
+- [ ] **SPF y DKIM** del dominio: sin ellos el correo transaccional acaba en spam.
+- [ ] Colocar el `.env` en `secrets/` con permisos 600 y guardar copia en el gestor de contraseñas.
+- [ ] Excluir del despliegue: `database/`, `.git/`, `src/`, `node_modules/`, `docs/`.
+- [ ] **Verificar el `.htaccess` contra el Apache real** — los hallazgos 4, 5 y 6 son análisis estático.
+      Comprobación mínima tras desplegar: `/.env`, `/database/migrate.php`, `/includes/logs/mail.log` y
+      `/.git/config` deben devolver 403/404.
+- [ ] Revocar la App Password de Gmail anterior si sigue viva (se perdió con el `.env`; Google no
+      permite recuperarla).
+
+## 6. Procedimiento de rotación
+
+1. Generar la credencial nueva en el proveedor.
+2. Actualizarla en `secrets/.env` (permisos 600) y en el gestor de contraseñas.
+3. Verificar: `php database/smtp_test.php <destinatario>`.
+4. Revocar la anterior en el proveedor.
+5. Comprobar `mail.log`: debe registrar `[OK]`, nunca un token.
+
+Rotar **siempre** que: se filtre o se sospeche filtración, se cambie de equipo, o alguien más haya
+tenido acceso temporal al servidor.

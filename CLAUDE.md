@@ -21,6 +21,11 @@
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
 - `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
+- **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
+  secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del
+  document root en producción, `.htaccess` corregido (era sintaxis Apache 2.2 dentro de un `<IfModule>`),
+  guardas CLI en `database/`, y el correo que ya no finge envíos exitosos. **P2 pendiente**: dominio
+  propio, SPF/DKIM y verificación del `.htaccess` contra el Apache real.
 - `docs/build-assets.md` — pipeline Gulp.
 - `docs/follow-ups-tecnicos.md` — deuda técnica pendiente (detalle).
 
@@ -86,6 +91,9 @@
     `Cannot find module 'browser-sync'`, el `node_modules` está desactualizado → `npm install`.
   - **http://localhost:3001** → la app, con recarga automática ← **usar esta**
   - **http://localhost:3002** → panel de BrowserSync
+  - **http://localhost:8025** → bandeja de correo de desarrollo (Mailpit)
+  - 🔒 Todo escucha **solo en `127.0.0.1`** (2026-08-14). BrowserSync lo hacía en todas las interfaces y
+    su proxy no filtra rutas: `curl http://<ip-lan>:3001/.env` devolvía las credenciales de la BD.
   - `http://localhost:3000` → el `php -S` crudo que gulp levanta por debajo (sigue sirviendo; sin recarga).
     El alias `local3000` (= `php -S localhost:3000`) sigue siendo válido si solo se quiere el backend.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
@@ -135,21 +143,35 @@ npx gulp build                        # solo compilar assets, sin servidor ni wa
   (2026-07-16): todo truncamiento/overflow es error ruidoso, idéntico en dev y Hostinger (por sesión, sin tocar
   `my.cnf`). Cubre también `database/migrate.php` (reutiliza `conectarDB()`). Verificado: replay greenfield
   completo (baseline + migr. 001-032 + seeds) y suite QA 131/131 bajo modo estricto.
+- **Correo en desarrollo = Mailpit, sin credenciales (2026-08-14).** `npm run dev` levanta un SMTP local
+  en `127.0.0.1:1025` que **acepta todo y no reenvía nada a Internet**; los correos se leen en
+  **http://localhost:8025**. Instalación por equipo: `winget install Axllent.Mailpit`. Gracias a esto el
+  `.env` de desarrollo **no contiene ni un secreto** (BD local sin contraseña + correo local), que es
+  justamente el objetivo: nada que proteger, rotar ni trasladar entre equipos.
+  `MAIL_TRANSPORT` = `smtp` | `log` | `auto`. Detalle y razones: `docs/plan-secretos-y-hardening.md`.
+  ⚠️ **En producción el `.env` va FUERA del document root** (`../secrets/.env`, permisos 600, o la ruta
+  en `$SYSAI_ENV_FILE`): la app lo busca ahí primero.
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
   ✅ Credenciales externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env`; el envío lo
   arma `construirMailer()` y lo usa `enviarTokenRecuperacion()` (ambos en `includes/funciones.php`).
-  ✅ **SMTP REAL CONFIGURADO Y VERIFICADO (2026-08-13):** Gmail `korteccor@gmail.com` con **App Password**
-  (587/TLS). Es la cuenta **emisora**, no una cuenta de usuario del sistema. Gmail exige que
-  `MAIL_FROM_EMAIL` sea **la misma** de `MAIL_USERNAME` (si no, reescribe el remitente). Verificado de punta
-  a punta: correo recibido y contraseña cambiada. ⏸ Al haber dominio propio en Hostinger, migrar a
-  `no-reply@<dominio>` (`smtp.hostinger.com`, 465/ssl).
+  ⚠️ **Histórico:** el 2026-08-13 se verificó SMTP real con Gmail `korteccor@gmail.com` + App Password
+  (587/TLS). **Esa configuración ya no existe:** el `.env` se perdió al reinstalarse el equipo y Google no
+  permite recuperar una App Password. **No se ha vuelto a configurar a propósito** — desarrollar contra
+  Mailpit no necesita credenciales, y una App Password abre la cuenta de Gmail entera (decisión
+  2026-08-14, `docs/plan-secretos-y-hardening.md`). Si hiciera falta probar entrega real: generarla,
+  usarla y **revocarla** en el momento. Gmail exige que `MAIL_FROM_EMAIL` sea **la misma** de
+  `MAIL_USERNAME` (si no, reescribe el remitente). ⏸ Destino final: `no-reply@<dominio>` en Hostinger
+  (`smtp.hostinger.com`, 465/ssl) **con SPF y DKIM**, cuando haya dominio contratado.
   - **Diagnóstico:** `php database/smtp_test.php <destinatario>` — comprueba por separado credenciales,
     openssl/CA de Windows, handshake y envío real. No toca la BD ni genera tokens. `MAIL_DEBUG=1` vuelca el
     diálogo SMTP al `error_log`.
-  - **Bitácora:** todo envío deja línea en `includes/logs/mail.log`. En **modo DEV**
-    (`MAIL_USERNAME`/`MAIL_PASSWORD` vacíos) escribe el token y no envía nada; con SMTP real registra
-    `[OK]`/`[ERROR]` **sin el token**. `LoginController` ya no ignora el fallo de envío (queda en el log),
-    pero la respuesta al usuario sigue siendo **neutra** (A5, anti-enumeración).
+  - **Bitácora:** todo envío deja línea en `includes/logs/mail.log` (ruta configurable con
+    `MAIL_LOG_PATH`, para sacarla del document root en producción). ⚠️ **El token NUNCA se escribe**
+    (2026-08-14): es una credencial temporal y ese archivo llegó a ser descargable por HTTP. Para verlo,
+    la bandeja de Mailpit; en su defecto, `usuario.reset_token`. `LoginController` ya no ignora el fallo
+    de envío (queda en el log), pero la respuesta al usuario sigue siendo **neutra** (A5, anti-enumeración).
+  - ⚠️ **Con `APP_ENV=production` y sin transporte, el envío FALLA (devuelve `false` + `[ERROR]`)** en vez
+    de fingir éxito: sin correo nadie puede activar su cuenta, y antes el sistema lo ocultaba.
 - **Credenciales de prueba / QA local:** coordinador `coordinador@sysai.test` / `Test1234*` (programa 1);
   contador `contador@sysai.test` / `admin1234` (= admin local `robertokar97@gmail.com`).
   ⚠️ **No re-sembrar ni resetear `usuario.password`** en la BD local — el usuario gestiona sus contraseñas

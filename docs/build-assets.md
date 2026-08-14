@@ -20,7 +20,13 @@ levanta el servidor PHP, pone **BrowserSync** por delante y queda vigilando camb
 |---|---|
 | **http://localhost:3001** | La app, con recarga automática ← la que se usa |
 | http://localhost:3002 | Panel de control de BrowserSync |
+| http://localhost:8025 | Bandeja de correo de desarrollo (Mailpit) |
 | http://localhost:3000 | El `php -S` crudo por debajo (sirve, pero sin recarga) |
+
+🔒 **Los cinco puertos escuchan solo en `127.0.0.1`.** BrowserSync lo hacía en todas las interfaces y
+Mailpit hace lo mismo por defecto: eso publicaba en la red local la aplicación entera —incluido el
+`.env`, que el proxy sirve sin filtrar— y la bandeja con los tokens de recuperación. Ver
+`docs/plan-secretos-y-hardening.md`.
 
 Decisiones que hacen que esto funcione **en un proyecto PHP** (todas viven en `gulpfile.js`):
 
@@ -36,6 +42,10 @@ Decisiones que hacen que esto funcione **en un proyecto PHP** (todas viven en `g
 - **`ghostMode: false`** a propósito: por defecto BrowserSync espeja clics, scroll y formularios entre todos
   los navegadores conectados, y aquí se trabaja con **dos sesiones abiertas a la vez** (coordinador y
   contador) para probar el flujo de aprobación. Con el espejo activo esas pruebas serían inservibles.
+- **Mailpit arranca con gulp** (2026-08-14): mismo patrón que el servidor PHP — si el puerto 1025 ya está
+  servido lo reutiliza, y si el binario no está instalado **avisa y sigue** (el correo queda en modo log).
+  El binario se busca en `MAILPIT_BIN`, luego en la ruta de winget y por último en el `PATH`: recién
+  instalado, `mailpit` a secas solo funciona en consolas abiertas *después* de la instalación.
 - **`notify: false`** (2026-08-13): BrowserSync inyecta por defecto un cartel *"Connected to BrowserSync"*
   (`<div id="__bs_notify__">`) **dentro de la página**, al conectar y en cada recarga. Se superponía al
   formulario de `/login` y ensuciaba capturas y pruebas manuales. Apagarlo **no afecta la recarga**; la
