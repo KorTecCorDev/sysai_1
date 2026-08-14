@@ -25,7 +25,9 @@
 - `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
 - `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
-- `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP.
+- `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
+  PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
+  CSRF fallan porque el 419 sale como 500). Suite actual: **176/176**.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
 - **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
   secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del

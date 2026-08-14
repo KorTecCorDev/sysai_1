@@ -315,6 +315,42 @@ pueda revisarse y mergearse por separado.
 `reporte_fuentes` **no se toca**: es una proyección limpia de `fuente_financiamiento` y con
 D2 se consume entera, sin filtro.
 
+### Fases 2, 3 y 4 ✅ HECHAS (2026-08-14)
+
+> Un solo commit: los modelos, el builder, los orquestadores y el QA se sostienen
+> entre sí y por separado no se pueden verificar.
+>
+> **Suite completa: 176/176** (`qa_all.ps1`, era 154/154 — el arnés de reportes pasó
+> de 27 a 49 asserts). Los 12 casos del plan, verificados celda a celda:
+>
+> | # | Caso | Resultado |
+> |---|---|---|
+> | 1 | Ingreso sobre fuente **sin sobres** | aparece (antes desaparecía) |
+> | 2 | Ingreso sobre fuente con **2 sobres** | aparece **una sola vez** |
+> | 3 | Ingreso con `programa_id` NULL | PROGRAMA vacío, fila presente |
+> | 4 | Suma de la sección de ingresos | 1000+2000+4000 = **7000** |
+> | 5 | Sección de fuentes | bloque propio con su total, fuera de MONTO |
+> | 6 | Rendición pendiente | **excluida**; la aprobada sale con ESTADO |
+> | 7 | Fila con TC congelado | USD = 1000/3.75 = **266.67** |
+> | 8 | Fila sin cobertura de TC | **"—"**, no 0 ni vacío |
+> | 9 | Operación de hace 3 meses registrada hoy | cae en el mes de **operación** |
+> | 10 | Subtotales por fuente | presentes |
+> | 11 | `TIPO_COMPROBANTE` en ingresos | "Factura" (antes siempre vacío) |
+> | 12 | Descarga | streaming; `/descargar` y `storage/` ya no responden |
+>
+> ⚠️ **El arnés se ejecuta con `pwsh` (PowerShell 7), no con `powershell` 5.1:** en 5.1
+> `-MaximumRedirection 0` lanza excepción en vez de devolver el 302 y el login falla.
+> Y **contra `php -S localhost:3000`**, no contra Apache: bajo Apache los siete asserts
+> de CSRF fallan porque el 419 sale como 500. Es previo a este trabajo y ajeno a él
+> —el código del guard no se tocó—, pero conviene saberlo antes de dar una regresión
+> por buena.
+>
+> **Limpieza que arrastró la Fase 2:** al quedarse sin llamadores se retiraron los dos
+> helpers de `ActiveRecord` (~160 líneas), el modelo `ReporteEgresosRendiciones`
+> (apuntaba a `reporte_egresos_rendiciones_apci`, una tabla que **no existe**: cualquier
+> consulta real habría reventado) y `ReportePoaRubrosController::indexsaldos()`, que no
+> estaba registrado en ninguna ruta y consultaba dos vistas para tirar el resultado.
+
 ### Fase 2 — Modelos y builder
 
 1. **Modelos actualizados** a las columnas nuevas: `ReporteIngresosVista`,

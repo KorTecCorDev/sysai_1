@@ -477,6 +477,10 @@ function mostrarNotificacion($codigo)
         case 28:
             $mensaje = 'El programa Institucional no puede eliminarse: es parte permanente de la organización';
             break;
+        //RANGO DE FECHAS INVÁLIDO EN UN REPORTE (Fase 3 del plan de reportes)
+        case 29:
+            $mensaje = 'Revisa las fechas del reporte: hacen falta ambas, con formato válido, y la de inicio no puede ser posterior a la de fin';
+            break;
         default:
             $mensaje = false;
             break;

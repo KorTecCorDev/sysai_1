@@ -17,7 +17,6 @@ use Model\UsuarioDisponiblePrograma;
 use Model\ReporteFuentesProgramaVista;
 use Model\Usuario;
 use Model\Poa;
-use Model\ReporteEgresosRendiciones;
 
 class ReportePoaRubrosController
 {
@@ -131,91 +130,102 @@ class ReportePoaRubrosController
         ]);
     }
 
+    /**
+     * Valida el rango de fechas de un reporte.
+     *
+     * Antes se leía $_POST['fechainicio'] a pelo (warning si faltaba) y no se
+     * comprobaba nada más: un rango invertido devolvía una hoja vacía sin decir
+     * por qué. Devuelve [desde, hasta] o null si el rango no sirve.
+     */
+    private static function rangoValido($desde, $hasta): ?array
+    {
+        $desde = is_string($desde) ? trim($desde) : '';
+        $hasta = is_string($hasta) ? trim($hasta) : '';
+        foreach ([$desde, $hasta] as $f) {
+            $d = \DateTime::createFromFormat('Y-m-d', $f);
+            if (!$d || $d->format('Y-m-d') !== $f) {
+                return null;
+            }
+        }
+        return $desde <= $hasta ? [$desde, $hasta] : null;
+    }
+
     public static function indexreporterendiciones(Router $router)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Captamos las fechas de inicio y fin
-            $fechainicio = $_POST['fechainicio'];
-            $fechafin = $_POST['fechafin'];
-            // Redirige con fechas como parámetros GET
-            header("Location: /reporte/rendicionesdesc?fechainicio=" . urlencode($fechainicio) . "&fechafin=" . urlencode($fechafin));
+            $rango = self::rangoValido($_POST['fechainicio'] ?? null, $_POST['fechafin'] ?? null);
+            if (!$rango) {
+                header('Location: /reporte/rendiciones?resultado=29');
+                exit;
+            }
+            header('Location: /reporte/rendicionesdesc?fechainicio=' . urlencode($rango[0]) . '&fechafin=' . urlencode($rango[1]));
             exit;
         }
 
-        $router->render('reporte/rendiciones', []);
+        $router->render('reporte/rendiciones', ['resultado' => $_GET['resultado'] ?? null]);
     }
+
     public static function indexreporterendicionesdescargar(Router $router)
     {
-        // Validación simple de parámetros
-        if (!isset($_GET['fechainicio']) || !isset($_GET['fechafin'])) {
-            header("Location: /reporte/rendiciones");
+        $rango = self::rangoValido($_GET['fechainicio'] ?? null, $_GET['fechafin'] ?? null);
+        if (!$rango) {
+            header('Location: /reporte/rendiciones?resultado=29');
             exit;
         }
-        // Captamos las fechas de inicio y fin
-        $fechainicio = $_GET['fechainicio'];
-        $fechafin = $_GET['fechafin'];
-        // Obtenemos los datos del usuario para colocar los nombres de los reportes
-        $usrcod = self::codigoUsuario();
-        $fuentes = FuenteFinanciamiento::all();
-        // Filtramos los resultados de acuerdo a las fechas
-        $resreporterendiciones = ReporteRendicionesVista::findporRango('rendicion_fecha', $fechainicio, $fechafin);
-        $resreporteegresos = ReporteEgresosVista::findporRango('otros_ingresos_egresos_fecha', $fechainicio, $fechafin);
+        [$desde, $hasta] = $rango;
+
+        // Solo APROBADAS (D3) y por FECHA DE OPERACIÓN (D4). Ver los modelos.
         $router->render('reporte/rendicionesdesc', [
-            'resreporterendiciones' => $resreporterendiciones,
-            'resreporteegresos' => $resreporteegresos,
-            'fuentes' => $fuentes,
-            'usrcod' => $usrcod
+            'rendiciones' => ReporteRendicionesVista::aprobadasEnRango($desde, $hasta),
+            'egresos'     => ReporteEgresosVista::enRango($desde, $hasta),
+            'desde'       => $desde,
+            'hasta'       => $hasta,
+            'usrcod'      => self::codigoUsuario(),
         ]);
     }
 
     public static function indexreporteingresos(Router $router)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $fechainicio = $_POST['fechainicio'];
-            $fechafin = $_POST['fechafin'];
-
-            // Redirige con fechas como parámetros GET
-            header("Location: /reporte/ingresosdesc?fechainicio=" . urlencode($fechainicio) . "&fechafin=" . urlencode($fechafin));
+            $rango = self::rangoValido($_POST['fechainicio'] ?? null, $_POST['fechafin'] ?? null);
+            if (!$rango) {
+                header('Location: /reporte/ingresos?resultado=29');
+                exit;
+            }
+            header('Location: /reporte/ingresosdesc?fechainicio=' . urlencode($rango[0]) . '&fechafin=' . urlencode($rango[1]));
             exit;
         }
 
-        // Renderiza el formulario si no hay POST
-        $router->render('reporte/ingresos', []);
+        $router->render('reporte/ingresos', ['resultado' => $_GET['resultado'] ?? null]);
     }
 
     public static function indexreporteingresosdescargar(Router $router)
     {
-        // Validación simple de parámetros
-        if (!isset($_GET['fechainicio']) || !isset($_GET['fechafin'])) {
-            header("Location: /reporte/ingresos");
+        $rango = self::rangoValido($_GET['fechainicio'] ?? null, $_GET['fechafin'] ?? null);
+        if (!$rango) {
+            header('Location: /reporte/ingresos?resultado=29');
             exit;
         }
+        [$desde, $hasta] = $rango;
 
-        $fechainicio = $_GET['fechainicio'];
-        $fechafin = $_GET['fechafin'];
-
-        // Datos del usuario para nombrar el archivo
-        $usrcod = self::codigoUsuario();
-
-        // Obtener los datos del reporte
-        $resreportefuentes = ReporteFuentesVista::findporRango('fuente_fecha', $fechainicio, $fechafin);
-        $resreporteingresos = ReporteIngresosVista::findporRango('oie_comprobante_fecha_original', $fechainicio, $fechafin);
-
-        // Renderizar la vista que genera y guarda el archivo
+        // Las fuentes van SIN filtrar por fecha (D2): la sección es contexto
+        // —cuánto presupuesto hay detrás de los ingresos—, y `fuente_fecha` es
+        // la fecha de alta del registro, que no significa nada contablemente.
+        [$tcd, $tce] = self::tcCierre();
         $router->render('reporte/ingresosdesc', [
-            'resreportefuentes' => $resreportefuentes,
-            'resreporteingresos' => $resreporteingresos,
-            'usrcod' => $usrcod
+            'ingresos' => ReporteIngresosVista::enRango($desde, $hasta),
+            'fuentes'  => ReporteFuentesVista::all(),
+            'desde'    => $desde,
+            'hasta'    => $hasta,
+            'tcdolar'  => $tcd,
+            'tceuro'   => $tce,
+            'usrcod'   => self::codigoUsuario(),
         ]);
     }
 
-    public static function indexsaldos(Router $router)
-    {
-        $resreportefuentes = ReporteFuentesVista::all();
-        $resreporteingresos = ReporteIngresosVista::all();
-
-        $router->render('saldos_contables/saldos', []);
-    }
+    // Retirado el 2026-08-14: indexsaldos() no estaba registrado en ninguna ruta
+    // -/saldos_contables/saldos lo sirve SaldoContableController::index- y ademas
+    // consultaba dos vistas cuyo resultado tiraba: render() recibia un array vacio.
 
     // Retirado el 2026-08-14 (Fase 0 del plan de reportes): indexdescarga()
     // (GET /descargar) servía `views/reporte/storage/reports/$_GET['rprt']`
