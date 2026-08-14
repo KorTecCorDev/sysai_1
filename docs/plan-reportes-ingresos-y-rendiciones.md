@@ -256,7 +256,28 @@ pueda revisarse y mergearse por separado.
 > la página con su botón, se mantiene y el botón apunta a una ruta nueva `…desc` que
 > streamea. Dímelo y ajusto la fase.
 
-### Fase 1 — Migración 035: las tres vistas SQL
+### Fase 1 — Migración 035: las tres vistas SQL ✅ HECHA (2026-08-14)
+
+> `database/migrations/035_reportes_movimientos_saneados.sql`.
+>
+> | Verificación | Resultado |
+> |---|---|
+> | El ingreso que desaparecía | suma real **35 000** = suma del reporte **35 000** (antes 10 000) |
+> | Fuente con 2 sobres | **una sola fila** por movimiento, sin `DISTINCT` |
+> | Ingreso híbrido (`programa_id` NULL) | aparece, con PROGRAMA vacío — el dato, no la fila perdida |
+> | `TIPO_COMPROBANTE` en ingresos | ahora con valor (`OTC00001`); antes siempre vacío |
+> | Rendiciones | exponen `estado`, `rubro` y `programa`; `tipo_comprobante_descripcion` = "Factura" |
+> | Replay greenfield | baseline + **35 migraciones** en una BD nueva, sin errores |
+> | Vistas en `sysai` vs. replay | definiciones **idénticas** |
+> | Código actual sobre las vistas nuevas | sigue generando el xlsx; **no rompe nada** |
+>
+> **Se pudo commitear sola**, contra lo que preveía §7: al añadir las columnas al final
+> y dejar en su sitio las que se consumen, `crearObjeto()` ignora las nuevas y el único
+> campo retirado (`rendicion_monto`, duplicado) no lo usaba nadie. La Fase 1 entra como
+> mejora estricta: los movimientos perdidos vuelven al reporte y el tipo de comprobante
+> se llena, aunque el resto de defectos siga hasta las Fases 2-3.
+
+
 
 `database/migrations/035_*.sql` redefine `reporte_ingresos`, `reporte_egresos` y
 `reporte_rendiciones` con `CREATE OR REPLACE VIEW`.
