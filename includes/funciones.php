@@ -601,12 +601,19 @@ function validarId($tb)
  */
 function registrarMailLog(string $linea): void
 {
-    $logDir = __DIR__ . '/logs';
+    // Ruta configurable para poder situar la bitacora FUERA del document root en
+    // produccion (p. ej. MAIL_LOG_PATH=/home/uXXXX/logs/mail.log). Servido por
+    // HTTP, este archivo era descargable: ver docs/plan-secretos-y-hardening.md.
+    $ruta = $_ENV['MAIL_LOG_PATH'] ?? getenv('MAIL_LOG_PATH');
+    if (!is_string($ruta) || $ruta === '') {
+        $ruta = __DIR__ . '/logs/mail.log';
+    }
+    $logDir = dirname($ruta);
     if (!is_dir($logDir)) {
         @mkdir($logDir, 0775, true);
     }
     @file_put_contents(
-        $logDir . '/mail.log',
+        $ruta,
         sprintf("[%s] %s%s", date('Y-m-d H:i:s'), $linea, PHP_EOL),
         FILE_APPEND | LOCK_EX
     );
@@ -690,10 +697,13 @@ function enviarTokenRecuperacion(string $email, string $nombre, string $token): 
 {
     $mail = construirMailer();
 
-    // Modo desarrollo: sin credenciales SMTP no se puede enviar de verdad.
+    // Modo log: no hay transporte, no se envia nada.
     if ($mail === null) {
-        registrarMailLog("[DEV - correo NO enviado] PARA: {$email} | NOMBRE: {$nombre} | TOKEN: {$token}");
-        error_log("[DEV] Token de recuperación para {$email}: {$token}");
+        // El TOKEN ya no se escribe en la bitacora. Es una credencial temporal
+        // -quien lo lee toma la cuenta- y ese archivo llego a ser descargable por
+        // HTTP. Para desarrollo esta Mailpit, que muestra el correo completo; el
+        // token tambien queda en usuario.reset_token si hiciera falta consultarlo.
+        registrarMailLog("[LOG - correo NO enviado] PARA: {$email}");
         return true;
     }
 

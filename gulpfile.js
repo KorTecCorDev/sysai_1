@@ -115,10 +115,13 @@ async function servidorMailpit() {
     // Ambos sockets atados a 127.0.0.1 A PROPOSITO: por defecto Mailpit escucha
     // en todas las interfaces y la bandeja -con los correos y sus tokens de
     // recuperacion- quedaria legible desde cualquier equipo de la red local.
+    // Sin `shell: true`: es un .exe y Node lo resuelve por si mismo. Pasar
+    // argumentos a traves de un shell los concatena sin escapar (Node avisa con
+    // DEP0190) y admite rutas con espacios sin comillas -- aqui no hace falta.
     procesoMailpit = spawn(rutaMailpit(), [
         '--listen', `${PHP_HOST}:${MAILPIT_UI}`,
         '--smtp',   `${PHP_HOST}:${MAILPIT_SMTP}`,
-    ], { cwd: __dirname, shell: true, stdio: ['ignore', 'ignore', 'ignore'] });
+    ], { cwd: __dirname, stdio: ['ignore', 'ignore', 'ignore'] });
 
     procesoMailpit.on('error', () => { procesoMailpit = null; });
 
@@ -183,6 +186,14 @@ function servidor(cb) {
         },
         port: BS_PORT,
         ui: { port: BS_PORT + 1 },
+        // Atado a la maquina local. Por defecto BrowserSync escucha en TODAS las
+        // interfaces y anuncia una "External URL": eso publicaba la aplicacion
+        // entera en la red local SIN autenticacion y, como el proxy no filtra
+        // rutas, cualquiera en esa red se descargaba /.env con las credenciales
+        // de la base de datos (verificado). El .htaccess no protege aqui: php -S
+        // no lo procesa. Si algun dia hace falta probar desde el movil, levantar
+        // el tunel a mano y solo mientras dure la prueba.
+        listen: PHP_HOST,
         // ghostMode APAGADO a propósito: por defecto BrowserSync espeja clics,
         // scroll y formularios entre TODOS los navegadores conectados. En este
         // proyecto se trabaja con dos sesiones abiertas a la vez (coordinador y

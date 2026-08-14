@@ -12,6 +12,15 @@
 // No toca la base de datos ni genera tokens: es seguro correrlo cuantas veces
 // haga falta. Para ver el diálogo SMTP completo: MAIL_DEBUG=1 en el .env.
 
+// Solo por linea de comandos. Con register_argc_argv activo (lo esta en este
+// PHP), $argv se puebla desde la QUERY STRING al servirse por HTTP: este script
+// era, tal cual, un enviador de correo a un destinatario elegido por quien
+// pasara por la URL, usando las credenciales SMTP del .env.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../includes/config/database.php';   // carga el .env
 require __DIR__ . '/../includes/funciones.php';
