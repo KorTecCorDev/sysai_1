@@ -1,9 +1,39 @@
 <?php
 
+/**
+ * Localiza el .env, priorizando las ubicaciones FUERA del document root.
+ *
+ * Un .env dentro del directorio publicado depende, para no ser descargable, de
+ * que la configuracion del servidor sea correcta: un .htaccess ignorado, un
+ * modulo ausente o un servidor que no lo procesa (php -S) y el archivo se sirve
+ * como texto plano. Fuera del docroot esa clase entera de fallo desaparece:
+ * ningun request puede alcanzar lo que no esta bajo la raiz publicada.
+ *
+ * En Hostinger compartido:
+ *   /home/uXXXX/domains/<dominio>/secrets/.env      <- aqui
+ *   /home/uXXXX/domains/<dominio>/public_html/      <- el proyecto
+ *
+ * Orden: variable de entorno explicita > secrets/ hermano del proyecto > local.
+ * Ver docs/plan-secretos-y-hardening.md.
+ */
+function rutaEnv(): string {
+    $explicita = getenv('SYSAI_ENV_FILE');
+    if (is_string($explicita) && $explicita !== '' && is_file($explicita)) {
+        return $explicita;
+    }
+    $raizProyecto = dirname(__DIR__, 2);
+    $fueraDelDocroot = dirname($raizProyecto) . DIRECTORY_SEPARATOR . 'secrets' . DIRECTORY_SEPARATOR . '.env';
+    if (is_file($fueraDelDocroot)) {
+        return $fueraDelDocroot;
+    }
+    return $raizProyecto . DIRECTORY_SEPARATOR . '.env';   // desarrollo
+}
+
 function cargarEnv(string $ruta): void {
     if (!file_exists($ruta)) {
         die('<b>Error de configuración:</b> No se encontró el archivo <code>.env</code>.<br>
-             Copia <code>.env.example</code> como <code>.env</code> y configura tus credenciales.');
+             Copia <code>.env.example</code> como <code>.env</code> y configura tus credenciales.<br>
+             Se buscó, en orden: <code>$SYSAI_ENV_FILE</code>, <code>../secrets/.env</code> y el <code>.env</code> del proyecto.');
     }
 
     $lineas = file($ruta, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -15,14 +45,20 @@ function cargarEnv(string $ruta): void {
         $clave = trim($clave);
         $valor = trim($valor);
 
-        if (!array_key_exists($clave, $_ENV)) {
+        // El ENTORNO REAL manda sobre el archivo. Antes solo se consultaba
+        // $_ENV -que PHP no puebla salvo que variables_order incluya "E"- y
+        // acto seguido putenv() pisaba la variable de verdad: el .env ganaba
+        // siempre. Con esto, una variable definida en el panel del hosting, por
+        // SetEnv o al invocar el script no puede ser sobrescrita por un archivo
+        // versionable, que es la precedencia que espera cualquiera.
+        if (getenv($clave) === false && !array_key_exists($clave, $_ENV)) {
             $_ENV[$clave] = $valor;
             putenv("$clave=$valor");
         }
     }
 }
 
-cargarEnv(__DIR__ . '/../../.env');
+cargarEnv(rutaEnv());
 
 function conectarDB(): mysqli {
     $host = $_ENV['DB_HOST'] ?? 'localhost';

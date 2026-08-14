@@ -699,6 +699,17 @@ function enviarTokenRecuperacion(string $email, string $nombre, string $token): 
 
     // Modo log: no hay transporte, no se envia nada.
     if ($mail === null) {
+        // En PRODUCCION esto no puede reportarse como exito. El alta de usuarios
+        // genera una contraseña aleatoria que nadie conoce, asi que el correo es
+        // la UNICA via de activar una cuenta: un despliegue sin transporte deja
+        // el sistema respondiendo "te enviamos un codigo" mientras nadie puede
+        // entrar, y sin rastro de por que. Falla ruidosamente y devuelve false.
+        $entorno = strtolower((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'development'));
+        if ($entorno === 'production') {
+            registrarMailLog("[ERROR] Sin transporte de correo en produccion: NO se envio a {$email}. Revisar MAIL_* en el .env.");
+            error_log('Correo de recuperación NO enviado: no hay transporte SMTP configurado en producción.');
+            return false;
+        }
         // El TOKEN ya no se escribe en la bitacora. Es una credencial temporal
         // -quien lo lee toma la cuenta- y ese archivo llego a ser descargable por
         // HTTP. Para desarrollo esta Mailpit, que muestra el correo completo; el
