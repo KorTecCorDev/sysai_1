@@ -93,8 +93,6 @@ $router->post('/detalle_actividad/guardar', [DetalleActividadController::class, 
 
 
 //Rutas para los REPORTES
-//Descargas de reportes
-$router->get('/descargar', [ReportePoaRubrosController::class, 'indexdescarga']);
 
 
 //Rutas para las Rendiciones

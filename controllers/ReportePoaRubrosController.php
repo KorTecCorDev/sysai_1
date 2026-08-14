@@ -217,35 +217,17 @@ class ReportePoaRubrosController
         $router->render('saldos_contables/saldos', []);
     }
 
-    public static function indexdescarga(Router $router)
-    {
-        if (!isset($_GET['rprt'])) {
-            echo "Nombre del archivo no especificado.";
-            exit;
-        }
-        $filename = $_GET['rprt'];
-        $rootPath = dirname(__DIR__);
-        $fullPath = $rootPath . "/views/reporte/storage/reports/" . $filename;
-        if (file_exists($fullPath)) {
-            // Limpia cualquier salida previa
-            if (ob_get_length()) ob_end_clean();
-
-            header('Content-Description: File Transfer');
-            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment; filename="' . basename($fullPath) . '"');
-            header('Expires: 0');
-            header('Cache-Control: must-revalidate');
-            header('Pragma: public');
-            header('Content-Length: ' . filesize($fullPath));
-
-            flush();
-            readfile($fullPath);
-            exit;
-        } else {
-            echo "Archivo no encontrado: $fullPath";
-            exit;
-        }
-    }
+    // Retirado el 2026-08-14 (Fase 0 del plan de reportes): indexdescarga()
+    // (GET /descargar) servía `views/reporte/storage/reports/$_GET['rprt']`
+    // concatenando el parámetro del cliente SIN SANEAR. Verificado: con
+    // `?rprt=../../../../.env` devolvía el .env —App Password de Gmail y
+    // credenciales de BD— a cualquier usuario autenticado; la ruta estaba
+    // registrada en los tres roles, así que un coordinador también podía. De
+    // paso esquivaba el bloqueo del .htaccess, porque leía el archivo PHP y no
+    // Apache, y su rama de error imprimía la ruta absoluta del servidor.
+    // Los cinco reportes ahora hacen streaming con descargarXlsx(): ya no se
+    // escribe nada en disco, así que no hay archivo que servir ni ruta que
+    // recorrer. Ver docs/plan-reportes-ingresos-y-rendiciones.md §4 Fase 0.
 
     // Retirados el 2026-08-13: indexguardarpoa() (POST /reporte/guardarpoa) y
     // updateguardarpoa() (POST /reporte/modificarpoa, ya deprecado a no-op). Los

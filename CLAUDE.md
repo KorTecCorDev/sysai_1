@@ -16,6 +16,12 @@
   101/101)**: montos a escala real, `montoNumerico()`, capacidad asignable, tabla `tipo_cambio` unificada
   (compra/venta por `fecha_vigencia`), TC congelado en transacciones, reportes que nunca revientan y consulta
   SBS informativa. Se conserva como registro de decisiones.
+- **`docs/plan-reportes-ingresos-y-rendiciones.md`** — 📋 **PLANIFICADO (2026-08-14)**: corrección de
+  `/reporte/ingresos` y `/reporte/rendiciones`. Auditoría con hallazgos verificados (movimientos que
+  desaparecen por un JOIN mal planteado, presupuesto de fuentes sumado como ingreso, rendiciones
+  pendientes sin marcar, columnas USD/EUR nunca escritas) + **2 hallazgos de seguridad críticos** que
+  alcanzan a los cinco reportes (traversal en `/descargar`, xlsx servibles sin sesión). 12 decisiones
+  tomadas; migr. 035 + builder + QA. **Nada ejecutado todavía.**
 - `docs/historial-implementacion-items-2-6.md` — construcción + QA de los items **completados** (2 al 6).
 - `docs/historial-migraciones.md` — tabla completa de migraciones 001-019 + estado histórico de la BD.
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.

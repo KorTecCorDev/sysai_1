@@ -2,7 +2,6 @@
 use Model\ReportePoaRubros;
 use Model\ReporteIngresosVista;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
@@ -104,23 +103,6 @@ foreach (range($startColumn, $endColumn) as $col) {
 }
 $reporterendi = ReporteIngresosVista::insertarDatosDesdeArray($sheet, $nuevo_array, 3);
 
-// Guardando el archivo Excel
-
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
-// Guardando el archivo Excel
-$directory = __DIR__ . "/storage/reports/";
-if (!is_dir($directory)) {
-    mkdir($directory, 0777, true); // Crea la carpeta con permisos de escritura
-}
-$filename = "resultados_reporte_ingresos_{$usrcod}.xlsx";
-$file = $directory . $filename;
-$writer = new Xlsx($spreadsheet);
-$writer->save($file);
-
-// Genera el nombre del archivo
-$filename = "resultados_reporte_ingresos_{$usrcod}.xlsx";
-echo "<a href='../descargar?rprt={$filename}' target='_blank' class='btn btn-success' id='descargarReporte'>
-        <i class='bi bi-file-earmark-excel'></i> Ver Ingresos
-      </a>";
-/*SECCION DE ALMACENAMIENTO EN EL SERVIDOR*/
-?>
+// Descarga directa (Fase 0, 2026-08-14): antes se escribía el .xlsx dentro del
+// document root y se devolvía un enlace a /descargar. Ver descargarXlsx().
+descargarXlsx($spreadsheet, "resultados_reporte_ingresos_{$usrcod}");

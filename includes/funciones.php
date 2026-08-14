@@ -765,3 +765,53 @@ function validarPropiedadArray(array $array, string $propiedad, string $subpropi
     return !empty($array[$propiedad][$subpropiedad]);
 }
 
+/**
+ * Envía un libro de PhpSpreadsheet al navegador como descarga y TERMINA la petición.
+ *
+ * Sustituye (2026-08-14, Fase 0 del plan de reportes) al mecanismo anterior, que
+ * escribía el .xlsx en `views/reporte/storage/reports/` y devolvía un enlace a
+ * `/descargar?rprt=<archivo>`. Aquel esquema tenía dos agujeros verificados:
+ *
+ *   1) `/descargar` concatenaba el parámetro del cliente a la ruta sin sanear, así
+ *      que `?rprt=../../../../.env` servía el .env —con la App Password de Gmail—
+ *      a cualquier usuario autenticado, coordinadores incluidos. Además esquivaba
+ *      el bloqueo del .htaccess, porque el archivo lo leía PHP y no Apache.
+ *   2) Los .xlsx quedaban DENTRO del document root con nombres predecibles
+ *      (`<tipo>_<parte-local-del-email>.xlsx`) y el .htaccess no filtra .xlsx:
+ *      se descargaban por URL SIN SESIÓN, y se acumulaban sin limpieza.
+ *
+ * Al no tocar el disco, ambos desaparecen: no hay archivo que adivinar ni ruta que
+ * recorrer, y el nombre lo compone siempre el servidor.
+ *
+ * @param  object $spreadsheet  \PhpOffice\PhpSpreadsheet\Spreadsheet ya construido.
+ * @param  string $nombre       Nombre propuesto al navegador, sin extensión.
+ * @return never
+ */
+function descargarXlsx($spreadsheet, string $nombre)
+{
+    // El nombre NUNCA viene del cliente, pero se sanea igual: es lo que viaja en la
+    // cabecera Content-Disposition y no debe poder inyectar comillas ni saltos.
+    $nombre = preg_replace('/[^A-Za-z0-9._-]/', '_', $nombre);
+    if ($nombre === '' || $nombre === null) {
+        $nombre = 'reporte';
+    }
+
+    // Router::render() envuelve la vista en un ob_start(); si queda algún búfer
+    // abierto, su contenido se colaría dentro del .xlsx y lo dejaría corrupto.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $nombre . '.xlsx"');
+    header('Cache-Control: max-age=0, must-revalidate');
+    header('Pragma: public');
+    header('Expires: 0');
+
+    // Sin Content-Length: el escritor genera al vuelo y calcular el tamaño exigiría
+    // materializar el libro en memoria o en un temporal, que es justo lo que se evita.
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+
