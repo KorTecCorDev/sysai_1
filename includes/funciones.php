@@ -667,14 +667,17 @@ function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
     // Gmail —y la mayoría de SMTP autenticados— reescriben o rechazan un remitente
     // distinto de la cuenta que autentica. Si el .env conserva el placeholder de
     // desarrollo, se usa la propia cuenta SMTP en vez de un dominio inexistente.
-    // Solo se sustituye si HAY cuenta SMTP: sin autenticación (catcher local) el
-    // placeholder es una dirección válida y perfectamente utilizable; sustituirlo
-    // por una cadena vacía haría fallar setFrom().
+    // El usuario SMTP solo sirve como remitente si ES una direccion de correo.
+    // Gmail exige que coincidan (si no, reescribe el From), pero esa regla no es
+    // universal: en Mailtrap el usuario es un identificador tipo "660ee906edffcf"
+    // y PHPMailer aborta con excepcion al recibirlo como From. Sin credenciales
+    // (catcher local) el placeholder ya es una direccion perfectamente valida.
     $remitente = $cfg['from_email'];
-    if (($remitente === '' || $remitente === 'no-reply@sysai.local') && $cfg['username'] !== '') {
+    if (($remitente === '' || $remitente === 'no-reply@sysai.local')
+        && filter_var($cfg['username'], FILTER_VALIDATE_EMAIL)) {
         $remitente = $cfg['username'];
     }
-    if ($remitente === '') {
+    if (!filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
         $remitente = 'no-reply@sysai.local';
     }
     $mail->setFrom($remitente, $cfg['from_name']);
@@ -684,18 +687,27 @@ function construirMailer(): ?\PHPMailer\PHPMailer\PHPMailer
 
 /**
  * Envía el código (token) de recuperación de contraseña.
- *  - Con SMTP configurado en includes/config/mail.php → envía el email real.
- *  - Sin SMTP (entorno de desarrollo) → registra el token en includes/logs/mail.log
- *    y lo trata como "enviado", para poder continuar el flujo sin servidor de correo.
+ *  - Con transporte SMTP configurado (includes/config/mail.php) → envía el correo.
+ *  - Sin transporte → deja constancia en la bitácora (NUNCA el token) y, en
+ *    desarrollo, permite continuar el flujo; en producción devuelve false.
  *
- * En producción el token NUNCA se escribe en el log: solo se deja constancia de
- * que salió (o de por qué no salió).
+ * El token no se escribe jamás en la bitácora: es una credencial temporal.
  *
- * @return bool true si se envió (o se registró en modo dev), false si falló el SMTP.
+ * @return bool true si se envió (o se registró en desarrollo), false si falló.
  */
 function enviarTokenRecuperacion(string $email, string $nombre, string $token): bool
 {
-    $mail = construirMailer();
+    // Una configuracion de correo invalida no puede tumbar la peticion. PHPMailer
+    // lanza excepcion, por ejemplo, ante un remitente mal formado, y esta llamada
+    // quedaba FUERA del try: el usuario recibia un error fatal de PHP en
+    // /chgpsswd en vez de un aviso, y el rastro se perdia.
+    try {
+        $mail = construirMailer();
+    } catch (\Throwable $e) {
+        registrarMailLog("[ERROR] Configuración de correo inválida: " . $e->getMessage());
+        error_log('Configuración de correo inválida: ' . $e->getMessage());
+        return false;
+    }
 
     // Modo log: no hay transporte, no se envia nada.
     if ($mail === null) {
