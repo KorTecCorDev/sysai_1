@@ -14,6 +14,7 @@ const webp = require('gulp-webp');
 const browserSync = require('browser-sync').create();
 const { spawn } = require('child_process');
 const net = require('net');
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
@@ -48,6 +49,11 @@ const BS_PORT  = 3001;   // no puede coincidir con PHP_PORT ni con el 8080 de Ap
 // (ver docs/plan-secretos-y-hardening.md).
 const MAILPIT_SMTP = 1025;
 const MAILPIT_UI   = 8025;
+
+// Puerto del vhost de Apache (conf/extra/httpd-vhosts.conf). Es la ÚNICA vía de
+// acceso desde otros equipos de la red — ver `avisoAccesos()` más abajo.
+// Configurable por si el vhost se mueve de puerto:  $env:APACHE_PORT=8081; npx gulp
+const APACHE_PORT = process.env.APACHE_PORT || 8080;
 
 let procesoPhp = null;
 let procesoMailpit = null;
@@ -210,6 +216,72 @@ function servidor(cb) {
     }, cb);
 }
 
+// ---------------------------------------------------------------------------
+// Aviso de accesos
+// ---------------------------------------------------------------------------
+// Direcciones IPv4 de este equipo en la red local. Se descartan la de loopback
+// y las APIPA (169.254.x.x, que son las que Windows se autoasigna cuando la
+// interfaz NO tiene conectividad real: anunciarlas sería anunciar una URL
+// muerta). Si hay varias (Wi-Fi + Ethernet, o adaptadores de VirtualBox/WSL) se
+// listan todas: cuál es la buena depende de a qué red estén conectados los
+// demás equipos, y eso no lo puede saber gulp.
+function ipsLan() {
+    const interfaces = os.networkInterfaces();
+    const encontradas = [];
+    for (const [nombre, direcciones] of Object.entries(interfaces)) {
+        for (const dir of direcciones || []) {
+            if (dir.family !== 'IPv4' || dir.internal) continue;
+            if (dir.address.startsWith('169.254.')) continue;
+            encontradas.push({ nombre, ip: dir.address });
+        }
+    }
+    return encontradas;
+}
+
+// Imprime, al final del arranque, dónde está cada cosa.
+//
+// ⚠️ La URL externa es la de APACHE (8080), NUNCA la de BrowserSync. No es un
+// detalle de estilo: BrowserSync está atado a 127.0.0.1 a propósito (ver
+// `listen` en `servidor()`). Cuando escuchaba en todas las interfaces publicaba
+// la app en la red local SIN autenticación y, como el proxy no filtra rutas y
+// `php -S` no procesa .htaccess, cualquiera en esa red se descargaba /.env con
+// las credenciales de la base de datos. Apache sí aplica el .htaccess, así que
+// por el 8080 /.env, controllers/ y models/ no sirven contenido (verificado).
+// Si algún día esto "no muestra la URL externa", el arreglo es levantar Apache,
+// no reabrir BrowserSync a la red.
+async function avisoAccesos(cb) {
+    const linea = '─'.repeat(64);
+    const apacheArriba = await puertoOcupado(APACHE_PORT);
+    const ips = ipsLan();
+
+    console.log('');
+    console.log(`[gulp] ${linea}`);
+    console.log('[gulp]  DESARROLLO (solo este equipo)');
+    console.log(`[gulp]    App con recarga automática  →  http://localhost:${BS_PORT}`);
+    console.log(`[gulp]    Panel de BrowserSync        →  http://localhost:${BS_PORT + 1}`);
+    console.log(`[gulp]    Bandeja de correo (Mailpit) →  http://localhost:${MAILPIT_UI}`);
+    console.log('[gulp]');
+    console.log('[gulp]  ACCESO EXTERNO (otros equipos de la red) — vía Apache');
+
+    if (!apacheArriba) {
+        console.log(`[gulp]    ✗ Apache no responde en el puerto ${APACHE_PORT}.`);
+        console.log('[gulp]      Arráncalo desde el panel de XAMPP (botón Start de Apache).');
+    } else if (ips.length === 0) {
+        console.log(`[gulp]    ✓ Apache escucha en el ${APACHE_PORT}, pero este equipo no tiene`);
+        console.log('[gulp]      dirección de red: ¿Wi-Fi desconectado?');
+    } else {
+        for (const { nombre, ip } of ips) {
+            console.log(`[gulp]    →  http://${ip}:${APACHE_PORT}   (${nombre})`);
+        }
+        console.log('[gulp]    Sin recarga automática, y con el .htaccess aplicado.');
+        console.log('[gulp]    Si desde otro equipo no abre: revisa que estén en la MISMA red.');
+    }
+
+    console.log(`[gulp] ${linea}`);
+    console.log('');
+    cb();
+}
+
 // Recarga completa (cambios de PHP, JS o imágenes).
 function recargar(cb) {
     browserSync.reload();
@@ -289,7 +361,12 @@ exports.webp = versionWebp;
 exports.build = parallel(css, javascript, imagenes, versionWebp);
 
 // `gulp servidor`: solo levanta los servicios, sin recompilar nada.
-exports.servidor = series(servidorMailpit, servidorPhp, servidor);
+exports.servidor = series(servidorMailpit, servidorPhp, servidor, avisoAccesos);
+
+// `gulp accesos`: solo imprime dónde está cada cosa, sin levantar nada. Útil
+// para recuperar la URL externa cuando el arranque ya se perdió hacia arriba en
+// el historial de la consola.
+exports.accesos = avisoAccesos;
 
 // `gulp correo`: solo el catcher de correo (bandeja en http://localhost:8025).
 exports.correo = servidorMailpit;
@@ -299,10 +376,15 @@ exports.correo = servidorMailpit;
 //   → http://localhost:3001   (la app, con recarga automática)
 //   → http://localhost:3002   (panel de BrowserSync)
 //   → http://localhost:8025   (bandeja de correo de desarrollo — Mailpit)
+//   → http://<ip-de-la-red>:8080  (acceso desde otros equipos, vía Apache)
+// El aviso va DESPUÉS de `servidor` (para no imprimirse antes de que BrowserSync
+// escupa su propio arranque) y ANTES de `watchArchivos`, que ya no imprime nada:
+// así el recuadro queda al final y a la vista.
 exports.default = series(
     parallel(css, javascript, imagenes, versionWebp),
     servidorMailpit,
     servidorPhp,
     servidor,
+    avisoAccesos,
     watchArchivos
 );
