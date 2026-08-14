@@ -68,7 +68,23 @@ local. **No hay un solo secreto**: el problema no se gestiona, se disuelve.
 |---|---|---|---|
 | **Desarrollo** | Mailpit (`127.0.0.1:1025`, bandeja `:8025`) | **ninguno** | raíz del proyecto |
 | **Prueba de entrega real** (excepcional) | App Password **efímera**: generar → probar → **revocar** | vive minutos | sin persistir |
-| **Producción** | `no-reply@<dominio>` (Hostinger, 465/ssl) | 1 credencial acotada y rotable | `../secrets/.env`, permisos 600 |
+| **Producción** | **`korteccor@gmail.com` con App Password** (Gmail, 587/tls) — *decisión 2026-08-14* | 1 App Password (abre la cuenta Google entera) | `../secrets/.env`, permisos 600 |
+
+> ⚠️ **Enmienda 2026-08-14 — el emisor definitivo es una cuenta Gmail, no `no-reply@<dominio>`.**
+> Decisión tomada sabiendo que el dominio no está contratado y que la capacitación es inminente. Lo
+> que esto implica, para no redescubrirlo más adelante:
+> - La credencial es una **App Password**, que abre la cuenta de Google **completa** (incluido IMAP) y
+>   no es recuperable: Google la muestra una sola vez. Hay que generar **una distinta por equipo** y
+>   revocar la que se pierda.
+> - **Límite ~500 envíos/día.** Irrelevante para 9 participantes; a tener en cuenta si el sistema
+>   crece o si alguien automatiza reenvíos.
+> - **SPF y DKIM los pone Google**, porque el correo sale por `smtp.gmail.com` autenticado — no por el
+>   servidor de Hostinger. Eso es *bueno*: el mensaje va firmado por un emisor con reputación. El
+>   riesgo de spam no viene del dominio sino del **remitente con aspecto personal** y de mandar varios
+>   correos casi idénticos seguidos.
+> - Al desplegar en Hostinger, **verificar que el puerto 587 saliente no esté bloqueado** — en hosting
+>   compartido a veces lo está, y entonces no hay correo. Es la comprobación que puede tumbar el
+>   despliegue.
 
 ### Por qué Mailpit y no una App Password permanente
 
@@ -120,10 +136,18 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
   vacío = sin cifrado (desactivando el STARTTLS automático de PHPMailer).
 - Mailpit integrado en `npm run dev`, con degradación limpia si no está instalado.
 
-## 5. Pendiente (P2 — cuando exista el dominio)
+## 5. Pendiente (P2 — despliegue)
 
-- [ ] Crear `no-reply@<dominio>` en Hostinger y configurar `smtp.hostinger.com` 465/ssl.
-- [ ] **SPF y DKIM** del dominio: sin ellos el correo transaccional acaba en spam.
+- [x] ~~Definir el emisor definitivo~~ — ✅ **2026-08-14: `korteccor@gmail.com` con App Password**
+      (587/tls). `MAIL_TRANSPORT=smtp` explícito en el `.env`; `MAIL_FROM_EMAIL` = `MAIL_USERNAME`,
+      que Gmail exige o reescribe el remitente. Ver la enmienda de la §3.
+- [ ] **Al desplegar: comprobar que Hostinger permite salida al 587** (`smtp.gmail.com`). Si está
+      bloqueado, probar 465/ssl; si tampoco, no hay correo y nadie puede activar su cuenta.
+- [ ] Generar una App Password **propia del servidor** en vez de copiar la del equipo de desarrollo,
+      y revocarla si el `.env` de producción se retira.
+- [ ] ~~`no-reply@<dominio>` + SPF/DKIM~~ — **descartado por ahora** (sin dominio contratado). Si más
+      adelante se contrata, es una mejora de imagen y entregabilidad, no un requisito técnico: Gmail
+      ya firma con su propio SPF/DKIM.
 - [ ] Colocar el `.env` en `secrets/` con permisos 600 y guardar copia en el gestor de contraseñas.
 - [ ] Excluir del despliegue: `database/`, `.git/`, `src/`, `node_modules/`, `docs/`.
 - [ ] **Verificar el `.htaccess` contra el Apache real** — los hallazgos 4, 5 y 6 son análisis estático.
@@ -142,3 +166,63 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
 
 Rotar **siempre** que: se filtre o se sospeche filtración, se cambie de equipo, o alguien más haya
 tenido acceso temporal al servidor.
+
+---
+
+## 7. Transporte del `.env` entre equipos (2026-08-14)
+
+**Problema real, no hipotético.** El `.env` está en `.gitignore`, así que no viaja. Al trabajar desde
+varios equipos contra el mismo repo, uno de ellos quedó con un `.env` antiguo y **siguió funcionando
+con la configuración vieja** —otro remitente de correo— sin que nada lo indicara. Un desajuste de
+configuración silencioso se diagnostica mirando el síntoma equivocado durante horas.
+
+**Decisión: el `.env` viaja en el repositorio, CIFRADO.** Es lo que hacen git-crypt, SOPS y blackbox.
+Enmienda la §1 ("basta un gestor de contraseñas personal"): el copiar-y-pegar manual es justamente
+lo que falló.
+
+> ⚠️ **En claro, jamás.** El historial de git es permanente: un secreto commiteado no se retira con
+> otro commit, obliga a **rotar la credencial**. Además el repo se clona a cada equipo y GitHub
+> escanea secretos. Cifrado, el repo lo transporta sin exponerlo.
+
+### Cómo funciona
+
+| Comando | Qué hace |
+|---|---|
+| `npm run env:pull` | `secrets/.env.enc` → `.env`  (tras clonar o hacer `git pull`) |
+| `npm run env:push` | `.env` → `secrets/.env.enc`  (tras editar; luego commitear) |
+
+- **`secrets/.env.enc` se commitea**; el `.env` en claro sigue ignorado.
+- **AES-256-CBC + PBKDF2, 600 000 iteraciones** (recomendación OWASP para PBKDF2-SHA256), salida
+  base64 para que git lo trate como texto. Los parámetros están fijados en `scripts/env.js` y deben
+  coincidir al cifrar y descifrar.
+- **OpenSSL y no age/sops/git-crypt**: viene con Git for Windows, así que está garantizado en
+  cualquier equipo donde puedas clonar. Cero instalaciones al dar de alta una máquina.
+- **Node y no un `.sh`**: los scripts de npm corren con `cmd.exe` en Windows.
+- La passphrase **nunca pasa por argumentos** (son legibles por otros procesos): el prompt lo hace
+  OpenSSL. `SYSAI_ENV_PASSPHRASE` permite automatizar sin teclear.
+- Cifrar y descifrar escriben a un **temporal** y solo reemplazan si OpenSSL terminó bien: una
+  passphrase equivocada no puede destruir el `.env` que ya funcionaba (verificado).
+
+### Lo que no puede viajar
+
+**La passphrase.** Si viajara junto al archivo cifrado, el cifrado no protegería nada. Es lo único
+que se lleva aparte —en la cabeza o en el gestor de contraseñas— y basta teclearla una vez por equipo.
+
+⚠️ Una vez que `secrets/.env.enc` está en el historial, **la passphrase es lo único que protege la
+App Password de Gmail**. Que sea larga. Si se sospecha filtración: rotar la App Password *y*
+re-cifrar con una passphrase nueva — el archivo viejo sigue en el historial para siempre.
+
+### Guarda contra el fallo silencioso
+
+`comprobarEnvDesactualizado()` (en `includes/config/database.php`) compara las fechas: si
+`secrets/.env.enc` es más nuevo que tu `.env`, hiciste `git pull` y falta `npm run env:pull`.
+Por HTTP **aborta** con un mensaje explícito (HTTP 500); por CLI **avisa por STDERR sin abortar**,
+para no romper la suite de QA. Solo en `APP_ENV=development` y solo cuando el `.env` en uso es el
+local del proyecto — en producción el archivo vive fuera del docroot y no se gestiona con estos
+scripts.
+
+### Protección de la carpeta
+
+`secrets/` está en la lista de directorios bloqueados del `.htaccess` raíz y además lleva su **propio
+`.htaccess`** de denegación directa, sin depender de `mod_rewrite`. El patrón `<FilesMatch>` existente
+**no** cubría `.env.enc` (exige que el nombre *termine* en `.env`), de ahí la regla propia.

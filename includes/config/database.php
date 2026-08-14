@@ -58,7 +58,51 @@ function cargarEnv(string $ruta): void {
     }
 }
 
-cargarEnv(rutaEnv());
+/**
+ * Avisa cuando el .env cifrado del repositorio es MAS NUEVO que el .env en claro
+ * de este equipo: has hecho `git pull` y falta `npm run env:pull`.
+ *
+ * Sin esta comprobacion el fallo es SILENCIOSO, y ya ocurrio: un equipo con un
+ * .env viejo siguio funcionando con la configuracion anterior -otro remitente de
+ * correo- sin que nada lo indicara. Un desajuste de configuracion que no avisa
+ * se diagnostica mirando el sintoma equivocado durante horas.
+ *
+ * Solo en DESARROLLO y solo si el .env usado es el local del proyecto: en
+ * produccion el archivo vive fuera del docroot y no se gestiona con estos
+ * scripts, asi que ahi esta comprobacion no aplica.
+ */
+function comprobarEnvDesactualizado(string $rutaUsada): void {
+    $raizProyecto = dirname(__DIR__, 2);
+    $local   = $raizProyecto . DIRECTORY_SEPARATOR . '.env';
+    $cifrado = $raizProyecto . DIRECTORY_SEPARATOR . 'secrets' . DIRECTORY_SEPARATOR . '.env.enc';
+
+    if ($rutaUsada !== $local || !is_file($cifrado) || !is_file($local)) {
+        return;
+    }
+    $entorno = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'development';
+    if (strtolower((string) $entorno) !== 'development') {
+        return;
+    }
+    // Margen de 2 s: `git pull` puede escribir ambos archivos casi a la vez.
+    if (filemtime($cifrado) <= filemtime($local) + 2) {
+        return;
+    }
+
+    $aviso = 'La configuracion cifrada del repositorio (secrets/.env.enc) es mas '
+           . 'nueva que tu .env local. Ejecuta:  npm run env:pull';
+
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, "\n[AVISO] {$aviso}\n\n");
+        return;                       // en CLI no se aborta: rompe la suite de QA
+    }
+    http_response_code(500);          // un error de configuracion no es un 200
+    die('<b>Configuración desactualizada:</b> ' . htmlspecialchars($aviso)
+        . '<br><small>Este aviso solo aparece en desarrollo. Ver docs/plan-secretos-y-hardening.md.</small>');
+}
+
+$rutaEnvUsada = rutaEnv();
+cargarEnv($rutaEnvUsada);
+comprobarEnvDesactualizado($rutaEnvUsada);
 
 function conectarDB(): mysqli {
     $host = $_ENV['DB_HOST'] ?? 'localhost';

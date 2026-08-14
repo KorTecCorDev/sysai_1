@@ -49,7 +49,7 @@
     # regla anterior nombraba db/, asi que nunca la cubrio -- sus scripts PHP
     # quedaban ejecutables por HTTP (ver la guarda de CLI en cada uno).
     	RewriteCond %{REQUEST_URI} !^/build/(css|js|img)/.*$ [NC]
-	RewriteRule ^(controllers|includes|models|node_modules|src|vendor|db|database)/(.*) - [R=404,L]
+	RewriteRule ^(controllers|includes|models|node_modules|src|vendor|db|database|secrets|scripts)/(.*) - [R=404,L]
 
     # Bloquear archivos y carpetas ocultos (.git, .gitignore, .env, .htaccess de
     # subcarpetas...) que de otro modo expondrían código e historial. Se exceptúa

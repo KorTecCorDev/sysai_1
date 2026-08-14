@@ -5,6 +5,11 @@ node_modules/
 # que el original, y una copia de respaldo es la forma tipica de colar uno al repo.
 .env.*
 !.env.example
+# EXCEPCION: el .env CIFRADO sí viaja en el repo — es como la configuración pasa
+# de un equipo a otro (scripts/env.js). Sin esta línea el patrón `.env.*` de
+# arriba lo ignoraría en silencio: harías `git add` y nunca llegaría al repo,
+# y lo descubrirías desde el otro equipo, con la configuración sin actualizar.
+!secrets/.env.enc
 *.log
 *.cache
 # Reportes generados en runtime (PhpSpreadsheet)

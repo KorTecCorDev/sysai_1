@@ -5,7 +5,9 @@
   "main": "gulpfile.js",
   "scripts": {
     "dev": "gulp",
-    "css": "gulp css"
+    "css": "gulp css",
+    "env:pull": "node scripts/env.js pull",
+    "env:push": "node scripts/env.js push"
   },
   "author": "Karlos Colonia Arellano",
   "license": "ISC",
