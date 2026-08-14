@@ -119,7 +119,12 @@ function servidor(cb) {
         // contador) para probar el flujo de aprobación: con el espejo activo, un
         // clic en una ventana movería la otra y las pruebas serían inservibles.
         ghostMode: false,
-        notify: true,
+        // Sin el cartel "Connected to BrowserSync": es un <div id="__bs_notify__">
+        // que el cliente inyecta EN LA PROPIA PÁGINA al conectar y en cada recarga.
+        // Se superpone a la UI (en /login cae sobre el formulario) y ensucia las
+        // capturas y las pruebas manuales. Apagarlo no afecta la recarga: solo
+        // silencia el aviso visual. La consola de gulp sigue informando.
+        notify: false,
         open: false          // no secuestra el navegador en cada arranque
     }, cb);
 }
