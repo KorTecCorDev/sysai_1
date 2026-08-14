@@ -78,9 +78,23 @@
     de XAMPP)". **`C:\php` ya no existe.** Si algún script o permiso invoca `C:\php\php.exe`, está roto.
 - **MariaDB de XAMPP** en `127.0.0.1:3306` (binario `C:\xampp\mysql\bin\mysql.exe`, root sin contraseña).
 - **Composer 2.9**, **Node 24 / npm 11**.
-- **Servidor de desarrollo:** alias `local3000` = `php -S localhost:3000` ejecutado **desde la raíz del proyecto**. App en **http://localhost:3000**.
+- **Servidor de desarrollo — `npm run dev` es el iniciador único (2026-08-13).** Un solo comando desde la raíz
+  del proyecto compila CSS/JS/imágenes, levanta el servidor PHP, pone **BrowserSync** por delante y queda
+  vigilando cambios:
+  - ⚠️ **No hay `gulp-cli` global**: `gulp` pelado responde `command not found`. Usar **`npm run dev`** o
+    **`npx gulp`** (ambos resuelven el binario de `node_modules/.bin/`). Si `npx gulp` falla con
+    `Cannot find module 'browser-sync'`, el `node_modules` está desactualizado → `npm install`.
+  - **http://localhost:3001** → la app, con recarga automática ← **usar esta**
+  - **http://localhost:3002** → panel de BrowserSync
+  - `http://localhost:3000` → el `php -S` crudo que gulp levanta por debajo (sigue sirviendo; sin recarga).
+    El alias `local3000` (= `php -S localhost:3000`) sigue siendo válido si solo se quiere el backend.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
   - ⚠️ **`php -S` NO procesa `.htaccess`** → en dev NO aplican los bloqueos de `controllers/`, `models/`, `*.sql`, `.env`, etc. Los `.htaccess` solo protegen en producción (Apache/Hostinger).
+  - Para trabajar contra el **vhost de Apache** (multiproceso y con `.htaccess` activo, lo más parecido a
+    producción): `$env:PHP_PORT=8080; npx gulp` — gulp detecta que el puerto ya está servido y proxea a
+    Apache en vez de levantar su propio PHP.
+  - Decisiones del pipeline de dev (por qué se retira la CSP en el proxy, `ghostMode: false`, CSS inyectado
+    vs. PHP recargado): `docs/build-assets.md`.
   - ✅ **Requisito TLS (Windows) para SMTP — CUMPLIDO (2026-07-16).** En `C:\xampp\php\php.ini`,
     `openssl.cafile` y `curl.cainfo` apuntan a `C:\xampp\apache\bin\curl-ca-bundle.crt`. Verificado:
     HTTPS por streams y handshake TLS verificado contra `smtp.gmail.com:465` OK. El día que se configure
@@ -89,9 +103,8 @@
 
 **Pasos de arranque:**
 ```bash
-composer install                      # vendor/  (PhpSpreadsheet, PHPMailer, intervention/image…)
-npm install                           # node_modules/ (Gulp)
-npm run dev                           # = gulp; recompila build/ (opcional: build/ ya viene compilado)
+composer install                      # vendor/  (PhpSpreadsheet, PHPMailer, bootstrap-icons)
+npm install                           # node_modules/ (Gulp + BrowserSync)
 
 # Base de datos (enfoque ACTUAL — runner de migraciones):
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
@@ -100,7 +113,15 @@ php database/migrate.php                                                       #
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
 
 # Arrancar (desde la raíz del proyecto):
-local3000                             # php -S localhost:3000  → http://localhost:3000
+npm run dev                           # = gulp: compila + php -S + BrowserSync + watchers
+                                      #   → http://localhost:3001  la app (con recarga automática)
+                                      #   → http://localhost:3002  panel de BrowserSync
+                                      #   Ctrl+C cierra también el php.exe que levantó.
+
+# Alternativas:
+npx gulp                              # idéntico a npm run dev (NO existe `gulp` global)
+local3000                             # solo backend, sin recarga: php -S localhost:3000
+npx gulp build                        # solo compilar assets, sin servidor ni watcher (CI/prod)
 ```
 
 > **Para vaciar/recrear la BD local antes de reimportar** (XAMPP): phpMyAdmin trae `DROP DATABASE`
