@@ -11,11 +11,6 @@
                     <h1 class="auth-brand__title">Arca</h1>
                     <p class="auth-brand__lead">Gestión presupuestal y rendición de cuentas · Arco Iris.</p>
                 </div>
-                <ul class="auth-brand__features">
-                    <li><i class="bi bi-shield-check" aria-hidden="true"></i> Acceso por rol y auditoría</li>
-                    <li><i class="bi bi-clipboard-data" aria-hidden="true"></i> POA, rendiciones y saldos</li>
-                    <li><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Reportes contables en Excel</li>
-                </ul>
             </aside>
 
             <!-- Panel del formulario -->
