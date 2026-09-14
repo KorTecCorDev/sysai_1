@@ -1,5 +1,14 @@
 <?php
 
+// Zona horaria de la organización (Huaraz, Perú; sin horario de verano). Se fija en
+// código y no en el php.ini porque cada PHP trae la suya: el de consola venía en UTC,
+// el de XAMPP en Europe/Berlin y Hostinger suele usar UTC. Con UTC, un gasto
+// registrado a las 19:00 quedaba fechado al día siguiente y el 31 de diciembre
+// date('Y') cambiaba de ejercicio cinco horas antes (decisión 2026-09-14).
+// Va aquí porque este archivo lo cargan la web (includes/app.php) y todos los
+// scripts de consola de database/ que trabajan con fechas.
+date_default_timezone_set('America/Lima');
+
 /**
  * Localiza el .env, priorizando las ubicaciones FUERA del document root.
  *
@@ -148,6 +157,13 @@ function conectarDB(): mysqli {
     // todo truncamiento/overflow pasa de warning silencioso a error ruidoso.
     // Lista explícita → dev y prod idénticos por construcción.
     $db->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+
+    // Misma zona horaria que PHP (ver date_default_timezone_set al inicio de este archivo):
+    // NOW()/CURDATE() se usan en inserciones y en las ventanas del límite de intentos, y en
+    // Hostinger el servidor de BD suele estar en UTC. Desfase fijo y no 'America/Lima': las
+    // tablas de zonas horarias de MySQL no vienen cargadas por defecto (tampoco en XAMPP) y
+    // Perú no tiene horario de verano.
+    $db->query("SET time_zone = '-05:00'");
 
     return $db;
 }

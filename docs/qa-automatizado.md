@@ -25,7 +25,7 @@
 
 ```powershell
 # 1) Arrancar el servidor de desarrollo (en otra terminal, desde la raíz):
-local3000                 # = php -S localhost:3000
+php -S localhost:3000     # (otros documentos lo llaman "local3000"; ese alias no existe)
 
 # 2) Correr todos los arneses:
 pwsh -File database\qa_all.ps1
@@ -38,7 +38,8 @@ pwsh -File database\qa_poa_presupuestal.ps1
 ```
 
 ## Prerrequisitos
-- Servidor `local3000` corriendo y **MariaDB de XAMPP** arriba.
+- Servidor `php -S localhost:3000` corriendo y **MariaDB de XAMPP** arriba. Los arneses corren con el PHP
+  del `PATH` (**8.3**, `C:\php`), que es la versión oficial del proyecto.
 - BD `sysai` con migraciones **001-034** aplicadas + seed/datos demo (programa **1** con coordinador vinculado,
   jerarquía Resultado→Producto→Actividad y **rubros**; programa **5** para los tests cross-tenant; programa
   **Institucional** con `es_institucional=1` — lo re-siembra el fixture).

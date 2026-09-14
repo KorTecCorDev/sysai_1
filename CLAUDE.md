@@ -53,7 +53,7 @@
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
 - **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai`. BD local: `sysai`.
-- **Producción:** **Hostinger** (corre **PHP 8.2.12**, igual que el dev local — ver *Setup*).
+- **Producción:** **Hostinger**, con **PHP 8.3** (versión oficial del proyecto desde el 2026-09-14 — ver *Setup*).
   ⚠️ La instancia anterior fue **dada de baja el 2026-06-03** (BD `u612374195_sysai`, decomisionada). El próximo
   despliegue va **sobre Hostinger otra vez, pero greenfield**: proyecto y BD nuevos, sin datos que preservar ni
   reconciliar.
@@ -83,14 +83,26 @@
 ## [SECCION: SETUP / DEVSTACK]
 
 **Entorno real de la PC de desarrollo (verificado):**
-- **PHP 8.2.12 — versión oficial del proyecto (decisión 2026-07-15).** Es la de **XAMPP** (`C:\xampp\php\php.exe`,
-  la del `PATH`) y **la misma que corre Hostinger**, el servidor de producción → dev y prod alineados. `php.ini`
-  en `C:\xampp\php\php.ini`. Es la que usan `composer`, `php` y el servidor de desarrollo.
-  - ✅ Verificado bajo 8.2.12: `zip`, `openssl`, `curl`, `mysqli`, `mbstring`, `gd` activas, y PhpSpreadsheet,
-    PHPMailer e Intervention cargan y escriben un `.xlsx` real. `vendor/composer/platform_check.php` exige
-    `PHP_VERSION_ID >= 80200`; `composer.json` no fija versión de PHP. `intl` está **inactiva** (hoy nadie la usa).
-  - ⚠️ **Histórico:** hasta el 2026-07-15 este documento declaraba "PHP CLI 8.3.x en `C:\php` (standalone, NO el
-    de XAMPP)". **`C:\php` ya no existe.** Si algún script o permiso invoca `C:\php\php.exe`, está roto.
+- **PHP 8.3 — versión oficial del proyecto (decisión 2026-09-14, reemplaza la de 8.2.12 del 2026-07-15).**
+  Motivo: producción es greenfield y en Hostinger la versión se elige por sitio; PHP 8.2 deja de recibir
+  parches de seguridad el **31 dic 2026** y la 8.3 los recibe hasta el **31 dic 2027**.
+  - **Consola = `C:\php\php.exe` (8.3.28, NTS)**, la ÚNICA entrada de PHP en el `PATH` de sistema. La usan
+    `php`, **Composer** (`composer.bat` ejecuta el `php` del PATH), el `php -S` que levanta `npm run dev`,
+    los arneses QA y los scripts de `database/`. `php.ini` en `C:\php\php.ini` (con `openssl.cafile` y
+    `curl.cainfo` → `C:\xampp\apache\bin\curl-ca-bundle.crt`, requisito del SMTP). La suite QA completa
+    (193/193) está verificada sobre esta versión.
+  - **Apache de XAMPP = 8.2.12** (`C:\xampp\php`, NO está en el PATH): XAMPP no ofrece una versión más nueva.
+    Solo afecta al vhost :8080 (capacitación en la LAN, pruebas del `.htaccess`). **Diferencia conocida y
+    aceptada**: por eso `composer.json` NO exige `php ^8.3` en `require` —el `platform_check` bloquearía a
+    Apache—; en su lugar fija `config.platform.php = 8.3.0`, para que Composer resuelva dependencias como si
+    corriera en producción sin importar el PHP local. `platform_check.php` exige ≥ 8.2.0.
+  - **Producción (Hostinger): elegir PHP 8.3 en hPanel** al crear el sitio.
+  - `intl` inactiva en ambos (nadie la usa). Extensiones del proyecto (`mysqli`, `zip`, `gd`, `openssl`,
+    `curl`, `mbstring`, `xml`…) activas en ambos.
+  - **Zona horaria fijada en código** (`America/Lima` en `includes/config/database.php` + `SET time_zone
+    '-05:00'` en `conectarDB()`): cada PHP traía la suya (UTC / Europe/Berlin) y la app no la fijaba.
+  - ⚠️ `C:\Program Files\MySQL\MySQL Server 8.0\bin` también está en el PATH (sin servicio): `mysql` a secas es
+    el cliente de MySQL 8.0, no el de MariaDB. Los scripts usan la ruta completa de XAMPP.
 - **MariaDB de XAMPP** en `127.0.0.1:3306` (binario `C:\xampp\mysql\bin\mysql.exe`, root sin contraseña).
 - **Composer 2.9**, **Node 24 / npm 11**.
 - **Servidor de desarrollo — `npm run dev` es el iniciador único (2026-08-13).** Un solo comando desde la raíz
@@ -105,7 +117,9 @@
   - 🔒 Todo escucha **solo en `127.0.0.1`** (2026-08-14). BrowserSync lo hacía en todas las interfaces y
     su proxy no filtra rutas: `curl http://<ip-lan>:3001/.env` devolvía las credenciales de la BD.
   - `http://localhost:3000` → el `php -S` crudo que gulp levanta por debajo (sigue sirviendo; sin recarga).
-    El alias `local3000` (= `php -S localhost:3000`) sigue siendo válido si solo se quiere el backend.
+    Si solo se quiere el backend: `php -S localhost:3000` desde la raíz. ⚠️ Varios documentos lo llaman
+    `local3000`, pero **ese alias no existe** en el perfil de PowerShell (verificado 2026-09-14): es solo el
+    nombre corto del comando.
   - ✅ El servidor embebido sirve los assets de `build/` directos; las rutas inexistentes caen a `index.php` (front controller) que lee `REQUEST_URI`. No requiere vhost ni Apache.
   - ⚠️ **`php -S` NO procesa `.htaccess`** → en dev NO aplican los bloqueos de `controllers/`, `models/`, `*.sql`, `.env`, etc. Los `.htaccess` solo protegen en producción (Apache/Hostinger).
   - Para trabajar contra el **vhost de Apache** (multiproceso y con `.htaccess` activo, lo más parecido a
@@ -138,7 +152,7 @@ npm run dev                           # = gulp: compila + php -S + BrowserSync +
 
 # Alternativas:
 npx gulp                              # idéntico a npm run dev (NO existe `gulp` global)
-local3000                             # solo backend, sin recarga: php -S localhost:3000
+php -S localhost:3000                 # solo backend, sin recarga (el "alias local3000" de otros docs no existe)
 npx gulp build                        # solo compilar assets, sin servidor ni watcher (CI/prod)
 ```
 
