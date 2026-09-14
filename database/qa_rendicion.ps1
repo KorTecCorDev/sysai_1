@@ -77,6 +77,21 @@ $act5 = Q "SELECT a.id FROM actividad a JOIN producto p ON p.id=a.producto_id JO
 $rubro5 = Q "SELECT id FROM rubro WHERE codigo='QAXR1';"
 $r = Get-Raw $coord.Sess "/rendicion/admin?rubro_id=$rubro5"
 Assert ($r.Status -eq 403) "Coordinador no accede a rendiciones de rubro de otro programa (403)"
+# Listados de la jerarquia: antes bastaba cambiar el id de la URL para LEER los de
+# otro programa (auditoria de seguridad 2026-09-14, hallazgo M1).
+$prod5 = Q "SELECT producto_id FROM actividad WHERE id=$act5;"
+$res5  = Q "SELECT resultado_id FROM producto WHERE id=$prod5;"
+$r = Get-Raw $coord.Sess "/producto/admin?resultado_id=$res5"
+Assert ($r.Status -eq 403) "Coordinador no lista productos de un resultado de otro programa (403)"
+$r = Get-Raw $coord.Sess "/actividad/admin?producto_id=$prod5"
+Assert ($r.Status -eq 403) "Coordinador no lista actividades de un producto de otro programa (403)"
+$r = Get-Raw $coord.Sess "/rubro/admin?actividad_id=$act5"
+Assert ($r.Status -eq 403) "Coordinador no lista rubros (montos) de una actividad de otro programa (403)"
+$r = Get-Raw $coord.Sess "/rubro/admin?actividad_id=1"
+Assert ($r.Status -eq 200) "Coordinador SI lista los rubros de su propia actividad (200)"
+# /rendicionff/* era codigo muerto sin ninguna guarda (hallazgo M2): la ruta ya no existe.
+$r = Get-Raw $coord.Sess "/rendicionff/admin?actividad_id=$act5"
+Assert ($r.Status -eq 302 -and "$($r.Location)" -like '*/error*') "Ruta retirada /rendicionff/admin -> /error ($($r.Status))"
 & $mysql -u root sysai -e "DELETE FROM rubro WHERE id=$rubro5;" | Out-Null
 
 Write-Host "`n=== 4) CREAR RENDICION IMPUTADA AL RUBRO ===" -ForegroundColor Cyan

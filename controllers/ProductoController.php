@@ -29,6 +29,9 @@ class ProductoController
                 $programaid = $objresultado->programa_id;
             }
         }
+        // A1: el coordinador solo lista productos de un resultado de SU programa
+        // (antes bastaba cambiar ?resultado_id= para leer los de otro programa).
+        exigirProgramaPropioPorResultado($resultadoid);
         $router->render('producto/admin', [
             'productos' => $productos,
             'resultado' => $resultado,

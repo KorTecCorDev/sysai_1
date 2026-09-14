@@ -9,7 +9,6 @@ use Controllers\ActividadController;
 use Controllers\RendicionController;
 use Controllers\ResultadoController;
 use Controllers\TipoCambioController;
-use Controllers\RendicionFfController;
 use Controllers\IngresoEgresoController;
 use Controllers\CategoriaRubroController;
 use Controllers\ReportePoaRubrosController;
@@ -103,10 +102,6 @@ $router->get('/rendicion/actualizar', [RendicionController::class, 'actualizar']
 $router->post('/rendicion/actualizar', [RendicionController::class, 'actualizar']);
 $router->post('/rendicion/eliminar', [RendicionController::class, 'eliminar']);
 
-//Rutas para la selección de fuentes de financiamiento de rendiciones
-$router->get('/rendicionff/admin', [RendicionFfController::class, 'index']);
-$router->get('/rendicionff/crear', [RendicionFfController::class, 'crear']);
-$router->post('/rendicionff/crear', [RendicionFfController::class, 'crear']);
 
 
 // Rutas para Tipos de Cambio Dólar

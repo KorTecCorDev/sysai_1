@@ -25,6 +25,9 @@ class ActividadController
             $resultado = null;
             $productoid = $respt ?? null;
         }
+        // A1: el coordinador solo lista actividades de un producto de SU programa
+        // (antes bastaba cambiar ?producto_id= para leer las de otro programa).
+        exigirProgramaPropioPorProducto($productoid);
         $objproducto = Producto::find($productoid);
         $resultadoid = $objproducto->resultado_id;
         $router->render('actividad/admin', [

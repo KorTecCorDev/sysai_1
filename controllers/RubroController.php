@@ -32,6 +32,9 @@ class RubroController
             $objactividad = Actividad::find($actividadid);
             $productoid = $objactividad->producto_id;
         }
+        // A1: el coordinador solo lista rubros (montos y saldos) de una actividad de SU
+        // programa (antes bastaba cambiar ?actividad_id= para leer los de otro programa).
+        exigirProgramaPropioPorActividad($actividadid);
         $router->render('rubro/admin', [
             'rubros' => $rubros,
             'resultado' => $resultado,
