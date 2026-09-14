@@ -7,10 +7,26 @@
 # el control de acceso en silencio. La autorizacion nunca debe ser condicional.
 
 # Archivos sensibles por extension o nombre.
-<FilesMatch "(\.(env|json|config|log|sql|bak|lock)|composer\.(json|lock)|package(-lock)?\.json|gulpfile\.js)$">
+# `md` (auditoria 2026-09-14): CLAUDE.md y docs/ describen la arquitectura, las
+# credenciales de prueba y los hallazgos de seguridad; no deben leerse sin sesion.
+<FilesMatch "(\.(env|json|config|log|sql|bak|lock|md)|composer\.(json|lock)|package(-lock)?\.json|gulpfile\.js)$">
     # Apache 2.4 (Hostinger). `Order allow,deny` es sintaxis 2.2 y solo funciona
     # si mod_access_compat esta cargado -- suposicion no verificable desde aqui,
     # y era la UNICA linea que protegia el .env en produccion.
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# PHP de la raiz que NO son puntos de entrada: el unico es index.php. Los archivos
+# de rutas por rol, el enrutador y la utilidad de hashes se incluyen desde PHP;
+# pedidos por URL solo producian errores con la ruta del servidor (auditoria
+# 2026-09-14, H2). Los tres de rutas llevan ademas su propia guarda.
+<FilesMatch "^(iadmin|iconta|icoordi|Router|hash)\.php$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -34,11 +50,29 @@
     </IfModule>
 </FilesMatch>
 
+# No listar directorios. Fuera de <IfModule mod_rewrite.c> por la misma razon que
+# la autorizacion: no depende de ese modulo y no debe caerse con el.
+Options -Indexes
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
     # Establecer la base para reescrituras (raíz del proyecto)
     RewriteBase /
+
+    # ----------------------------------------------------------------------
+    # HTTPS obligatorio (auditoria 2026-09-14, H3)
+    # ----------------------------------------------------------------------
+    # Sin esto, por http:// viajan en claro la contraseña del login y la cookie de
+    # sesion (que solo lleva `secure` si la peticion ya llego por HTTPS). Va antes
+    # que cualquier otra regla para que ni siquiera un 404 se sirva por HTTP.
+    # Exentos: localhost y las redes privadas (10.x, 172.16-31.x, 192.168.x), donde
+    # no hay certificado -- el equipo de desarrollo y la capacitacion en la LAN.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?$ [NC]
+    RewriteCond %{HTTP_HOST} !^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
     # ----------------------------------------------------------------------
     # Configuración de seguridad reforzada
@@ -48,8 +82,9 @@
     # `database` (no `db`): la carpeta real del proyecto se llama database/ y la
     # regla anterior nombraba db/, asi que nunca la cubrio -- sus scripts PHP
     # quedaban ejecutables por HTTP (ver la guarda de CLI en cada uno).
-    	RewriteCond %{REQUEST_URI} !^/build/(css|js|img)/.*$ [NC]
-	RewriteRule ^(controllers|includes|models|node_modules|src|vendor|db|database|secrets|scripts)/(.*) - [R=404,L]
+    # `docs` (auditoria 2026-09-14): documentacion interna, no debe publicarse.
+    RewriteCond %{REQUEST_URI} !^/build/(css|js|img)/.*$ [NC]
+    RewriteRule ^(controllers|includes|models|node_modules|src|vendor|db|database|docs|secrets|scripts)/(.*) - [R=404,L]
 
     # Bloquear archivos y carpetas ocultos (.git, .gitignore, .env, .htaccess de
     # subcarpetas...) que de otro modo expondrían código e historial. Se exceptúa
@@ -57,31 +92,27 @@
     RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
     RewriteRule "(^|/)\." - [R=404,L]
 
-
-    # No listar directorios
-    Options -Indexes
-    
     # ----------------------------------------------------------------------
     # Configuración del enrutador principal
     # ----------------------------------------------------------------------
-    
+
     # Redirigir todas las solicitudes a index.php, excepto archivos/directorios existentes
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php [L,QSA]
-    
+
     # Bloquear acceso directo a archivos PHP en views (permitir solo mediante router)
     RewriteRule ^views/.*\.php$ - [R=404,L]
-    
+
     # ----------------------------------------------------------------------
     # Optimizaciones de rendimiento
     # ----------------------------------------------------------------------
-    
+
     # Compresión Gzip
     <IfModule mod_deflate.c>
         AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript
     </IfModule>
-    
+
     # Cacheo de archivos estáticos
     <IfModule mod_expires.c>
         ExpiresActive On
@@ -95,14 +126,14 @@
         ExpiresByType image/x-icon "access plus 1 year"
         ExpiresByType application/pdf "access plus 1 month"
     </IfModule>
-    
+
     # ----------------------------------------------------------------------
     # Configuración específica para Hostinger
     # ----------------------------------------------------------------------
-    
+
     # Asegurar que PATH_INFO esté disponible para el router
     AcceptPathInfo On
-    
+
     # Manejo de errores personalizado
     ErrorDocument 404 /index.php?url=404
     ErrorDocument 403 /index.php?url=403
@@ -122,7 +153,7 @@
     php_value memory_limit 256M
     php_value max_execution_time 120
     php_value max_input_time 60
-    
+
     # Configuración de sesiones
     php_value session.gc_maxlifetime 1440
     php_value session.cookie_lifetime 0
@@ -137,19 +168,20 @@
 <IfModule mod_headers.c>
     # Protección contra XSS
     Header set X-XSS-Protection "1; mode=block"
-    
+
     # Prevenir sniffing de MIME
     Header set X-Content-Type-Options "nosniff"
-    
-    # Política de seguridad de contenido (CSP) - Ajustar según necesidades
-    # M1 — script-src sin 'unsafe-inline'/'unsafe-eval'. style-src conserva 'unsafe-inline'
-    # (atributos style= y estilos inyectados por Bootstrap/AOS). Nota: el CSP de index.php
-    # (front controller) es el que aplica a las páginas; este cubre respuestas servidas por Apache.
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
-    
+
+    # Política de seguridad de contenido (CSP)
+    # ⚠️ Mantener IDÉNTICA a la de index.php: bajo Apache este `Header set`
+    # SOBRESCRIBE la cabecera que emite PHP, asi que una version desalineada aqui
+    # es la que de verdad rige en produccion. Antes lo estaba (sin form-action,
+    # frame-ancestors ni base-uri). jsdelivr retirado: ninguna vista lo usa.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+
     # Prevenir iframing
     Header set X-Frame-Options "SAMEORIGIN"
-    
+
     # Referrer Policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>

@@ -16,6 +16,14 @@ use Controllers\DetalleFinanciamientoController;
 use Controllers\Fuente_FinanciamientoController;
 use Controllers\PoaIndicadoresController;
 use Controllers\DetalleActividadController;
+
+// Solo se carga desde index.php, con $router ya creado. Pedido directamente por URL
+// (/icoordi.php) respondía con un fatal error que revela la ruta del servidor.
+if (!isset($router)) {
+    http_response_code(404);
+    exit;
+}
+
 //Ruta de Categoría Rubros
 //RUTA PROHIBIDA PARA EL COORDINADOR
 

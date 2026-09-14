@@ -74,9 +74,9 @@ Assert ($coord.Resp.Status -eq 302) "Coordinador login OK"
 $r = Post-Raw $coord.Sess '/cierre_anual/guardar' @{ csrf_token = $coord.Token }
 Assert ($r.Status -eq 302 -and $r.Location -eq '/error') "Coordinador NO tiene ruta /cierre_anual/guardar (-> /error)"
 
-Write-Host "`n=== 2) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 2) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $conta.Sess '/cierre_anual/guardar' @{ }
-Assert ($r.Status -eq 419) "POST /cierre_anual/guardar sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /cierre_anual/guardar sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 3) PANTALLA ANTES DEL CIERRE ===" -ForegroundColor Cyan
 $r = Get-Raw $conta.Sess '/saldos_contables/saldos'

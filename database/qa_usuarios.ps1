@@ -88,9 +88,9 @@ $conta = New-Login 'contador@sysai.test' $PassConta
 $r = Get-Raw $conta.Sess '/usuario/admin'
 Assert ($r.Status -eq 302 -and $r.Location -eq '/error') "Contador NO tiene ruta /usuario/admin (-> /error)"
 
-Write-Host "`n=== 2) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 2) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $admin.Sess '/usuario/crear' @{ }
-Assert ($r.Status -eq 419) "POST /usuario/crear sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /usuario/crear sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 3) ALTA: PASSWORD PROVISIONAL HASHEADO ===" -ForegroundColor Cyan
 $form = Form-Alta '79900001' '999900001' 'qa.item10@sysai.test' '2' '0'

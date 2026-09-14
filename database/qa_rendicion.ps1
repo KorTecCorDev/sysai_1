@@ -1,5 +1,5 @@
 # QA HTTP automatizado — Rendiciones imputadas al rubro (item 5)
-# Login, CSRF 419, autorizacion por rol/cross-tenant, creacion imputada a rubro,
+# Login, CSRF 403, autorizacion por rol/cross-tenant, creacion imputada a rubro,
 # limite por SOBRE (programa, fuente): el monto de la rendicion no puede exceder el
 # saldo disponible del sobre. Verificacion en BD.
 #
@@ -67,9 +67,9 @@ Assert ($coord.Resp.Status -eq 302) "Coordinador login OK"
 $conta = New-Login 'contador@sysai.test' $passConta
 Assert ($conta.Resp.Status -eq 302) "Contador login OK"
 
-Write-Host "`n=== 2) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 2) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $coord.Sess "/rendicion/crear?rubro_id=$RUBRO" @{ }
-Assert ($r.Status -eq 419) "POST /rendicion/crear sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /rendicion/crear sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 3) CROSS-TENANT (coordinador prog.1 vs rubro de prog.5) ===" -ForegroundColor Cyan
 $act5 = Q "SELECT a.id FROM actividad a JOIN producto p ON p.id=a.producto_id JOIN resultado re ON re.id=p.resultado_id WHERE re.programa_id=5 LIMIT 1;"
@@ -138,6 +138,22 @@ Assert ($r.Status -eq 302) "GET /rendicion/eliminar no ejecuta (redirige)"
 # Limpieza: las rendiciones de prueba se identifican por su serie/numero de comprobante
 & $mysql -u root sysai -e "DELETE FROM rendicion WHERE serie='S001' AND numero IN ('0001','0002','0003');" | Out-Null
 Write-Host "`n(limpieza) rendiciones de prueba eliminadas" -ForegroundColor DarkGray
+
+# Endurecimiento de la auditoria 2026-09-14. Va al FINAL porque el ultimo paso cierra
+# la sesion del coordinador.
+Write-Host "`n=== 7) ENDURECIMIENTO (archivos de rutas, logout por POST) ===" -ForegroundColor Cyan
+$r = Get-Raw $coord.Sess '/iadmin.php'
+Assert ($r.Status -eq 404) "Archivo de rutas pedido directo (/iadmin.php) -> 404, sin fatal error ($($r.Status))"
+$r = Get-Raw $coord.Sess '/logout'
+$sigue = Get-Raw $coord.Sess '/rubro/admin?actividad_id=1'
+Assert ("$($r.Location)" -like '*/error*' -and $sigue.Status -eq 200) "GET /logout ya no cierra la sesion (una pagina externa no puede forzar el cierre)"
+$r = Post-Raw $coord.Sess '/logout' @{ }
+$sigue = Get-Raw $coord.Sess '/rubro/admin?actividad_id=1'
+Assert ($r.Status -eq 403 -and $sigue.Status -eq 200) "POST /logout sin token -> 403 y la sesion sigue viva ($($r.Status))"
+$r = Post-Raw $coord.Sess '/logout' @{ csrf_token=$coord.Token }
+Assert ("$($r.Location)" -like '*/login*') "POST /logout con token cierra la sesion -> /login"
+$r = Get-Raw $coord.Sess '/rubro/admin?actividad_id=1'
+Assert ($r.Status -eq 302 -and "$($r.Location)" -like '*/login*') "Tras cerrar sesion, una ruta protegida redirige al login"
 
 Write-Host "`n=== RESULTADO: $ok OK / $fail FAIL ===" -ForegroundColor Cyan
 if ($fail -gt 0) { exit 1 } else { exit 0 }

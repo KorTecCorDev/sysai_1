@@ -19,6 +19,13 @@ use Controllers\SaldoContableController;
 use Controllers\PoaIndicadoresController;
 use Controllers\DetalleActividadController;
 
+// Solo se carga desde index.php, con $router ya creado. Pedido directamente por URL
+// (/iconta.php) respondía con un fatal error que revela la ruta del servidor.
+if (!isset($router)) {
+    http_response_code(404);
+    exit;
+}
+
 //Ruta de Categoría Rubros
 $router->get('/categoria_rubro/admin', [CategoriaRubroController::class, 'index']);
 $router->post('/categoria_rubro/crear', [CategoriaRubroController::class, 'crear']);

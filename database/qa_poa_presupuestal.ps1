@@ -1,5 +1,5 @@
 # QA HTTP automatizado — POA Presupuestal (item 4) + POA Rendicion (item 6)
-# Login, CSRF 419, autorizacion por rol, cross-tenant, flujo de estados 0-1-2-3,
+# Login, CSRF 403, autorizacion por rol, cross-tenant, flujo de estados 0-1-2-3,
 # congelado del presupuesto, bloqueo de rubros (Enviado/Aprobado). Verificacion en BD.
 # Item 6: al aprobar el POA, las rendiciones del programa pasan a Aprobada(1) y recien
 # entonces se descuentan del saldo contable (vista_total_egresos filtra estado=1).
@@ -84,9 +84,9 @@ Assert ($coord.Resp.Status -eq 302) "Coordinador login OK"
 $conta = New-Login 'contador@sysai.test' $passConta
 Assert ($conta.Resp.Status -eq 302) "Contador login OK"
 
-Write-Host "`n=== 2) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 2) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $coord.Sess '/poa/crear' @{ }
-Assert ($r.Status -eq 419) "POST /poa/crear sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /poa/crear sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 3) AUTORIZACION POR ROL (-> /error) ===" -ForegroundColor Cyan
 $r = Post-Raw $coord.Sess '/poa/aprobar' @{ id = 1; csrf_token = $coord.Token }

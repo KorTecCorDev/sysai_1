@@ -1,5 +1,5 @@
 # QA HTTP automatizado — Otros Ingresos/Egresos (item 7)
-# Solo Contador (coordinador sin rutas), CSRF 419, ingreso hibrido (al total de la
+# Solo Contador (coordinador sin rutas), CSRF 403, ingreso hibrido (al total de la
 # fuente con programa NULL / al sobre de un programa), egreso con programa obligatorio,
 # vinculo (sobre) existente y tope por sobre (incluida la exclusion del propio OIE al
 # editar). Verificacion en BD (tablas + vistas de saldo).
@@ -93,11 +93,11 @@ Write-Host "`n=== 2) SOLO CONTADOR (coordinador sin rutas OIE) ===" -ForegroundC
 $r = Get-Raw $coord.Sess '/ingreso_egreso/admin'
 Assert ($r.Location -like '*/error*') "Coordinador GET /ingreso_egreso/admin -> redirige a /error"
 $r = Post-Raw $coord.Sess '/ingreso_egreso/crear' @{ }
-Assert ($r.Location -like '*/error*' -or $r.Status -eq 419) "Coordinador POST /ingreso_egreso/crear no pasa"
+Assert ($r.Location -like '*/error*' -or $r.Status -eq 403) "Coordinador POST /ingreso_egreso/crear no pasa"
 
-Write-Host "`n=== 3) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 3) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $conta.Sess '/ingreso_egreso/crear' @{ 'oie[codigo]'='QAOX' }
-Assert ($r.Status -eq 419) "POST /ingreso_egreso/crear sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /ingreso_egreso/crear sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 4) INGRESO HIBRIDO: AL TOTAL DE LA FUENTE (programa NULL) ===" -ForegroundColor Cyan
 $r = Post-Raw $conta.Sess '/ingreso_egreso/crear' (Form-Oie '1' $ffQa '' 'QAO001' '500' $conta.Token)

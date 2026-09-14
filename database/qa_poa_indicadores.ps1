@@ -1,5 +1,5 @@
 # QA HTTP automatizado — POA Indicadores (item 3)
-# Cubre lo verificable por programa: login, CSRF 419, autorizacion por rol,
+# Cubre lo verificable por programa: login, CSRF 403, autorizacion por rol,
 # transiciones de estado 0->1->2->3, persistencia/limpieza de observacion,
 # cross-tenant. Lo puramente visual se valida aparte en el navegador.
 param(
@@ -84,9 +84,9 @@ Assert ($conta.Resp.Status -eq 302 -and $conta.Resp.Location -eq '/') "Contador 
 $bad = New-Login 'coordinador@sysai.test' 'malapass'
 Assert ($bad.Resp.Status -eq 200) "Password incorrecto NO autentica (queda en login 200)"
 
-Write-Host "`n=== 2) CSRF (419) ===" -ForegroundColor Cyan
+Write-Host "`n=== 2) CSRF (403) ===" -ForegroundColor Cyan
 $r = Post-Raw $coord.Sess '/poa_indicadores/crear' @{ }   # sin csrf_token
-Assert ($r.Status -eq 419) "POST /crear sin token -> 419 ($($r.Status))"
+Assert ($r.Status -eq 403) "POST /crear sin token -> 403 ($($r.Status))"
 
 Write-Host "`n=== 3) AUTORIZACION POR ROL (rutas no registradas -> /error) ===" -ForegroundColor Cyan
 $t = $coord.Token

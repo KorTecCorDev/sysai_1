@@ -36,6 +36,9 @@ class Router
             || str_ends_with($url, '/guardar')
             || in_array($url, [
                 '/login', '/chgpsswd', '/token_verify', '/updtepsswd',
+                // /logout también: por GET cualquier página externa podía cerrarle la
+                // sesión a un usuario con un <img src="/logout"> (auditoría 2026-09-14).
+                '/logout',
             ], true);
     }
 
@@ -78,9 +81,19 @@ class Router
             exit;
         }
 
+        // /logout sin sesión (expirada o ya cerrada): no hay nada que cerrar ni token que
+        // validar. Se lleva al login en vez de mostrar un 403 que el usuario no entiende.
+        if ($urlActual === '/logout' && !$logueado) {
+            header('Location: /login');
+            exit;
+        }
+
         // Protección CSRF en acciones POST sensibles (eliminaciones y cambio de estado del POA)
         if ($metodo === 'POST' && $this->requiereCsrf($urlActual) && !verificar_csrf()) {
-            http_response_code(419);
+            // 403 y no 419: el 419 no es un código HTTP estándar (lo inventó Laravel) y
+            // bajo Apache sale convertido en 500, que además de mentir dispara alertas
+            // de error de servidor (auditoría de seguridad 2026-09-14).
+            http_response_code(403);
             exit('Token de seguridad inválido o expirado. Recargue la página e intente de nuevo.');
         }
 

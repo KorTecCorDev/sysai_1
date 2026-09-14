@@ -109,10 +109,12 @@ $cargo = $_SESSION['cargo'] ?? false;
                         </li>
                     </ul>
                     <div class="sidebar-footer">
-                        <a href="/logout" class="sidebar-link">
+                        <a href="/logout" class="sidebar-link" data-logout>
                             <i class="bi bi-box-arrow-left"></i>
                             <span>Cerrar sesión</span>
                         </a>
+                        <!-- /logout solo acepta POST con token CSRF: app.js envía este formulario al hacer clic. -->
+                        <form method="POST" action="/logout" id="form-logout" hidden><?php echo csrf_input(); ?></form>
                     </div>
                 </aside>
                 <div class="container mt-3 ">

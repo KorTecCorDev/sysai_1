@@ -27,7 +27,7 @@
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
 - `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
   PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
-  CSRF fallan porque el 419 sale como 500). Suite actual: **176/176**.
+  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **186/186**.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
 - **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
   secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del
@@ -216,7 +216,9 @@ src/               → SCSS y JS fuente
    - **Autorización por rol = carga condicional de rutas.** Las rutas de admin solo se registran si `cargo_id==1`;
      un coordinador ni siquiera las tiene registradas (caen en 404). Es el principal mecanismo de control de acceso.
    - **CSRF:** `Router::requiereCsrf()` protege los sufijos `/crear|/actualizar|/eliminar|/enviar|/observar|/aprobar|/guardar`
-     (POST sin token → 419). Los formularios emiten `csrf_input()`.
+     (POST sin token → **403**; hasta el 2026-09-14 era 419, que no es estándar y bajo Apache salía como 500).
+     Los formularios emiten `csrf_input()`. `/logout` también exige token y **solo acepta POST** (formulario
+     oculto en los layouts que envía `app.js`).
 
 ### Capa de datos — `models/ActiveRecord.php` (clase base)
 - `setDB()`, `guardar()` (decide crear/actualizar por `$this->id`), `crear()`/`actualizar()`/`eliminar()` y

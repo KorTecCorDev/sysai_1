@@ -7,7 +7,23 @@ document.addEventListener("DOMContentLoaded", function () {
   eliminarAlertas();
   marcarSidebarActivo();
   prepararSidebarTooltips();
+  prepararLogout();
 });
+
+// Cerrar sesión va por POST con token CSRF (auditoría de seguridad 2026-09-14): por GET,
+// cualquier página externa podía cerrar la sesión con un <img src="/logout">. El enlace
+// del sidebar conserva su estilo (las reglas cuelgan de a.sidebar-link) y aquí envía el
+// formulario oculto que emite cada layout.
+function prepararLogout() {
+  const form = document.getElementById("form-logout");
+  if (!form) return;
+  document.querySelectorAll("a[data-logout]").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      form.submit();
+    });
+  });
+}
 
 // Marca el enlace del sidebar de la página actual (estado activo) y abre su
 // submenú padre si corresponde. Sirve para los 3 layouts (comparten clases).
