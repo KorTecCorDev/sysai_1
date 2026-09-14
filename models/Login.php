@@ -142,13 +142,57 @@ class Login extends ActiveRecord
             'email' => $this->email,
             'datos' => $this->datos,
             'cargo' => $this->cargo,
-            'login' => true
+            'login' => true,
+            // Huella de la contraseña ALMACENADA (el hash bcrypt, no la clave): si cambia,
+            // sesionSigueValida() cierra esta sesión. Así un cambio de contraseña echa a
+            // quien la estuviera usando en otro equipo (auditoría 2026-09-14, M3).
+            'huella' => hash('sha256', (string) $this->password),
         ];
         // Datos específicos para coordinadores
         if ($this->cargo_id == 3) {
             $_SESSION['poa_id'] = $this->poa_id ?? null;
             $_SESSION['programa_id'] = $this->programa_id ?? null;
         }
+    }
+
+    /**
+     * ¿La sesión autenticada sigue correspondiendo al usuario tal como está en la BD?
+     *
+     * Auditoría de seguridad 2026-09-14 (M3): el cargo y el programa se copiaban a la
+     * sesión al entrar y nadie volvía a mirarlos. Un usuario eliminado, cambiado de
+     * cargo o reasignado de programa seguía operando con lo de antes mientras no
+     * cerrara sesión, y cambiar la contraseña no echaba a nadie. Router la llama en
+     * cada petición autenticada: una lectura por clave primaria.
+     *
+     * No compara poa_id: cambia legítimamente cuando el coordinador crea su POA.
+     * Las sesiones abiertas antes de existir la huella no la tienen: se cierran una vez.
+     */
+    public static function sesionSigueValida(): bool
+    {
+        $id = (int) ($_SESSION['id'] ?? 0);
+        if ($id <= 0 || empty($_SESSION['huella'])) {
+            return false;
+        }
+        $filas = self::consultarPreparado(
+            "SELECT " . self::$tbstring . " FROM " . self::$tabla . " WHERE id = ? LIMIT 1",
+            'i',
+            [$id]
+        );
+        $fila = $filas[0] ?? null;
+        if (!$fila) {
+            return false;                                   // usuario eliminado
+        }
+        if ((int) $fila->cargo_id !== (int) ($_SESSION['cargo_id'] ?? 0)) {
+            return false;                                   // cambió de cargo
+        }
+        if (!hash_equals((string) $_SESSION['huella'], hash('sha256', (string) $fila->password))) {
+            return false;                                   // cambió la contraseña
+        }
+        if ((int) $fila->cargo_id === 3
+            && (int) ($fila->programa_id ?? 0) !== (int) ($_SESSION['programa_id'] ?? 0)) {
+            return false;                                   // coordinador reasignado
+        }
+        return true;
     }
     //Funciones para cambiar el password mediante envío de email
 
@@ -298,6 +342,21 @@ class Login extends ActiveRecord
     // La ventana se evalúa con la hora de MySQL (NOW()) para no depender de que
     // el reloj/zona horaria de PHP coincida con el del servidor de BD.
     // RL_VENTANA es una constante entera del código → se interpola como int (no SQLi).
+    // Tope de fallos por IP sola, contra el rociado de contraseñas (una IP que prueba
+    // la misma clave contra muchos correos). Holgado a propósito: detrás de una misma
+    // IP pública puede estar toda la oficina de la organización.
+    const RL_MAX_POR_IP = 30;
+
+    /**
+     * ¿Se bloquea este intento de login?
+     *
+     * Auditoría de seguridad 2026-09-14 (M7): antes también se bloqueaba por EMAIL a
+     * secas, así que cualquiera podía dejar fuera a otra persona durante 5 minutos
+     * —indefinidamente, repitiendo— con 5 intentos fallidos contra su correo desde
+     * su propia IP. Ahora el bloqueo fino es por la PAREJA (IP, email): quien falla
+     * se bloquea a sí mismo, no al dueño de la cuenta. El límite por IP sola sigue
+     * existiendo, con un tope mayor, para frenar el rociado de contraseñas.
+     */
     public static function estaBloqueadoPorIntentos(string $ip, string $email): bool
     {
         $ventana = (int) self::RL_VENTANA;
@@ -307,17 +366,17 @@ class Login extends ActiveRecord
             's',
             [$ip]
         );
-        if (count($porIp) >= self::RL_MAX_INTENTOS) {
+        if (count($porIp) >= self::RL_MAX_POR_IP) {
             return true;
         }
 
         if ($email !== '') {
-            $porEmail = self::consultarPreparado(
-                "SELECT id FROM login_intentos WHERE email = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
-                's',
-                [$email]
+            $porPareja = self::consultarPreparado(
+                "SELECT id FROM login_intentos WHERE ip = ? AND email = ? AND fecha > (NOW() - INTERVAL {$ventana} SECOND)",
+                'ss',
+                [$ip, $email]
             );
-            if (count($porEmail) >= self::RL_MAX_INTENTOS) {
+            if (count($porPareja) >= self::RL_MAX_INTENTOS) {
                 return true;
             }
         }
@@ -335,11 +394,14 @@ class Login extends ActiveRecord
         );
     }
 
-    // Al autenticar con éxito se borran los intentos de esa IP y ese email.
+    // Al autenticar con éxito se borran los intentos de ESA pareja (IP, email). Antes
+    // era `ip = ? OR email = ?`: con el bloqueo por pareja (M7), un login correcto
+    // habría borrado también los fallos que otra IP acumulaba contra este correo, o
+    // los de otros correos desde esta IP (y con ellos el rastro del rociado).
     public static function limpiarIntentos(string $ip, string $email): bool
     {
         return self::ejecutarPreparado(
-            "DELETE FROM login_intentos WHERE ip = ? OR email = ?",
+            "DELETE FROM login_intentos WHERE ip = ? AND email = ?",
             'ss',
             [$ip, $email]
         );

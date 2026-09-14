@@ -66,6 +66,16 @@ class Router
                 header('Location: /login?expirado=1');
                 exit;
             }
+            // La sesión se revalida contra la BD en cada petición (auditoría 2026-09-14, M3):
+            // si el usuario se eliminó, cambió de cargo o de programa, o cambió su contraseña,
+            // la sesión abierta deja de valer al instante. Antes conservaba el cargo y el
+            // programa con los que entró mientras siguiera activo.
+            if (!\Model\Login::sesionSigueValida()) {
+                $_SESSION = [];
+                session_destroy();
+                header('Location: /login?revocada=1');
+                exit;
+            }
             $_SESSION['last_activity'] = time();
         }
 

@@ -28,6 +28,18 @@
                     </div>
                 <?php endif; ?>
 
+                <?php if (isset($_GET['revocada'])) : ?>
+                    <div class="auth-alert auth-alert--error" role="alert">
+                        <i class="bi bi-shield-exclamation" aria-hidden="true"></i>
+                        <div class="auth-alert__body"><p>Tu sesión se cerró porque cambiaron tus datos de acceso (contraseña, cargo o programa). Vuelve a iniciar sesión.</p></div>
+                    </div>
+                <?php elseif (isset($_GET['expirado'])) : ?>
+                    <div class="auth-alert auth-alert--error" role="alert">
+                        <i class="bi bi-clock-history" aria-hidden="true"></i>
+                        <div class="auth-alert__body"><p>Tu sesión expiró por inactividad. Vuelve a iniciar sesión.</p></div>
+                    </div>
+                <?php endif; ?>
+
                 <?php include __DIR__ . '/partials/_auth_alertas.php'; ?>
 
                 <form method="POST" action="/login" class="auth-fields" novalidate><?php echo csrf_input(); ?>

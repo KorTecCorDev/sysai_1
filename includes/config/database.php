@@ -104,11 +104,28 @@ $rutaEnvUsada = rutaEnv();
 cargarEnv($rutaEnvUsada);
 comprobarEnvDesactualizado($rutaEnvUsada);
 
+/**
+ * Valor de configuración: el ENTORNO REAL manda, el .env es el respaldo.
+ *
+ * B9 (2026-08-14, corregido 2026-09-14): conectarDB() leía solo $_ENV, pero
+ * cargarEnv() NO copia al $_ENV las claves que ya existen en el entorno real y
+ * PHP no puebla $_ENV salvo con variables_order="E". Resultado: definir DB_NAME
+ * como variable de entorno —lo normal en un hosting— hacía DESAPARECER el valor
+ * en vez de imponerse. getenv() primero cierra el agujero sin tocar la carga.
+ */
+function envValor(string $clave, ?string $defecto = null): ?string {
+    $real = getenv($clave);
+    if ($real !== false) {
+        return $real;
+    }
+    return array_key_exists($clave, $_ENV) ? (string) $_ENV[$clave] : $defecto;
+}
+
 function conectarDB(): mysqli {
-    $host = $_ENV['DB_HOST'] ?? 'localhost';
-    $user = $_ENV['DB_USER'] ?? '';
-    $pass = $_ENV['DB_PASS'] ?? '';
-    $name = $_ENV['DB_NAME'] ?? '';
+    $host = envValor('DB_HOST', 'localhost');
+    $user = envValor('DB_USER', '');
+    $pass = envValor('DB_PASS', '');
+    $name = envValor('DB_NAME', '');
 
     // El código comprueba valores de retorno (no usa try/catch): sin esto, PHP >= 8.1
     // lanza mysqli_sql_exception y cualquier error de SQL sería un fatal no capturado.
@@ -117,7 +134,7 @@ function conectarDB(): mysqli {
     $db = new mysqli($host, $user, $pass, $name);
 
     if ($db->connect_errno) {
-        $entorno = $_ENV['APP_ENV'] ?? 'production';
+        $entorno = envValor('APP_ENV', 'production');
         if ($entorno === 'development') {
             die('<b>Error de conexión a la BD:</b> ' . $db->connect_error);
         } else {

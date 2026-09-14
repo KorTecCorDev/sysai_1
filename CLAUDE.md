@@ -27,7 +27,7 @@
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
 - `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
   PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
-  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **188/188**.
+  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **193/193**.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
 - **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
   secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del

@@ -10,7 +10,10 @@
 
 ## Pendientes abiertos
 
-- [ ] **B9 — una variable de entorno real no sobreescribe el `.env`: lo BORRA.** Hallado el
+- [x] ~~**B9**~~ — **CORREGIDO 2026-09-14** (auditoría de seguridad, paso 5): `conectarDB()` lee con
+  `envValor()` (getenv primero, `$_ENV` de respaldo). Verificado: `DB_NAME=otra php -r …` intenta
+  conectar a `otra`; sin la variable conecta a la del `.env`. Detalle histórico:
+- **B9 — una variable de entorno real no sobreescribe el `.env`: lo BORRA.** Hallado el
   2026-08-14 al intentar `DB_NAME=sysai_replay php database/migrate.php` para un replay greenfield:
   la conexión falló sin base seleccionada. Causa: `includes/config/database.php` lee
   `$_ENV['DB_NAME']` (líneas 108-111), pero **PHP CLI no puebla `$_ENV`** salvo que

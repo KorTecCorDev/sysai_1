@@ -156,6 +156,38 @@ Assert ($r.Location -like '*resultado=3*' -and $quedaU -eq '0' -and $quedaP -eq 
 # Limpieza: usuario contador QA + programa de prueba
 $r = Post-Raw $admin.Sess '/usuario/eliminar' @{ id = $uid; tipo = 'usuario'; csrf_token = $admin.Token }
 Assert ($r.Location -like '*resultado=3*' -and (Q "SELECT COUNT(*) FROM usuario WHERE id=$uid;") -eq '0') "Limpieza: contador QA eliminado por la propia ruta"
+Write-Host "`n=== 8) SESION REVALIDADA CONTRA LA BD (auditoria 2026-09-14, M3) ===" -ForegroundColor Cyan
+# Cada caso abre una sesion NUEVA del admin QA: la revalidacion la cierra, que es
+# justo lo que se comprueba. Al final se restauran cargo y hash originales.
+$hashQa = Q "SELECT password FROM usuario WHERE id=90;"
+$s8 = New-Login 'qa.admin10@sysai.test' 'admin1234'
+$r = Get-Raw $s8.Sess '/usuario/admin'
+Assert ($s8.Resp.Status -eq 302 -and $r.Status -eq 200) "Sin cambios en la BD, la sesion sigue valida entre peticiones (200)"
+# Mismo password con otro hash bcrypt: equivale a que el usuario cambie su clave.
+$hashNuevo = (& php -r "echo password_hash('admin1234', PASSWORD_DEFAULT);").Trim()
+& $mysql -u root sysai -e "UPDATE usuario SET password='$hashNuevo' WHERE id=90;" | Out-Null
+$r = Get-Raw $s8.Sess '/usuario/admin'
+Assert ($r.Status -eq 302 -and "$($r.Location)" -like '/login*') "Cambiar la contrasena cierra las sesiones ya abiertas (-> $($r.Location))"
+$s8 = New-Login 'qa.admin10@sysai.test' 'admin1234'
+& $mysql -u root sysai -e "UPDATE usuario SET cargo_id=2 WHERE id=90;" | Out-Null
+$r = Get-Raw $s8.Sess '/programa/admin'
+Assert ($r.Status -eq 302 -and "$($r.Location)" -like '/login*') "Cambiar el cargo cierra la sesion abierta: no conserva los permisos con que entro"
+& $mysql -u root sysai -e "UPDATE usuario SET cargo_id=1, password='$hashQa' WHERE id=90;" | Out-Null
+
+Write-Host "`n=== 9) BLOQUEO DE LOGIN POR IP+EMAIL (auditoria 2026-09-14, M7) ===" -ForegroundColor Cyan
+# 5 fallos contra el correo desde OTRA IP: antes bastaban para dejar fuera al dueno.
+$filasAjenas = (1..5 | ForEach-Object { "('203.0.113.9','qa.admin10@sysai.test',NOW())" }) -join ','
+& $mysql -u root sysai -e "INSERT INTO login_intentos (ip, email, fecha) VALUES $filasAjenas;" | Out-Null
+$s9 = New-Login 'qa.admin10@sysai.test' 'admin1234'
+Assert ($s9.Resp.Status -eq 302) "5 fallos desde OTRA IP no bloquean la cuenta (antes cualquiera podia bloquear a otro)"
+& $mysql -u root sysai -e "DELETE FROM login_intentos WHERE email='qa.admin10@sysai.test';" | Out-Null
+# 5 fallos desde la MISMA IP (php -S puede ver 127.0.0.1 o ::1): ese email queda bloqueado ahi.
+$filasPropias = ((1..5 | ForEach-Object { "('127.0.0.1','qa.admin10@sysai.test',NOW())" }) + (1..5 | ForEach-Object { "('::1','qa.admin10@sysai.test',NOW())" })) -join ','
+& $mysql -u root sysai -e "INSERT INTO login_intentos (ip, email, fecha) VALUES $filasPropias;" | Out-Null
+$s9 = New-Login 'qa.admin10@sysai.test' 'admin1234'
+Assert ($s9.Resp.Status -eq 200 -and $s9.Resp.Body -match 'Demasiados intentos') "5 fallos desde la MISMA IP bloquean ese email aunque la clave sea correcta"
+& $mysql -u root sysai -e "DELETE FROM login_intentos WHERE email='qa.admin10@sysai.test';" | Out-Null
+
 & $mysql -u root sysai -e "DELETE FROM programa WHERE id=7; DELETE FROM usuario WHERE id=90; DELETE FROM persona WHERE id=90;" | Out-Null
 Write-Host "`n(limpieza) programa de prueba y admin QA temporal eliminados" -ForegroundColor DarkGray
 
