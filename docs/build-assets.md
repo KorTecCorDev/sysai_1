@@ -2,12 +2,17 @@
 
 > **Referencia.** Extraído de `CLAUDE.md` el 2026-07-09.
 
-- **Pipeline** (`gulpfile.js`): SCSS `src/scss/**` → Dart Sass + autoprefixer + cssnano + sourcemaps →
-  `build/css/app.css`. JS `src/js/**` → concat `bundle.js` + terser → `build/js/bundle.min.js`.
-  Imágenes `src/img/**` → imagemin → `build/img/` y versión `.webp`.
+- **Pipeline** (`gulpfile.js`, **Gulp 5**): SCSS `src/scss/**` → Dart Sass + autoprefixer + cssnano 7 →
+  `build/css/app.css` (+ `.map`). JS `src/js/**` → concat `bundle.js` + terser → `build/js/bundle.min.js`
+  (+ `bundle.min.js.map`). Los sourcemaps son los **nativos de Gulp** (`src({sourcemaps:true})` /
+  `dest({sourcemaps:'.'})`), sin `gulp-sourcemaps`.
+- ⚠️ **Sin tareas de imágenes (2026-09-14, alertas de Dependabot):** `src/img` nunca existió, así que
+  imagemin/webp no procesaban nada, pero `gulp-imagemin`, `gulp-webp`, `gulp-cache` y `gulp-notify`
+  aportaban las alertas críticas (decompress, fast-xml-parser, got…). Las imágenes de `build/img/` siguen
+  versionadas; una imagen nueva se optimiza a mano antes de subirla.
 - **Tareas** (⚠️ **no hay `gulp-cli` global** — invocar con `npx gulp <tarea>`; `gulp` pelado da
   `command not found`): `npx gulp css` (compila y queda en watch de `src/scss`), `npx gulp js`,
-  `npx gulp imagenes`, `npx gulp webp`, `npx gulp build` (todo, sin watcher; para CI/prod),
+  `npx gulp build` (CSS + JS, sin watcher; para CI/prod),
   `npx gulp servidor` (solo PHP + BrowserSync, sin recompilar), **`npm run dev`** = `npx gulp`
   (**todo + servidor + watcher**, ver abajo). `npm run css` → `gulp css`.
 
@@ -38,7 +43,7 @@ Decisiones que hacen que esto funcione **en un proyecto PHP** (todas viven en `g
   que bloquearía el script inline y el WebSocket de BrowserSync: la recarga fallaría **en silencio** (solo
   visible en la consola del navegador). El `proxyRes` borra esa cabecera; **el CSP del código queda intacto**
   y producción no se entera. Corolario: **en dev no se está probando la CSP real** — si se toca la cabecera
-  en `index.php`, verificarla contra `local3000` (:3000) o Apache, no contra :3001.
+  en `index.php`, verificarla contra `php -S localhost:3000` (:3000) o Apache, no contra :3001.
 - **`ghostMode: false`** a propósito: por defecto BrowserSync espeja clics, scroll y formularios entre todos
   los navegadores conectados, y aquí se trabaja con **dos sesiones abiertas a la vez** (coordinador y
   contador) para probar el flujo de aprobación. Con el espejo activo esas pruebas serían inservibles.
@@ -70,9 +75,17 @@ Decisiones que hacen que esto funcione **en un proyecto PHP** (todas viven en `g
 - **Cierre limpio en Windows:** con `shell: true`, `php.exe` cuelga de un `cmd.exe` intermedio; matar solo al
   hijo directo dejaba `php.exe` vivo aferrado al puerto y el siguiente `gulp` "reutilizaba" ese servidor
   fantasma. Se termina el **árbol completo** (`taskkill /T`) en `exit`/`SIGINT`/`SIGTERM`/`SIGBREAK`.
-- `watchArchivos` recibe y llama a `cb()`: sin eso Gulp 4 daba *"Did you forget to signal async completion?"*
+- `watchArchivos` recibe y llama a `cb()`: sin eso Gulp daba *"Did you forget to signal async completion?"*
   al cerrar con Ctrl+C. El proceso sigue vivo porque son los watchers de chokidar los que sostienen el bucle
   de eventos.
+- ⚠️ **`immutable` 3.8.4 dentro de BrowserSync, con una alerta aceptada** (2026-09-14): browser-sync
+  3.0.4 —la última— pide `immutable ^3`, y la alerta de desbordamiento de `List` (GHSA, Dependabot #99)
+  solo se corrige en la 4.3.9. **Se probó forzar la 4 con `overrides` y rompe BrowserSync al arrancar**
+  (`TypeError: value.get is not a function` en `handleProxyOption.js`), así que no se fuerza. La alerta
+  se descartó en GitHub como riesgo tolerable: BrowserSync solo corre en desarrollo, atado a 127.0.0.1, y
+  no procesa datos de nadie más. Revisar cuando salga una versión de BrowserSync que pida `immutable ^4`.
+  ⚠️ No usar un override GLOBAL de `immutable`: además rompería `sass`, que usa la 5.
+- **Topes de versión (Node 24.13):** `cssnano` se queda en 7.x porque la 9 exige Node ≥ 24.15.
 - **Fixes ya aplicados:** eliminado `node-sass` muerto (el gulpfile usa Dart Sass `require('sass')`);
   `@use "sass:color";` añadido en `_variables.scss`/`_sidebar.scss`; `npm run css` exportada.
 - ✅ **B7 cerrado (2026-07-16):** SCSS migrado de `@import` a `@use` (CSS compilado byte-idéntico) y

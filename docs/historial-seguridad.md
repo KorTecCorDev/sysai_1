@@ -41,4 +41,10 @@ Estos `.sql` vivían en `db/` (carpeta inexistente hoy). Ya portadas al runner c
 
 - [x] ✅ **QA visual de M1 — VERIFICADO:** botones de eliminar siguen pidiendo confirmación y la consola no muestra violaciones de CSP.
 - **VULN-1 (residual):** el app-password de Gmail sigue en el **historial git** (commit `594f8e5`); opcional purgar con `git filter-repo`/BFG + `push --force` (destructivo). Verificar/rotar también las creds de BD de producción.
-- **Dependabot:** ~57 vulnerabilidades de dependencias (`composer`/`npm`) reportadas — frente distinto (no es código propio), pendiente.
+- [x] **Dependabot — REPARADO 2026-09-14** (74 alertas abiertas en ese momento). Composer: PhpSpreadsheet
+  4.1 → 5.9 (9 alertas). npm (65, todas de desarrollo): se retiraron `gulp-imagemin`, `gulp-webp`,
+  `gulp-cache`, `gulp-notify`, `gulp-clean`, `gulp-sourcemaps` y `gulp-autoprefixer` (sin uso real o
+  reemplazados por Gulp nativo), subieron gulp 5, cssnano 7 y gulp-sass 6. Queda UNA alerta aceptada: `immutable`
+  3.8.4 dentro de BrowserSync (solo se corrige en la 4, y forzarla rompe BrowserSync); descartada en
+  GitHub como riesgo tolerable porque solo corre en desarrollo, atado a 127.0.0.1. ⚠️ Dependabot analiza **`main`**: el panel se limpia al
+  mergear `dev → main`. Detalle en `docs/build-assets.md`.

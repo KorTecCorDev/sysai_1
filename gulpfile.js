@@ -2,15 +2,10 @@ const { src, dest, watch , parallel, series } = require('gulp');
 const sass = require('gulp-sass')(require('sass'));
 const autoprefixer = require('autoprefixer');
 const postcss    = require('gulp-postcss')
-const sourcemaps = require('gulp-sourcemaps')
 const cssnano = require('cssnano');
 const concat = require('gulp-concat');
 const terser = require('gulp-terser-js');
 const rename = require('gulp-rename');
-const imagemin = require('gulp-imagemin');
-const notify = require('gulp-notify');
-const cache = require('gulp-cache');
-const webp = require('gulp-webp');
 const browserSync = require('browser-sync').create();
 const { spawn } = require('child_process');
 const net = require('net');
@@ -18,10 +13,17 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
+// Auditoría de dependencias (2026-09-14, alertas de Dependabot): se retiraron
+// gulp-imagemin, gulp-webp, gulp-cache y gulp-notify junto con las tareas de
+// imágenes. src/img no existía, así que esas tareas no procesaban ningún archivo,
+// pero sus dependencias concentraban las alertas críticas (decompress,
+// fast-xml-parser, got…). Las imágenes de build/img siguen versionadas; si llegan
+// nuevas, se optimizan a mano antes de subirlas. gulp-sourcemaps también se fue:
+// Gulp genera los mapas de serie con `src(..., { sourcemaps: true })`.
+
 const paths = {
     scss: 'src/scss/**/*.scss',
     js: 'src/js/**/*.js',
-    imagenes: 'src/img/**/*',
     // El backend es PHP: al tocar una vista o un controlador hay que RECARGAR,
     // no inyectar. Se excluye lo que no es fuente propia.
     php: ['*.php', 'controllers/**/*.php', 'models/**/*.php', 'views/**/*.php', 'includes/**/*.php',
@@ -282,21 +284,19 @@ async function avisoAccesos(cb) {
     cb();
 }
 
-// Recarga completa (cambios de PHP, JS o imágenes).
+// Recarga completa (cambios de PHP o JS).
 function recargar(cb) {
     browserSync.reload();
     cb();
 }
 
 // css es una función que se puede llamar automaticamente
+// Sourcemaps nativos de Gulp: `src` los inicia y `dest` escribe el .map al lado.
 function css() {
-    return src(paths.scss)
-        .pipe(sourcemaps.init())
+    return src(paths.scss, { sourcemaps: true })
         .pipe(sass())
         .pipe(postcss([autoprefixer(), cssnano()]))
-        // .pipe(postcss([autoprefixer()]))
-        .pipe(sourcemaps.write('.'))
-        .pipe( dest('./build/css') )
+        .pipe( dest('./build/css', { sourcemaps: '.' }) )
         // Inyecta el CSS sin recargar: se conservan el scroll y el estado del
         // formulario que estés probando. Si BrowserSync no está activo (p. ej.
         // `gulp build`), stream() es inocuo.
@@ -305,40 +305,22 @@ function css() {
 
 
 function javascript() {
-    return src(paths.js)
-      .pipe(sourcemaps.init())
+    return src(paths.js, { sourcemaps: true })
       .pipe(concat('bundle.js')) // final output file name
       .pipe(terser())
-      .pipe(sourcemaps.write('.'))
       .pipe(rename({ suffix: '.min' }))
-      .pipe(dest('./build/js'))
-}
-
-function imagenes() {
-    return src(paths.imagenes)
-        .pipe(cache(imagemin({ optimizationLevel: 3})))
-        .pipe(dest('./build/img'))
-        .pipe(notify({ message: 'Imagen Completada'}));
-}
-
-function versionWebp() {
-    return src(paths.imagenes)
-        .pipe( webp() )
-        .pipe(dest('./build/img'))
-        .pipe(notify({ message: 'Imagen Completada'}));
+      .pipe(dest('./build/js', { sourcemaps: '.' }))
 }
 
 
 // Recibe `cb` y lo llama en cuanto los vigilantes quedan registrados. Sin eso,
-// Gulp 4 considera que la tarea nunca termino y al cerrar con Ctrl+C imprime
+// Gulp considera que la tarea nunca termino y al cerrar con Ctrl+C imprime
 // "The following tasks did not complete / Did you forget to signal async
 // completion?". El proceso NO se cierra al llamar cb(): los watchers de chokidar
 // mantienen vivo el bucle de eventos, que es justo lo que queremos.
 function watchArchivos(cb) {
     watch( paths.scss, css );                              // inyecta (sin recargar)
     watch( paths.js, series( javascript, recargar ) );
-    watch( paths.imagenes, series( imagenes, recargar ) );
-    watch( paths.imagenes, versionWebp );
     watch( paths.php, recargar );                          // vistas y controladores
     cb();
 }
@@ -354,11 +336,9 @@ exports.css = series(css, watchEstilos);
 
 // Tareas individuales de un solo paso (one-shot)
 exports.js = javascript;
-exports.imagenes = imagenes;
-exports.webp = versionWebp;
 
 // Build completo SIN watcher (útil para producción / CI)
-exports.build = parallel(css, javascript, imagenes, versionWebp);
+exports.build = parallel(css, javascript);
 
 // `gulp servidor`: solo levanta los servicios, sin recompilar nada.
 exports.servidor = series(servidorMailpit, servidorPhp, servidor, avisoAccesos);
@@ -381,7 +361,7 @@ exports.correo = servidorMailpit;
 // escupa su propio arranque) y ANTES de `watchArchivos`, que ya no imprime nada:
 // así el recuadro queda al final y a la vista.
 exports.default = series(
-    parallel(css, javascript, imagenes, versionWebp),
+    parallel(css, javascript),
     servidorMailpit,
     servidorPhp,
     servidor,
