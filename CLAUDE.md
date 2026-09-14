@@ -27,7 +27,7 @@
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
 - `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
   PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
-  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **186/186**.
+  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **188/188**.
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
 - **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
   secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del
@@ -70,7 +70,9 @@
 - **Base de datos:** MySQL/MariaDB vía `mysqli` (conexión única global). Uso intensivo de **VISTAS SQL** (los modelos con sufijo `*Vista` mapean vistas, no tablas). Mecanismo de auditoría con `SET @usuario_actual` (triggers que registrarían quién modifica — ver *[SECCION: MODELO DE DATOS]*).
 - **Frontend:** Bootstrap 5 + Bootstrap Icons; SASS compilado con **Gulp** (`gulpfile.js`). Assets compilados en `build/` (CSS/JS/img); fuente en `src/`. Pipeline detallado en `docs/build-assets.md`.
 - **Dependencias Composer (`composer.json`):**
-  - `phpoffice/phpspreadsheet` ^4.1 — generación de reportes Excel.
+  - `phpoffice/phpspreadsheet` ^5.9 — generación de reportes Excel (4.1 → 5.9 el 2026-09-14: la 4.1 tenía 9
+    avisos de seguridad). Todo libro nace con `nuevoLibroXlsx()`, que instala `Model\XlsxValorSeguroBinder`:
+    un texto que empieza por "=" nunca se vuelve fórmula; las fórmulas legítimas van con `setCellValueExplicit`.
   - `phpmailer/phpmailer` ^6.9 — envío de correos (recuperación de contraseña).
   - `intervention/image` 2.7 — manejo de imágenes.
   - `twbs/bootstrap-icons` ^1.11.

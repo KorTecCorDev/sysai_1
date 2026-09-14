@@ -216,7 +216,8 @@ class ReporteRendicionXlsxBuilder
         }
         foreach ($columnasSuma as $c) {
             $letra = Coordinate::stringFromColumnIndex($c);
-            $sheet->setCellValue("{$letra}{$filaTotal}", "=SUM({$letra}{$filaDatosInicio}:{$letra}{$rangoFin})");
+            // Fórmula legítima: explícita, porque el binder del reporte trata todo "=..." como texto.
+            $sheet->setCellValueExplicit("{$letra}{$filaTotal}", "=SUM({$letra}{$filaDatosInicio}:{$letra}{$rangoFin})", \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA);
             $sheet->getStyle("{$letra}{$filaDatosInicio}:{$letra}{$rangoFin}")->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->getStyle("{$letra}{$filaTotal}")->getNumberFormat()->setFormatCode($this->formatoMoneda($c, $colFuente, $colRendidoInicio));
             $sheet->getStyle("{$letra}{$filaTotal}")->getFont()->setBold(true);

@@ -33,6 +33,15 @@ try {
     exit(1);
 }
 
+// Modo `--tipo CELDA`: imprime solo el tipo de dato de esa celda (s = texto,
+// f = fórmula, n = número…). getValue() devuelve lo mismo para el texto "=1+1"
+// que para la fórmula =1+1; el tipo es lo único que los distingue (auditoría de
+// seguridad 2026-09-14: los textos de usuario no deben llegar como fórmula).
+if (($argv[2] ?? '') === '--tipo') {
+    echo $sheet->getCell((string) ($argv[3] ?? 'A1'))->getDataType() . "\n";
+    exit(0);
+}
+
 $maxRow = $sheet->getHighestRow();
 $maxCol = Coordinate::columnIndexFromString($sheet->getHighestColumn());
 for ($r = 1; $r <= $maxRow; $r++) {

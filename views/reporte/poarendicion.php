@@ -7,7 +7,6 @@
 use Model\Programa;
 use Model\TransferenciaInstitucional;
 use Model\ReporteRendicionXlsxBuilder;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 // Coordinador: solo su programa. Contador/Admin: todos.
 $soloPrograma = ($_SESSION['cargo_id'] == 3) ? (int) ($_SESSION['programa_id'] ?? 0) : null;
@@ -54,7 +53,8 @@ foreach ($filasPorPrograma as $programaId => $filas) {
     ];
 }
 
-$spreadsheet = new Spreadsheet();
+// nuevoLibroXlsx() y no `new Spreadsheet()`: los textos de usuario nunca se vuelven fórmula.
+$spreadsheet = nuevoLibroXlsx();
 $builder = new ReporteRendicionXlsxBuilder($tcdolar, $tceuro, 'RENDICIÓN');
 $builder->construir($spreadsheet, $bloques);
 

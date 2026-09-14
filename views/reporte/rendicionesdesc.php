@@ -8,9 +8,9 @@
 // y el archivo se llamaba "poa_rendiciones_general", tres nombres para una cosa.
 
 use Model\ReporteMovimientosXlsxBuilder;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-$spreadsheet = new Spreadsheet();
+// nuevoLibroXlsx() y no `new Spreadsheet()`: los textos de usuario nunca se vuelven fórmula.
+$spreadsheet = nuevoLibroXlsx();
 
 $builder = new ReporteMovimientosXlsxBuilder();
 $builder->construir($spreadsheet, 'REPORTE DE EGRESOS', $desde, $hasta, [

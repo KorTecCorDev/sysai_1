@@ -2,7 +2,6 @@
 
 use Model\ReportePoaRubros;
 use Model\TransferenciaInstitucional;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
@@ -10,7 +9,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 //datos de usuario
 // $usuario = $_SESSION['datos'];
 
-$spreadsheet = new Spreadsheet();
+// nuevoLibroXlsx() y no `new Spreadsheet()`: los textos de usuario nunca se vuelven fórmula.
+$spreadsheet = nuevoLibroXlsx();
 $sheet = $spreadsheet->getActiveSheet();
 $columnas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 $columnasrubros = ['C', 'D', 'E', 'F'];
@@ -197,7 +197,8 @@ foreach ($resbienesAgrupados as $respoas) {
     //SECCION DE RENDICIONES
     $sheet->getStyle("$lmtinf:$lmtsupmns1")->getNumberFormat()->setFormatCode('#,##0.00');
 
-    $sheet->setCellValue("$lmtsup", "=SUM($lmtinf:$lmtsupmns1)");
+    // Fórmula legítima: explícita, porque el binder del reporte trata todo "=..." como texto.
+    $sheet->setCellValueExplicit("$lmtsup", "=SUM($lmtinf:$lmtsupmns1)", \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA);
 
     //Captamos la suma total (monto)
     if ($i === 0) {

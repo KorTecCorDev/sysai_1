@@ -138,6 +138,11 @@ Post-Raw $sess '/dfinanciamiento/crear?programa_id=1' @{ 'transferencia[fuente_f
 $hoy = Get-Date -Format 'yyyy-MM-dd'
 & $mysql -u root sysai -e "INSERT INTO rendicion (rubro_id,tipo_comprobante_id,ff_id,codigo,serie,numero,detalle,ruc,razon_social,monto,estado,fecha_original,fecha,tc_usd,tc_eur) VALUES (2,1,1,'QARX1','SQAR','XLSX0001','QA XLSX APROBADA','20100100101','PROVEEDOR QA SAC',777.77,1,'$hoy',NOW(),3.750,4.050),(2,1,1,'QARX2','SQAR','XLSX0002','QA XLSX PENDIENTE','20100100101','PROVEEDOR QA SAC',555.55,0,'$hoy',NOW(),3.750,4.050);" | Out-Null
 
+# Auditoria de seguridad 2026-09-14 (M4): un texto de usuario que empieza por "="
+# debe llegar al Excel como TEXTO literal, nunca como formula activa. El rubro 2 se
+# renombra solo para esta descarga y se restaura en la limpieza de la seccion.
+$rubroOriginal = Q "SELECT nombre FROM rubro WHERE id=2;"
+& $mysql -u root sysai -e "UPDATE rubro SET nombre='=1+1' WHERE id=2;" | Out-Null
 $rx = Get-Xlsx $sess '/reporte/poarendicion' 'poarendicion.xlsx'
 Assert ($rx.Status -eq 200 -and $rx.Magic -eq 'PK') "Reporte de rendicion descargado por streaming"
 $celdas = Leer-Celdas $rx.Path
@@ -162,6 +167,14 @@ Assert (($celdas.Values | Where-Object { $_ -eq '555.55' }).Count -eq 0) "Rendic
 
 $filaTransfer = Fila-De $celdas 'A' 'TRANSFERENCIA A PROGRAMA INSTITUCIONAL'
 Assert ($filaTransfer -and $celdas["G$filaTransfer"] -eq '4000') "Fila TRANSFERENCIA A PROGRAMA INSTITUCIONAL con monto en G"
+
+$leer = Join-Path $PSScriptRoot 'qa_leer_xlsx.php'
+$tipoCeldaRubro = if ($filaRubro) { (& php $leer $rx.Path --tipo "$colRubro$filaRubro").Trim() } else { '' }
+Assert ($rubroNombre -eq '=1+1' -and $tipoCeldaRubro -eq 's') "Rubro llamado '=1+1' llega como TEXTO literal, no como formula (tipo '$tipoCeldaRubro')"
+$celdaSum = $celdas.Keys | Where-Object { $celdas[$_] -like '=SUM(*' } | Select-Object -First 1
+$tipoCeldaSum = if ($celdaSum) { (& php $leer $rx.Path --tipo $celdaSum).Trim() } else { '' }
+Assert ($celdaSum -and $tipoCeldaSum -eq 'f') "Los TOTAL del sistema siguen siendo formulas =SUM ($celdaSum, tipo '$tipoCeldaSum')"
+& $mysql -u root sysai -e "UPDATE rubro SET nombre='$($rubroOriginal.Replace("'", "''"))' WHERE id=2;" | Out-Null
 
 & $mysql -u root sysai -e "DELETE FROM rendicion WHERE serie='SQAR';" | Out-Null
 Post-Raw $sess '/dfinanciamiento/crear?programa_id=1' @{ 'transferencia[fuente_financiamiento_id]'='1'; 'transferencia[monto]'='0'; csrf_token=$tokPost } | Out-Null

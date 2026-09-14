@@ -5,9 +5,9 @@
 // viven en el controlador y los modelos.
 
 use Model\ReporteMovimientosXlsxBuilder;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-$spreadsheet = new Spreadsheet();
+// nuevoLibroXlsx() y no `new Spreadsheet()`: los textos de usuario nunca se vuelven fórmula.
+$spreadsheet = nuevoLibroXlsx();
 
 $tasas = [];
 if ($tcdolar) { $tasas[] = 'USD ' . rtrim(rtrim((string) $tcdolar->venta, '0'), '.') . ' (' . $tcdolar->fecha_vigencia . ')'; }

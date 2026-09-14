@@ -5,7 +5,6 @@
 
 use Model\TransferenciaInstitucional;
 use Model\ReporteRendicionXlsxBuilder;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 $filasPorPrograma = [];
 $nombrePrograma = [];
@@ -33,7 +32,8 @@ foreach ($filasPorPrograma as $programaId => $filas) {
     ];
 }
 
-$spreadsheet = new Spreadsheet();
+// nuevoLibroXlsx() y no `new Spreadsheet()`: los textos de usuario nunca se vuelven fórmula.
+$spreadsheet = nuevoLibroXlsx();
 $builder = new ReporteRendicionXlsxBuilder($tcdolar, $tceuro, 'RENDICIÓN');
 $builder->construir($spreadsheet, $bloques);
 

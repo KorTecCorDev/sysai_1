@@ -770,6 +770,22 @@ function validarPropiedadArray(array $array, string $propiedad, string $subpropi
 }
 
 /**
+ * Crea el libro de un reporte Excel con el binder que nunca convierte texto en fórmula.
+ *
+ * Todo reporte debe nacer aquí y no con `new Spreadsheet()`: los reportes escriben
+ * textos tecleados por los usuarios, y con el binder por defecto uno que empiece por
+ * "=" llegaba como fórmula activa al Excel del Contador o del donante (auditoría de
+ * seguridad 2026-09-14, M4). Ver Model\XlsxValorSeguroBinder.
+ *
+ * @return \PhpOffice\PhpSpreadsheet\Spreadsheet
+ */
+function nuevoLibroXlsx()
+{
+    \PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder(new \Model\XlsxValorSeguroBinder());
+    return new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+}
+
+/**
  * Envía un libro de PhpSpreadsheet al navegador como descarga y TERMINA la petición.
  *
  * Sustituye (2026-08-14, Fase 0 del plan de reportes) al mecanismo anterior, que
