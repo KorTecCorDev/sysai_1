@@ -151,6 +151,9 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
 - [ ] Colocar el `.env` en `secrets/` con permisos 600 y guardar copia en el gestor de contraseñas.
 - [ ] Excluir del despliegue: `database/`, `.git/`, `src/`, `node_modules/`, `docs/`.
 - [ ] **Verificar el `.htaccess` contra el Apache real** — los hallazgos 4, 5 y 6 son análisis estático.
+      ⚠️ La auditoría del 2026-09-14 amplió el `.htaccess` (HTTPS forzado; `*.md`, `docs/` y los PHP de la raíz
+      denegados; CSP alineada con `index.php`): verificar también eso. Checklist completa en
+      `docs/auditoria-seguridad-2026-09.md`.
       Comprobación mínima tras desplegar: `/.env`, `/database/migrate.php`, `/includes/logs/mail.log` y
       `/.git/config` deben devolver 403/404.
 - [ ] Revocar la App Password de Gmail anterior si sigue viva (se perdió con el `.env`; Google no

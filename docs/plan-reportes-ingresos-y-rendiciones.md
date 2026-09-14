@@ -1,6 +1,7 @@
 # Plan de corrección — Reportes de Ingresos y de Rendiciones
 
-> **Estado:** 📋 PLANIFICADO (2026-08-14). Ninguna fase ejecutada todavía.
+> **Estado:** ✅ IMPLEMENTADO (2026-08-14): Fases 0-4 hechas y verificadas (ver el recuadro de cada fase).
+> Se conserva como registro de decisiones.
 > **Alcance:** `/reporte/ingresos` y `/reporte/rendiciones`, más la **Fase 0**, que toca
 > los cinco reportes Excel porque comparten el mecanismo de descarga.
 > **Origen:** auditoría del 2026-08-14. Todos los hallazgos están **verificados

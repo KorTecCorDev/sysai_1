@@ -10,21 +10,17 @@
 
 ## Pendientes abiertos
 
-- [x] ~~**B9**~~ — **CORREGIDO 2026-09-14** (auditoría de seguridad, paso 5): `conectarDB()` lee con
-  `envValor()` (getenv primero, `$_ENV` de respaldo). Verificado: `DB_NAME=otra php -r …` intenta
-  conectar a `otra`; sin la variable conecta a la del `.env`. Detalle histórico:
-- **B9 — una variable de entorno real no sobreescribe el `.env`: lo BORRA.** Hallado el
-  2026-08-14 al intentar `DB_NAME=sysai_replay php database/migrate.php` para un replay greenfield:
-  la conexión falló sin base seleccionada. Causa: `includes/config/database.php` lee
-  `$_ENV['DB_NAME']` (líneas 108-111), pero **PHP CLI no puebla `$_ENV`** salvo que
-  `variables_order` incluya `E` — y `cargarEnv()` **omite** cargar del archivo cualquier clave que
-  ya exista en el entorno real (`getenv($clave) === false && !array_key_exists($clave, $_ENV)`).
-  Resultado: definir la variable hace que el valor **desaparezca** en vez de imponerse, justo lo
-  contrario de lo que declara el comentario del propio archivo ("el entorno real manda sobre el
-  archivo"). `SYSAI_ENV_FILE` **sí** funciona, porque usa `getenv()`.
-  **Impacto real:** en Hostinger la configuración suele inyectarse por variables de entorno; ahí
-  esto muerde. **Arreglo:** leer con `getenv()` y caer a `$_ENV` como respaldo, o poblar `$_ENV`
-  desde `getenv()` al arrancar. Sin decidir todavía si se corrige o se deja documentado.
+> **Revisados el 2026-09-14.** La lista viva de pendientes está en `CLAUDE.md` (*PENDIENTES / FOLLOW-UPS*) y la
+> checklist del despliegue en `docs/auditoria-seguridad-2026-09.md`. Aquí no queda ningún punto técnico
+> abierto: esta sección conserva el detalle de lo cerrado.
+
+- [x] ~~**B9 — una variable de entorno real no sobrescribía el `.env`: lo BORRABA**~~ — **CORREGIDO 2026-09-14**
+  (auditoría, paso 5): `conectarDB()` lee con `envValor()` (getenv primero, `$_ENV` de respaldo). Verificado:
+  `DB_NAME=otra php -r …` intenta conectar a `otra`; sin la variable conecta a la del `.env`. Causa, hallada el
+  2026-08-14 en un replay greenfield: `database.php` leía solo `$_ENV`, que PHP CLI no puebla salvo con
+  `variables_order` "E", y `cargarEnv()` omite del archivo las claves que ya existen en el entorno real, así
+  que definir la variable hacía desaparecer el valor. En Hostinger, donde la configuración suele llegar por
+  variables de entorno, habría fallado.
 
 - [x] ~~`usuario` no tiene columnas `intentos`/`estado` pero `Login.php` histórico las referencia~~ — **CERRADO 2026-07-15:** resuelto en `main` (migr. 011 creó `login_intentos`; `models/Login.php` la usa).
 - [x] ~~Retirar/limpiar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (plan de montos §5.4): modelo eliminado junto con sus llamadas en `ReportePoaRubrosController`; `$ffnro` no se usaba en ninguna vista.
