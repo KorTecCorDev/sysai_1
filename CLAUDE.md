@@ -57,6 +57,10 @@
   ahí la marca que corresponde es la de Arco Iris, no la del software.
 - **Organización:** Arco Iris (ONG sin fines de lucro, **Huaraz, Perú**).
 - **Repositorio:** `KorTecCorDev/sysai_1` (privado, GitHub).
+- ⚠️ **Ramas y publicación (2026-09-15):** `dev` = trabajo diario; **`main` = producción**. Un merge a `main`
+  dispara `.github/workflows/paquete-produccion.yml`, que arma la rama **`produccion`** (lista blanca + `vendor/`)
+  y Hostinger la despliega por webhook. **No empujar a `main` por costumbre**: publicar es una decisión.
+  Las migraciones NO se aplican solas (`docs/despliegue-hostinger.md` §9).
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
 - **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai`. BD local: `sysai`.

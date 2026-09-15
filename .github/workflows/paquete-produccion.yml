@@ -1,0 +1,126 @@
+# Arma el paquete de producción de Arca y lo publica en la rama `produccion`,
+# que es la que Hostinger despliega (hPanel → Avanzado → GIT, con deploy key de
+# solo lectura + webhook).
+#
+# POR QUÉ UNA RAMA APARTE Y NO `main`
+# Hostinger clona la rama tal cual en public_html. Con `main` acabarían en el
+# servidor `docs/` (incluida la auditoría de seguridad), `CLAUDE.md`,
+# `database/seed_qa.sql` (borra usuarios), `secrets/.env.enc`, `.claude/`, `src/`…
+# protegidos solo por el .htaccess. Además `vendor/` no está versionado, así que
+# cada cambio de composer.lock exigiría un `composer install` manual por SSH o la
+# app se rompería. Esta rama lleva exactamente la lista blanca de
+# docs/despliegue-hostinger.md §3, más `vendor/` ya instalado.
+#
+# FLUJO: trabajar en `dev` → merge a `main` → este workflow → rama `produccion`
+#        → webhook → Hostinger. Las MIGRACIONES no se aplican solas: ver §9 de
+#        docs/despliegue-hostinger.md.
+name: Paquete de produccion
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Dos merges seguidos a main no deben pisarse entre sí.
+concurrency:
+  group: paquete-produccion
+  cancel-in-progress: false
+
+jobs:
+  empaquetar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          path: fuente
+
+      - name: PHP 8.3 (la versión de Hostinger)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Instalar dependencias de producción
+        working-directory: fuente
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: Comprobar sintaxis PHP
+        working-directory: fuente
+        run: |
+          set -euo pipefail
+          find index.php Router.php iadmin.php iconta.php icoordi.php \
+               controllers includes models views database/migrate.php \
+               -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+          echo "Sintaxis OK"
+
+      - name: Armar el paquete (lista blanca)
+        run: |
+          set -euo pipefail
+          rm -rf paquete && mkdir paquete
+          cd fuente
+          cp -a index.php Router.php iadmin.php iconta.php icoordi.php \
+                .htaccess composer.json composer.lock ../paquete/
+          cp -a build controllers includes models views vendor ../paquete/
+          mkdir -p ../paquete/database
+          cp -a database/migrate.php database/migrations ../paquete/database/
+          # bootstrap-icons son 11 MB de iconos que la app sirve desde build/css/,
+          # no desde vendor/. Ningún autoload_*.php lo referencia (verificado).
+          rm -rf ../paquete/vendor/twbs
+
+      - name: Verificar que no se cuela nada
+        run: |
+          set -euo pipefail
+          cd paquete
+          for prohibido in .env .env.example .gitignore docs CLAUDE.md README.md src scripts \
+                           secrets .claude .vscode gulpfile.js package.json package-lock.json hash.php \
+                           database/seed.sql database/seed_qa.sql database/seed_demo.sql \
+                           database/crear_admin.php database/schema_baseline.sql database/respaldo.ps1; do
+            if [ -e "$prohibido" ]; then echo "ERROR: '$prohibido' no debe llegar a producción"; exit 1; fi
+          done
+          for necesario in index.php .htaccess vendor/autoload.php build/css/app.css \
+                           includes/config/database.php database/migrate.php; do
+            if [ ! -e "$necesario" ]; then echo "ERROR: falta '$necesario' en el paquete"; exit 1; fi
+          done
+          migraciones=$(find database/migrations -name '*.sql' | wc -l)
+          if [ "$migraciones" -lt 35 ]; then echo "ERROR: solo $migraciones migraciones"; exit 1; fi
+          echo "Paquete OK: $(find . -type f | wc -l) archivos, $(du -sh . | cut -f1), $migraciones migraciones"
+
+      - name: Publicar en la rama produccion
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads "$url" produccion > /dev/null 2>&1; then
+            git clone --depth 1 --branch produccion "$url" destino
+          else
+            # Primera vez: rama huérfana, sin el historial de main.
+            git clone --depth 1 "$url" destino
+            git -C destino checkout --orphan produccion
+            git -C destino rm -rqf . || true
+          fi
+
+          # Se reemplaza el contenido conservando solo .git (así se detectan los borrados).
+          find destino -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a paquete/. destino/
+
+          cd destino
+          # -f: algunos paquetes de vendor/ traen su propio .gitignore.
+          git add -Af
+          if git diff --cached --quiet; then
+            echo "El paquete no cambió: no se publica nada (Hostinger no redespliega)."
+            exit 0
+          fi
+          git commit -m "deploy: $(echo "$GITHUB_SHA" | cut -c1-7) $(git -C ../fuente log -1 --pretty=%s)"
+          git push origin produccion
+          echo "Publicado en la rama produccion."

@@ -205,3 +205,54 @@ curl -sI $D/login | grep -iE 'content-security-policy|strict-transport|x-powered
 - **Nuevas migraciones:** subir `database/` temporalmente, `php database/migrate.php` y borrarlo de nuevo.
 - **Correo:** si alguien cambia la contraseña de la cuenta Gmail dedicada, sus App Passwords se revocan y el
   correo deja de salir (queda `[ERROR]` en `logs/mail.log`). Generar otra y actualizar `secrets/.env`.
+
+## 9. Actualizaciones (despliegue continuo desde GitHub)
+
+**Flujo:** trabajar en `dev` → **merge a `main` = publicar** →
+`.github/workflows/paquete-produccion.yml` arma la rama **`produccion`** (lista blanca del §3 + `vendor/` ya
+instalado + `database/migrate.php` y sus migraciones) → **webhook** → Hostinger clona esa rama en `public_html`.
+
+Por qué no se despliega `main` directamente: Hostinger clona la rama **tal cual**, y `main` lleva `docs/`,
+`CLAUDE.md`, `database/seed_qa.sql` (borra usuarios), `secrets/.env.enc`, `src/`, `.claude/`… quedarían en el
+document root protegidos solo por el `.htaccess`. Además `vendor/` no está versionado: sin él la app no arranca,
+y cada cambio de `composer.lock` exigiría un `composer install` manual.
+
+### 9.1 Configuración (una sola vez)
+
+1. **Generar la rama:** mergear a `main` el workflow y esperar a que termine (GitHub → Actions). Debe aparecer la
+   rama `produccion`. Comprobar que **no** contiene `docs/`, `CLAUDE.md` ni `database/seed*.sql`.
+2. **Deploy key (repo privado):** hPanel → Avanzado → **GIT** → generar clave SSH → copiarla → GitHub → repo →
+   **Settings → Deploy keys → Add deploy key** (título `Hostinger - Arca produccion`, **sin** *Allow write access*).
+3. **Vaciar `public_html`** (el despliegue exige carpeta vacía). Con el sitio ya publicado, sin perder nada:
+   ```bash
+   cd ~/domains/<dominio>
+   mv public_html public_html_anterior && mkdir public_html
+   ```
+   `secrets/` y `logs/` no se tocan: viven fuera.
+4. **hPanel → GIT → Crear:** repositorio `git@github.com:KorTecCorDev/sysai_1.git`, rama **`produccion`**,
+   directorio `public_html`. Desplegar.
+5. **Verificar** antes de borrar el respaldo: `pwsh -File database\verificar_htaccess.ps1 -BaseUrl https://<dominio>`
+   en 0 FAIL, login, un reporte Excel y "Cerrar sesión". Luego `rm -rf ~/domains/<dominio>/public_html_anterior`.
+6. **Webhook:** hPanel → GIT → *Despliegue automático* → copiar la URL → GitHub → **Settings → Webhooks → Add
+   webhook** → pegar la URL, evento *Just the push event*.
+
+### 9.2 Cada actualización
+
+- **Sin migraciones:** merge `dev` → `main`. En ~1-2 min la rama `produccion` cambia y Hostinger despliega. Si el
+  merge solo tocó documentación, el paquete no cambia y **no se despliega nada**.
+- **Con migraciones:** desplegar y **acto seguido** aplicarlas por SSH (van en el paquete):
+  ```bash
+  cd ~/domains/<dominio>/public_html && php database/migrate.php
+  ```
+  Entre el despliegue y la migración hay una ventana de minutos con el código nuevo sobre el esquema viejo: hacerlo
+  fuera del horario de las usuarias y **descargar antes un volcado de la BD** (hPanel → phpMyAdmin → Exportar).
+- **Qué NO se despliega:** el `.env` (vive en `../secrets/`), los datos y las migraciones aplicadas.
+
+### 9.3 Si algo sale mal
+
+- **El workflow falla:** GitHub → Actions → el paso rojo dice qué faltó (sintaxis PHP, un archivo prohibido en el
+  paquete, Composer). La rama `produccion` **no se toca**: producción sigue con la versión anterior.
+- **Volver atrás:** `git revert` del merge en `main` (se regenera el paquete anterior) o, más rápido, hPanel → GIT →
+  desplegar de nuevo eligiendo el commit anterior de `produccion`.
+- **El webhook no dispara:** GitHub → Settings → Webhooks → *Recent Deliveries* muestra el intento y su respuesta;
+  en hPanel se puede desplegar a mano con el botón.
