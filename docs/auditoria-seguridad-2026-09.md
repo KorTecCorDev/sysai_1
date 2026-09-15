@@ -23,7 +23,7 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
 
 | # | Hallazgo | Estado |
 |---|---|---|
-| H1 | Credenciales en el historial de git (BD vieja en `database.php`, SMTP de Gmail en `LoginController`); las de Mailtrap pasaron por un chat | ⏳ **Rotar** (solo el usuario). Reescribir el historial es opcional |
+| H1 | Credenciales en el historial de git (BD vieja en `database.php`, SMTP de Gmail en `LoginController`); las de Mailtrap pasaron por un chat | ✅ **2026-09-15**: App Passwords de `pruebaskorteccorsmtp@gmail.com` y `korteccor@gmail.com` revocadas (la segunda seguía viva en un `.env` local y cifrada en `secrets/.env.enc`); passphrase rotada; historial **no** se reescribe (decisión del usuario). ⏳ Confirmar la baja de la BD vieja de Hostinger y regenerar Mailtrap |
 | H2 | `CLAUDE.md`, `docs/` y los PHP de la raíz servibles; sin `display_errors=0` | ✅ `863161c`: `.htaccess` deniega `*.md`, `docs/` e `iadmin/iconta/icoordi/Router/hash.php`; guardas en los archivos de rutas; `display_errors=0` fuera de desarrollo |
 | H3 | HTTPS no forzado | ✅ `863161c`: redirección 301 (exentos localhost y LAN privada). ⏳ Verificar en Apache real |
 | H4 | PhpSpreadsheet 4.1.0 con 9 avisos | ✅ `fdf10f3`: 5.9.0, `composer audit` limpio |
@@ -71,9 +71,10 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
 - [ ] **Subir por lista blanca:** sin `.git/`, `.claude/`, `src/`, `node_modules/` ni `docs/`. Compilar antes
       con `npx gulp build`. `database/` se sube **temporalmente** (baseline, migraciones, seed y
       `crear_admin.php` corren en el servidor por SSH) y **se borra al terminar**.
-- [ ] **Correo (decidido 2026-09-14):** crear una **cuenta Gmail dedicada a Arca** con verificación en dos
-      pasos y una App Password propia del servidor (plantilla en `.env.example`). Cuando haya dominio, pasar
-      a `no-reply@<dominio>` en Hostinger cambiando solo el `.env`.
+- [ ] **Correo:** la cuenta dedicada **ya existe** (`cronosarca2024@gmail.com`, creada y probada el
+      2026-09-15). Al desplegar: **generar una App Password nueva solo para el servidor** y revocar la de
+      prueba (pasó por una sesión de chat). Plantilla en `.env.example`. Cuando haya dominio, pasar a
+      `no-reply@<dominio>` en Hostinger cambiando solo el `.env`.
 - [ ] **Crear el administrador y probar el correo desde el servidor:**
       `php database/crear_admin.php --email <correo real> --nombres "…" --apellido-paterno "…" --dni <n> --probar-correo`.
       Si falla, el 587 (o el 465) no sale o la credencial no sirve: sin eso nadie activa su cuenta. El seed ya

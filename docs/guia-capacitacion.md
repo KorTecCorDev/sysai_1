@@ -93,9 +93,9 @@ salida de emergencia: si se usa con todos, se pierde justamente lo que la sesió
 
 ## 5. El riesgo de que los correos caigan en spam
 
-El emisor es una cuenta **Gmail** (`korteccor@gmail.com`). SPF y DKIM los pone Google, así que la
-entrega técnica está bien; el riesgo es distinto: **un remitente con aspecto personal enviando 9
-correos casi idénticos en pocos minutos** es un patrón que los filtros miran con recelo.
+El emisor es la cuenta **Gmail** dedicada de Arca (`cronosarca2024@gmail.com`, desde el 2026-09-15). SPF
+y DKIM los pone Google, así que la entrega técnica está bien; el riesgo es distinto: **una cuenta recién
+creada enviando 9 correos casi idénticos en pocos minutos** es un patrón que los filtros miran con recelo.
 
 - **El día antes**, mandarse a sí mismo y a dos o tres cuentas de dominios distintos (Gmail, Outlook,
   el correo institucional que usen) una prueba con `smtp_test.php`. Ver dónde cae.

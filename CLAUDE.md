@@ -180,16 +180,18 @@ npx gulp build                        # solo compilar assets, sin servidor ni wa
 - **SMTP / recuperación de contraseña:** el flujo `/chgpsswd → /token_verify → /updtepsswd` usa PHPMailer.
   ✅ Credenciales externalizadas: `includes/config/mail.php` lee las claves `MAIL_*` del `.env`; el envío lo
   arma `construirMailer()` y lo usa `enviarTokenRecuperacion()` (ambos en `includes/funciones.php`).
-  ⚠️ **Histórico:** el 2026-08-13 se verificó SMTP real con Gmail `korteccor@gmail.com` + App Password
-  (587/TLS). **Esa configuración ya no existe:** el `.env` se perdió al reinstalarse el equipo y Google no
-  permite recuperar una App Password. **No se ha vuelto a configurar a propósito** — desarrollar contra
-  Mailpit no necesita credenciales, y una App Password abre la cuenta de Gmail entera (decisión
-  2026-08-14, `docs/plan-secretos-y-hardening.md`). Si hiciera falta probar entrega real: generarla,
-  usarla y **revocarla** en el momento. Gmail exige que `MAIL_FROM_EMAIL` sea **la misma** de
-  `MAIL_USERNAME` (si no, reescribe el remitente).
-  ✅ **Emisor de producción — decidido 2026-09-14:** una **cuenta Gmail NUEVA y DEDICADA a Arca** (no
-  `korteccor@gmail.com` ni ninguna cuenta personal), con App Password propia del servidor, 587/tls (465/ssl
-  si Hostinger bloquea el 587). Motivo: la App Password abre la cuenta entera; en una cuenta dedicada un
+  ⚠️ **Histórico:** `korteccor@gmail.com` + App Password (587/TLS) se usó en desarrollo desde el 2026-08-13.
+  El 2026-09-15 apareció **viva** en el `.env` de la laptop y cifrada en `secrets/.env.enc` (`f4ca27e`):
+  **revocada** ese día junto con todas las App Passwords viejas. Desde entonces el `.env` de desarrollo
+  va contra Mailpit, sin secretos, en ambos equipos. Si hiciera falta probar entrega real: usar la
+  configuración de producción desde un archivo **fuera del repo** con
+  `$env:SYSAI_ENV_FILE=<ruta>; php database/smtp_test.php <destino>` y borrarlo al terminar. Gmail exige
+  que `MAIL_FROM_EMAIL` sea **la misma** de `MAIL_USERNAME` (si no, reescribe el remitente).
+  ✅ **Emisor de producción — decidido 2026-09-14, cuenta creada 2026-09-15:** **`cronosarca2024@gmail.com`**,
+  cuenta Gmail NUEVA y DEDICADA a Arca (verificación en dos pasos), con App Password propia del servidor,
+  587/tls (465/ssl si Hostinger bloquea el 587). Probada el 2026-09-15 con `smtp_test.php` desde la laptop:
+  entrega real OK. ⚠️ Esa App Password de prueba pasó por una sesión de chat → **el día del despliegue
+  generar otra para el servidor y revocar la de prueba**. Motivo: la App Password abre la cuenta entera; en una cuenta dedicada un
   `.env` filtrado no expone a nadie, y la activación no depende de una persona. Cambiar la contraseña de
   esa cuenta revoca sus App Passwords (el correo deja de salir). **Cuando haya dominio** (no hay a la
   vista): `no-reply@<dominio>` en `smtp.hostinger.com:465/ssl` con SPF/DKIM/DMARC — solo cambia el `.env`.
@@ -444,8 +446,9 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 - **Runner** `database/migrate.php` sobre `database/schema_baseline.sql` (tabla `schema_migrations`). Qué hace cada
   migración está en su archivo de `database/migrations/` y en `docs/historial-migraciones.md`. Una migración
   aplicada no se edita: se corrige con otra.
-- **BD local `sysai`:** ⚠️ **aplicadas hasta 034** (la base de capacitación restaurada es anterior a la 035 →
-  `php database/migrate.php`; sin ella `qa_reportes.ps1` da 7 FAIL).
+- **BD local `sysai`:** ✅ **aplicadas 001-035** en la PC de escritorio y en la laptop (verificado el 2026-09-15
+  contra el esquema, no solo `schema_migrations`). Tras restaurar un respaldo, confirmar con
+  `php database/migrate.php --status` (sin la 035, `qa_reportes.ps1` da 7 FAIL).
 - **Despliegue greenfield:** baseline + migraciones + `seed.sql` + `crear_admin.php`. `seed_demo.sql` es un escenario
   de demo solo para desarrollo.
 
@@ -494,22 +497,29 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 > `docs/auditoria-seguridad-2026-09.md`; deuda técnica histórica en `docs/follow-ups-tecnicos.md`.
 
 **Antes de desplegar**
-- [ ] **Rotar credenciales** (solo el usuario): App Password de Gmail y credenciales de la BD vieja siguen en
-  el historial de git (`594f8e5` y siguientes); las de Mailtrap pasaron por un chat.
+- [ ] **Rotar credenciales** — ✅ **App Passwords revocadas el 2026-09-15**: `pruebaskorteccorsmtp@gmail.com`
+  (hardcodeada en git `594f8e5`→`fe3a8ce`) y `korteccor@gmail.com` (viva en el `.env` de la laptop y en
+  `secrets/.env.enc` `f4ca27e`); passphrase del `.env.enc` rotada. Historial de git **no** se reescribe
+  (decisión del usuario). ⏳ **Falta confirmar:** que la BD vieja de Hostinger (`u612374195_…`) ya no exista
+  y regenerar/borrar el inbox de Mailtrap.
 - [x] ~~**Merge `dev → main`**~~ — **HECHO 2026-09-15** (fast-forward hasta `b5324c0`, con confirmación del
   usuario). Cierra las alertas de Dependabot, que solo analiza `main`. `main` es la rama que se despliega.
 - [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta: redirección a HTTPS, bloqueos y CSP del
   `.htaccess`; y el botón "Cerrar sesión" (formulario POST vía `app.js`) en el navegador.
-- [ ] **Crear la cuenta Gmail dedicada a Arca** (emisor decidido el 2026-09-14, ver *Setup*) con verificación
-  en dos pasos y una App Password propia del servidor.
+- [x] ~~**Crear la cuenta Gmail dedicada a Arca**~~ — **HECHO 2026-09-15**: `cronosarca2024@gmail.com`, dos pasos
+  activos, App Password guardada en el gestor del usuario y probada (entrega real OK). Al desplegar,
+  generar una nueva para el servidor y revocar la de prueba (ver *Setup*).
 - [ ] **Checklist del despliegue greenfield**: PHP 8.3 en hPanel, SSL, usuario MySQL de mínimo privilegio,
   MySQL remoto apagado, `.env` en `../secrets/`, subida por lista blanca, **`crear_admin.php --probar-correo`
   desde el servidor** (prueba a la vez la salida al 587), `REMOTE_ADDR` real (sin CDN delante),
   `session.save_path` propio y `curl` a los archivos sensibles → 403/404.
 
 **Entorno local**
-- [ ] Aplicar la **migr. 035** a la BD local (`php database/migrate.php`).
-- [ ] **`npm run env:pull`**: el `.env` es más viejo que `secrets/.env.enc` y la app responde 500 (pide la passphrase).
+- [ ] **PC de escritorio:** `git pull` + `npm run env:pull` con la **passphrase nueva** (2026-09-15) — su `.env`
+  aún tiene la App Password revocada de `korteccor` — y verificar que Mailpit esté instalado
+  (`winget source update` antes de `winget install axllent.mailpit`, o winget no encuentra el paquete).
+- [ ] **Laptop:** no tiene `C:\php`; el `php` del PATH es el de XAMPP **8.2.12**. Instalar PHP 8.3 en `C:\php`
+  (con `openssl.cafile`/`curl.cainfo` como en *Setup*) o aceptar la diferencia en ese equipo.
 - [ ] MariaDB de XAMPP escucha en todas las interfaces con `root` sin contraseña: bloquear el 3306 en el firewall
   antes de otra sesión en la LAN.
 - [ ] (Opcional) `memory_limit` de `C:\php\php.ini` es 128M (XAMPP: 512M): un reporte muy grande podría fallar en dev.

@@ -99,6 +99,12 @@ local. **No hay un solo secreto**: el problema no se gestiona, se disuelve.
 >   DMARC. Se cambia solo el `.env`, porque el código ya admite ambos.
 > - **Verificación en el servidor:** `php database/crear_admin.php … --probar-correo` envía un código real
 >   por el mismo camino que la web.
+>
+> ✅ **Ejecución 2026-09-15:** cuenta creada, **`cronosarca2024@gmail.com`**, con verificación en dos pasos.
+> Se llegó a considerar reutilizar `korteccor@gmail.com` (solo se usaba para Arca), pero el usuario prefirió
+> una cuenta nueva por su carácter exclusivo. La App Password se probó con `smtp_test.php` leyendo un archivo
+> **fuera del repo** vía `SYSAI_ENV_FILE` (entrega real OK; archivo borrado después). Como esa clave pasó por
+> una sesión de chat, el servidor recibirá **otra** generada el día del despliegue.
 
 ### Por qué Mailpit y no una App Password permanente
 
@@ -156,7 +162,8 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
       (587/tls), y `no-reply@<dominio>` cuando haya dominio (sustituye la decisión del 2026-08-14 por
       `korteccor@gmail.com`). `MAIL_TRANSPORT=smtp` explícito en el `.env`; `MAIL_FROM_EMAIL` =
       `MAIL_USERNAME`, que Gmail exige o reescribe el remitente. Ver las enmiendas de la §3.
-- [ ] Crear la cuenta dedicada (verificación en dos pasos) y guardarla en el gestor de contraseñas.
+- [x] ~~Crear la cuenta dedicada (verificación en dos pasos) y guardarla en el gestor de contraseñas.~~
+      ✅ 2026-09-15: `cronosarca2024@gmail.com`.
 - [ ] **Al desplegar: comprobar que Hostinger permite salida al 587** (`smtp.gmail.com`). Si está
       bloqueado, probar 465/ssl; si tampoco, no hay correo y nadie puede activar su cuenta.
 - [ ] Generar una App Password **propia del servidor** en vez de copiar la del equipo de desarrollo,
@@ -173,8 +180,9 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
       `docs/auditoria-seguridad-2026-09.md`.
       Comprobación mínima tras desplegar: `/.env`, `/database/migrate.php`, `/includes/logs/mail.log` y
       `/.git/config` deben devolver 403/404.
-- [ ] Revocar la App Password de Gmail anterior si sigue viva (se perdió con el `.env`; Google no
-      permite recuperarla).
+- [x] ~~Revocar la App Password de Gmail anterior si sigue viva~~ — ✅ 2026-09-15: **seguía viva** (en el
+      `.env` de la laptop y cifrada en `secrets/.env.enc`). Revocadas todas las de `korteccor@gmail.com` y
+      `pruebaskorteccorsmtp@gmail.com`; `.env` de desarrollo pasado a Mailpit y re-cifrado con passphrase nueva.
 
 ## 6. Procedimiento de rotación
 

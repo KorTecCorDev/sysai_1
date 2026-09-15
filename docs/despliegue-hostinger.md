@@ -6,11 +6,12 @@
 ## 0. Antes de empezar (bloqueantes)
 
 - [ ] **Credenciales viejas rotadas** (H1 de `docs/auditoria-seguridad-2026-09.md`):
-  - App Password de `korteccor@gmail.com` revocada;
-  - contraseña de la BD vieja cambiada o la cuenta dada de baja;
-  - usuario y clave de Mailtrap regenerados.
-- [ ] **Cuenta Gmail dedicada a Arca** con verificación en dos pasos y una App Password generada solo para el
-      servidor (`.env.example`, bloque *PRODUCCIÓN*).
+  - [x] App Passwords de `korteccor@gmail.com` y `pruebaskorteccorsmtp@gmail.com` revocadas (2026-09-15);
+  - [ ] contraseña de la BD vieja cambiada o la cuenta dada de baja;
+  - [ ] usuario y clave de Mailtrap regenerados.
+- [x] **Cuenta Gmail dedicada a Arca:** `cronosarca2024@gmail.com`, dos pasos activos (2026-09-15).
+- [ ] **App Password del servidor:** generar una **nueva** en esa cuenta el día del despliegue (nombre
+      `Arca servidor Hostinger`), guardarla en el gestor y **revocar la de prueba** del 2026-09-15.
 - [ ] **SSL activo** en el dominio o subdominio temporal (hPanel → SSL). El `.htaccess` fuerza HTTPS: sin
       certificado el sitio no abre.
 - [ ] **PHP 8.3** elegido para el sitio (hPanel → Configuración de PHP) y **SSH habilitado** (hPanel → Acceso SSH).
