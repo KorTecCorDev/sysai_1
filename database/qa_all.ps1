@@ -35,7 +35,9 @@ if (-not $SkipSeed) {
     Write-Host "Fixture de QA instalado." -ForegroundColor DarkGray
 }
 
-$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1', 'qa_cierre_anual.ps1', 'qa_usuarios.ps1', 'qa_institucional.ps1')
+# qa_recuperacion.ps1 lee el codigo real de Mailpit (http://localhost:8025): requiere Mailpit arriba
+# y el MAIL_* del .env apuntando a el (npm run dev lo levanta).
+$scripts = @('qa_poa_indicadores.ps1', 'qa_poa_presupuestal.ps1', 'qa_rendicion.ps1', 'qa_oie.ps1', 'qa_reportes.ps1', 'qa_cierre_anual.ps1', 'qa_usuarios.ps1', 'qa_institucional.ps1', 'qa_recuperacion.ps1')
 # OJO: NO llamar $fail a este acumulador. Con `pwsh -File` el runner corre en el
 # scope GLOBAL, y cada arnés hace `$global:fail = 0` al arrancar: un arnés
 # pisaba el conteo del runner y una suite con fallos reportaba "TODOS OK"
