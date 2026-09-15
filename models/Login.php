@@ -334,8 +334,11 @@ class Login extends ActiveRecord
     // contador en $_SESSION, que es evadible si el atacante no envía cookies.
     // ------------------------------------------------------------------------
 
-    // IP de origen de la petición. En hosting compartido sin CDN, REMOTE_ADDR es
-    // la IP real del cliente. No se usa X-Forwarded-For por ser falsificable.
+    // IP de origen de la petición. No se usa X-Forwarded-For por ser falsificable.
+    // Verificado en producción (2026-09-15): aunque Hostinger pone su CDN (hcdn) delante
+    // y no permite apagarlo, REMOTE_ADDR llega con la IP real del cliente (IPv6 incluida).
+    // Si se cambia de hosting o de CDN, repetir la comprobación: pedir un código de
+    // recuperación y comparar recuperacion_intentos.ip con la IP pública propia.
     public static function obtenerIp(): string
     {
         return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';

@@ -515,23 +515,29 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
   **borrado** (sus credenciales SMTP dejan de existir).
 - [x] ~~**Merge `dev → main`**~~ — **HECHO 2026-09-15** (fast-forward hasta `b5324c0`, con confirmación del
   usuario). Cierra las alertas de Dependabot, que solo analiza `main`. `main` es la rama que se despliega.
-- [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta — ✅ **ensayo en el Apache de XAMPP
+- [x] **Verificar contra un Apache real** lo que `php -S` no ejecuta — ✅ **ensayo en el Apache de XAMPP
   (vhost :8080) el 2026-09-15: `database/verificar_htaccess.ps1` 58/58** (bloqueos 403/404 sin contenido,
   cabeceras, HTTPS/HSTS). Corrigió los `ErrorDocument` (los bloqueos respondían 302 → /login) y quitó
   `X-Powered-By`. ✅ Botón "Cerrar sesión" probado por el usuario en el navegador sobre :8080 (confirmado en
   el access log: `GET /logout` → `/error` sin cerrar la sesión; `POST /logout` → `/login`; consola sin
-  errores de CSP). ⏳ Solo falta **repetir el script y el botón contra Hostinger** (LiteSpeed, no Apache),
-  que ya es parte de la checklist del despliegue. ⚠️ No correr la suite QA en la laptop: `seed_qa.sql` borra usuarios id ≠ 1 y ahí
+  errores de CSP). ✅ **Script repetido contra Hostinger: 59/0** (LiteSpeed + CDN). Allí `<FilesMatch>` solo
+  bloquea archivos existentes: los que el paquete no sube (`CLAUDE.md`, `package.json`, `hash.php`…) responden
+  302 → `/login` sin contenido, igual que cualquier ruta inexistente; el script lo acepta solo contra un servidor
+  remoto. ✅ Botón "Cerrar sesión" probado también en producción. ⚠️ No correr la suite QA en la laptop: `seed_qa.sql` borra usuarios id ≠ 1 y ahí
   hay cuentas reales de la organización.
 - [x] ~~**Crear la cuenta Gmail dedicada a Arca**~~ — **HECHO 2026-09-15**: `cronosarca2024@gmail.com`, dos pasos
   activos, App Password guardada en el gestor del usuario y probada (entrega real OK). Al desplegar,
   generar una nueva para el servidor y revocar la de prueba (ver *Setup*).
 - [x] ~~**Base de datos en Hostinger**~~ — **HECHO 2026-09-15** (phpMyAdmin, con los datos de la capacitación;
   ver *Estado de la BD*). ⚠️ El usuario de BD tiene ALL sobre su base (el de hPanel); no se creó uno de mínimo privilegio.
-- [ ] **Resto del despliegue**: PHP 8.3 y SSL en hPanel, subida por lista blanca, `composer install`, `.env` en
-  `../secrets/` con la App Password nueva del servidor, **activar el admin por `/chgpsswd`** (prueba a la vez la
-  salida al 587; ya no se usa `crear_admin.php`: el admin viene en la BD), `REMOTE_ADDR` real (sin CDN delante),
-  `session.save_path` propio y `verificar_htaccess.ps1 -BaseUrl https://<dominio>` en 0 FAIL.
+- [x] **Despliegue de la app — HECHO 2026-09-15** — app arriba en **https://cyan-mandrill-993924.hostingersite.com**
+  (dominio temporal). ✅ Hecho: PHP 8.3.33 (web y CLI), SSL, subida por lista blanca (`git archive` de `main`),
+  `composer install --no-dev`, `.env` en `../secrets/` (600) con la App Password **de producción**, correo por el
+  587 (`smtp_test.php` OK), admin activado por `/chgpsswd`, `verificar_htaccess.ps1` **59/0**, y **`REMOTE_ADDR` =
+  IP real** pese al CDN `hcdn` de Hostinger (no se puede apagar; verificado con `recuperacion_intentos.ip`).
+  Cierre también hecho: `mail.log` escribe fuera del docroot y sin el código, `database/` borrado del servidor
+  (script re-corrido: 59/0), App Password **de prueba revocada**, "Cerrar sesión" (POST sí, GET no) y reporte Excel
+  probados en producción. El correo no lleva enlaces ni dominio: cambiar a un dominio definitivo no lo afecta.
 
 **Entorno local**
 - [ ] **PC de escritorio:** `git pull` + `npm run env:pull` con la **passphrase nueva** (2026-09-15) — su `.env`
@@ -569,7 +575,8 @@ la confirmación del mapeo del TC, en `docs/confirmar-tc-contador.md`.
 > Revisadas el 2026-09-14: el backlog funcional (items 1-10), la auditoría de seguridad, Dependabot y la
 > decisión de PHP 8.3 ya están hechos.
 
-1. **Terminar el despliegue en Hostinger** (la BD ya está; falta la app) y cerrar la lista "Antes de desplegar".
+1. **Abrir producción a las usuarias** (desplegada el 2026-09-15): reactivación de cuentas, tipo de cambio real y
+   decisión sobre los datos de práctica (ver *Negocio y QA*).
 2. **Capacitación y validación con usuarios reales**, incluida la checklist visual del navegador.
 3. **v1.1** (ver *Diferido*): presupuesto por periodo, rollover del cierre anual, reapertura del POA y auditoría con triggers.
 4. Seguir llevando la capa de datos hacia consultas preparadas y validaciones consistentes (casi todo hecho).

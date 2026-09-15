@@ -15,11 +15,12 @@
   - [x] BD vieja eliminada: el sitio anterior y su BD ya no existen (confirmado 2026-09-15);
   - [x] inbox de Mailtrap borrado (2026-09-15).
 - [x] **Cuenta Gmail dedicada a Arca:** `cronosarca2024@gmail.com`, dos pasos activos (2026-09-15).
-- [ ] **App Password del servidor:** generar una **nueva** en esa cuenta el día del despliegue (nombre
-      `Arca servidor Hostinger`), guardarla en el gestor y **revocar la de prueba** del 2026-09-15.
-- [ ] **SSL activo** en el dominio o subdominio temporal (hPanel → SSL). El `.htaccess` fuerza HTTPS: sin
+- [x] **App Password del servidor:** generada el 2026-09-15 (`Arca Hostinger produccion`), guardada en el gestor;
+      la de prueba (`Arca servidor Hostinger`) revocada.
+- [x] **SSL activo** en el dominio o subdominio temporal (hPanel → SSL). El `.htaccess` fuerza HTTPS: sin
       certificado el sitio no abre.
-- [ ] **PHP 8.3** elegido para el sitio (hPanel → Configuración de PHP) y **SSH habilitado** (hPanel → Acceso SSH).
+- [x] **PHP 8.3** elegido para el sitio (hPanel → Configuración de PHP) y **SSH habilitado** (hPanel → Acceso SSH).
+- [x] **CDN:** en planes compartidos no se puede apagar (solo "modo desarrollo"); no afecta a la IP que ve Arca (§7).
 - [ ] Rama `main` actualizada (merge de `dev`) y suite QA en verde en local.
 
 ## 1. Estructura en el servidor
@@ -164,7 +165,10 @@ pwsh -File database\verificar_htaccess.ps1 -BaseUrl https://<dominio>
 Pide 43 rutas sensibles (todas deben dar **403/404 sin contenido**), comprueba que lo público se sirve,
 las cabeceras de seguridad (CSP, `nosniff`, `X-Frame-Options`, sin `X-Powered-By`), HSTS, la cookie
 `Secure` y que `http://` redirige a `https://`. Debe terminar en **0 FAIL**. ⚠️ Hostinger usa
-**LiteSpeed**, no Apache: el ensayo local contra XAMPP (58/58 el 2026-09-15) no sustituye esta corrida.
+**LiteSpeed**, no Apache: el ensayo local contra XAMPP no sustituye esta corrida. El 2026-09-15 dio **59/0** en
+producción. Allí `<FilesMatch>` solo bloquea archivos **existentes**: los que no se suben (`CLAUDE.md`,
+`package.json`, `hash.php`…) responden 302 → `/login` sin contenido, como cualquier ruta inexistente, y el script
+los acepta solo si la respuesta es idéntica a la de un archivo inventado.
 
 Alternativa rápida por SSH, si no tienes el equipo local a mano:
 
@@ -181,6 +185,10 @@ curl -sI $D/login | grep -iE 'content-security-policy|strict-transport|x-powered
 - **`phpinfo()` temporal** (crear, mirar y **borrar**): PHP 8.3, `session.gc_maxlifetime` = 3600,
   `session.save_path` propio de la cuenta y `REMOTE_ADDR` = tu IP real (si aparece la de un CDN, los límites
   por IP se comparten entre todos).
+- **IP real sin `phpinfo()`:** Hostinger pone su CDN (`Server: hcdn`) delante y en planes compartidos **no se puede
+  apagar** (solo "modo desarrollo"). Comprobado el 2026-09-15 que aun así `REMOTE_ADDR` trae la IP real: pedir un
+  código en `/chgpsswd` y comparar `SELECT ip FROM recuperacion_intentos ORDER BY id DESC LIMIT 1;` con
+  https://api64.ipify.org (puede ser IPv6).
 - **En el navegador:**
   - [ ] activar el admin con el código recibido;
   - [ ] login;

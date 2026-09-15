@@ -58,12 +58,29 @@ $sensibles = @(
     '/composer.json', '/composer.lock', '/package.json', '/package-lock.json', '/gulpfile.js',
     '/scripts/env.js', '/src/', '/node_modules/',
     '/iadmin.php', '/iconta.php', '/icoordi.php', '/Router.php', '/hash.php',
-    '/build/', '/build/css/'
+    '/build/', '/build/css/', '/.htaccess', '/includes/logs/.htaccess'
 )
+# Archivos que NO van en el paquete de despliegue (docs/despliegue-hostinger.md §3). En el servidor no
+# existen, y LiteSpeed (Hostinger) solo aplica <FilesMatch> a archivos existentes: uno ausente cae en el
+# front controller (302 -> /login, 0 bytes). Contra un servidor REMOTO eso se acepta solo si la respuesta
+# es idéntica a la de un archivo inventado con la misma extensión (= "no existe", sin contenido).
+# En local (repo completo presente) se sigue exigiendo 403/404: ahí un 302 fue un bug real (2026-09-15).
+$noSubidos = '^/(\.env|\.env\.example|\.gitignore|\.git/|\.claude/|secrets/|CLAUDE\.md|README\.md|docs/|database/(?!smtp_test\.php)|package(-lock)?\.json|gulpfile\.js|scripts/|src/|node_modules/|hash\.php)'
 foreach ($r in $sensibles) {
     $p = Pedir $r
     $fuga = $p.Cuerpo -match $marcasFuga
-    Assert (($p.Codigo -in 403, 404) -and -not $fuga) ("{0,-40} -> {1}{2}" -f $r, $p.Codigo, $(if ($fuga) { "  FUGA: '$($matches[0])'" } elseif ($p.Destino) { " -> $($p.Destino)" } else { '' }))
+    $detalle = $(if ($fuga) { "  FUGA: '$($matches[0])'" } elseif ($p.Destino) { " -> $($p.Destino)" } else { '' })
+    if (($p.Codigo -in 403, 404) -and -not $fuga) {
+        Assert $true ("{0,-40} -> {1}{2}" -f $r, $p.Codigo, $detalle); continue
+    }
+    if (-not $esLocal -and -not $fuga -and $r -match $noSubidos) {
+        $ext = [IO.Path]::GetExtension($r.TrimEnd('/'))
+        $testigo = Pedir "/inventado-verificacion-qa$ext"
+        if ($testigo.Codigo -eq $p.Codigo -and $testigo.Destino -eq $p.Destino -and $testigo.Cuerpo -eq $p.Cuerpo) {
+            Assert $true ("{0,-40} -> {1}  (no está en el servidor: responde igual que un archivo inexistente)" -f $r, $p.Codigo); continue
+        }
+    }
+    Assert $false ("{0,-40} -> {1}{2}" -f $r, $p.Codigo, $detalle)
 }
 
 Write-Host "`n=== 2) Lo público sigue sirviéndose ===" -ForegroundColor Cyan
