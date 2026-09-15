@@ -505,8 +505,14 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
   **borrado** (sus credenciales SMTP dejan de existir).
 - [x] ~~**Merge `dev → main`**~~ — **HECHO 2026-09-15** (fast-forward hasta `b5324c0`, con confirmación del
   usuario). Cierra las alertas de Dependabot, que solo analiza `main`. `main` es la rama que se despliega.
-- [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta: redirección a HTTPS, bloqueos y CSP del
-  `.htaccess`; y el botón "Cerrar sesión" (formulario POST vía `app.js`) en el navegador.
+- [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta — ✅ **ensayo en el Apache de XAMPP
+  (vhost :8080) el 2026-09-15: `database/verificar_htaccess.ps1` 58/58** (bloqueos 403/404 sin contenido,
+  cabeceras, HTTPS/HSTS). Corrigió los `ErrorDocument` (los bloqueos respondían 302 → /login) y quitó
+  `X-Powered-By`. ✅ Botón "Cerrar sesión" probado por el usuario en el navegador sobre :8080 (confirmado en
+  el access log: `GET /logout` → `/error` sin cerrar la sesión; `POST /logout` → `/login`; consola sin
+  errores de CSP). ⏳ Solo falta **repetir el script y el botón contra Hostinger** (LiteSpeed, no Apache),
+  que ya es parte de la checklist del despliegue. ⚠️ No correr la suite QA en la laptop: `seed_qa.sql` borra usuarios id ≠ 1 y ahí
+  hay cuentas reales de la organización.
 - [x] ~~**Crear la cuenta Gmail dedicada a Arca**~~ — **HECHO 2026-09-15**: `cronosarca2024@gmail.com`, dos pasos
   activos, App Password guardada en el gestor del usuario y probada (entrega real OK). Al desplegar,
   generar una nueva para el servidor y revocar la de prueba (ver *Setup*).

@@ -8,6 +8,10 @@
 header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+// No anunciar la versión de PHP (verificación del .htaccess, 2026-09-15): `X-Powered-By: PHP/8.x`
+// le dice a un atacante qué versión probar. `expose_php` depende del php.ini de cada servidor;
+// header_remove() funciona igual en Apache y en LiteSpeed (Hostinger).
+header_remove('X-Powered-By');
 
 // M2 — Endurecimiento de sesión y transporte (defensa en profundidad, además del .htaccess).
 $esHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')

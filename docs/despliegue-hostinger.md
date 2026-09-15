@@ -100,14 +100,27 @@ chmod 755 ~/domains/<dominio>/public_html/includes/logs
 
 ## 7. Verificación antes de dar acceso
 
+**Desde tu equipo local** (Windows, en la raíz del proyecto), el comprobador completo:
+
+```powershell
+pwsh -File database\verificar_htaccess.ps1 -BaseUrl https://<dominio>
+```
+
+Pide 43 rutas sensibles (todas deben dar **403/404 sin contenido**), comprueba que lo público se sirve,
+las cabeceras de seguridad (CSP, `nosniff`, `X-Frame-Options`, sin `X-Powered-By`), HSTS, la cookie
+`Secure` y que `http://` redirige a `https://`. Debe terminar en **0 FAIL**. ⚠️ Hostinger usa
+**LiteSpeed**, no Apache: el ensayo local contra XAMPP (58/58 el 2026-09-15) no sustituye esta corrida.
+
+Alternativa rápida por SSH, si no tienes el equipo local a mano:
+
 ```bash
 D=https://<dominio>
 for p in /.env /CLAUDE.md /docs/ /iadmin.php /Router.php /database/migrate.php \
-         /includes/logs/mail.log /.git/config /.claude/ /composer.json; do
+         /includes/logs/mail.log /.git/config /.claude/ /composer.json /secrets/.env.enc; do
   printf '%s -> ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "$D$p"
-done                                     # todos 403 o 404
+done                                     # todos 403 o 404 (un 302 = el bloqueo pasa por la app: revisar)
 curl -sI http://<dominio>/login | head -3 # 301 hacia https://
-curl -sI $D/login | grep -i content-security-policy
+curl -sI $D/login | grep -iE 'content-security-policy|strict-transport|x-powered-by'   # sin x-powered-by
 ```
 
 - **`phpinfo()` temporal** (crear, mirar y **borrar**): PHP 8.3, `session.gc_maxlifetime` = 3600,

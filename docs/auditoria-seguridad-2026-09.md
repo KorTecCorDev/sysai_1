@@ -83,9 +83,14 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
       peticiones llegan con la IP del CDN, los límites de login y de recuperación se comparten entre todos.
 - [ ] En `phpinfo()` (temporal, luego borrarlo): `session.save_path` propio de la cuenta y
       `session.gc_maxlifetime` = 3600 (lo fija `index.php`).
-- [ ] **Verificar con `curl`** que `/.env`, `/CLAUDE.md`, `/docs/`, `/iadmin.php`, `/database/migrate.php`,
-      `/includes/logs/mail.log` y `/.git/config` devuelven 403/404, y que `http://` redirige a `https://`.
-- [ ] Probar en el navegador el login, el botón "Cerrar sesión" y la descarga de un reporte.
+- [ ] **Verificar el `.htaccess` en el servidor:** `pwsh -File database\verificar_htaccess.ps1 -BaseUrl
+      https://<dominio>` desde el equipo local → 0 FAIL (43 rutas sensibles en 403/404, cabeceras, HSTS,
+      redirección a HTTPS). Ensayo contra el Apache de XAMPP hecho el 2026-09-15 (58/58), que destapó y
+      corrigió dos cosas: los `ErrorDocument` mandaban los bloqueos a la app (respondían **302 → /login**
+      en vez de 403/404) y `X-Powered-By` anunciaba la versión de PHP. Hostinger usa LiteSpeed: repetir allí.
+- [ ] Probar en el navegador el login, el botón "Cerrar sesión" y la descarga de un reporte. Ensayo en el
+      Apache de XAMPP (2026-09-15): login y "Cerrar sesión" OK con la CSP del `.htaccess` activa (consola sin
+      errores; `GET /logout` no cierra la sesión, `POST /logout` sí). Repetir en el servidor.
 
 ## 6. Cómo se verificó (para repetirlo)
 

@@ -133,11 +133,21 @@ Options -Indexes
 
     # Asegurar que PATH_INFO esté disponible para el router
     AcceptPathInfo On
-
-    # Manejo de errores personalizado
-    ErrorDocument 404 /index.php?url=404
-    ErrorDocument 403 /index.php?url=403
 </IfModule>
+
+# ----------------------------------------------------------------------
+# Respuesta de los bloqueos: 403/404 REALES, sin pasar por la app
+# ----------------------------------------------------------------------
+# Antes: `ErrorDocument 40x /index.php?url=40x`. index.php no usa `?url=` y, sin
+# sesión, redirigía al login: todo archivo bloqueado (.env, .git/config, docs/…)
+# respondía "302 → /login". No filtraba nada, pero escondía si el bloqueo
+# funcionaba y hacía fallar la verificación del despliegue (espera 403/404).
+# Un texto literal no ejecuta PHP ni revela la firma del servidor. Las rutas
+# inexistentes de la app NO llegan aquí: las atiende index.php (front controller).
+# Fuera de <IfModule mod_rewrite.c>: no depende de ese módulo (verificado
+# 2026-09-15 con database/verificar_htaccess.ps1).
+ErrorDocument 403 "403 - Acceso denegado"
+ErrorDocument 404 "404 - No encontrado"
 
 # ----------------------------------------------------------------------
 # Configuración de PHP (ajustes recomendados)
