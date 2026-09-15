@@ -496,8 +496,8 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 **Antes de desplegar**
 - [ ] **Rotar credenciales** (solo el usuario): App Password de Gmail y credenciales de la BD vieja siguen en
   el historial de git (`594f8e5` y siguientes); las de Mailtrap pasaron por un chat.
-- [ ] **Merge `dev → main`**, dejado para el final por decisión del usuario: cierra las alertas de Dependabot,
-  que solo analiza `main`.
+- [x] ~~**Merge `dev → main`**~~ — **HECHO 2026-09-15** (fast-forward hasta `b5324c0`, con confirmación del
+  usuario). Cierra las alertas de Dependabot, que solo analiza `main`. `main` es la rama que se despliega.
 - [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta: redirección a HTTPS, bloqueos y CSP del
   `.htaccess`; y el botón "Cerrar sesión" (formulario POST vía `app.js`) en el navegador.
 - [ ] **Crear la cuenta Gmail dedicada a Arca** (emisor decidido el 2026-09-14, ver *Setup*) con verificación
