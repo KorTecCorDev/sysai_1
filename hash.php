@@ -8,8 +8,10 @@
  * Uso:
  *   php hash.php "MiClave"                 → imprime el hash bcrypt de "MiClave"
  *   php hash.php "MiClave" '<hash>'        → verifica si "MiClave" coincide con <hash>
- *   php hash.php                           → hashea el set de usuarios de ejemplo
- *                                            y emite los UPDATE SQL listos para pegar
+ *
+ * ⚠️ No sirve para dar de alta contraseñas de usuarios reales: el alta genera una
+ * aleatoria que nadie conoce y cada uno activa la suya por correo (/chgpsswd). El
+ * administrador inicial se crea con database/crear_admin.php.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -34,20 +36,9 @@ if (count($args) === 1) {
     exit(0);
 }
 
-// --- Sin argumentos: set de ejemplo + UPDATE SQL ------------------------------
-// Ajusta esta lista con los usuarios/contraseñas que quieras sembrar o resetear.
-$usuarios = [
-    // email                    => contraseña en claro
-    'admin@arcoiris.pe'         => 'Arcoiris2026*',
-    // 'contador@arcoiris.pe'   => 'Contador2026*',
-    // 'coordinador@arcoiris.pe'=> 'Coord2026*',
-];
-
-echo "-- Hashes bcrypt (PASSWORD_DEFAULT) — mismo algoritmo que la app\n";
-echo "-- Genera/actualiza contraseñas ejecutando estos UPDATE en la BD `sysai`.\n\n";
-
-foreach ($usuarios as $email => $clave) {
-    $hash = password_hash($clave, PASSWORD_DEFAULT);
-    echo "-- {$email}  →  {$clave}\n";
-    echo "UPDATE usuario SET password = '{$hash}' WHERE email = '{$email}';\n\n";
-}
+// --- Sin argumentos: ayuda ------------------------------------------------------
+// Antes emitía UPDATE con una lista de correos y contraseñas en claro escrita en este
+// archivo (la del admin del seed incluida): quedaban publicadas en el repositorio.
+fwrite(STDERR, "Uso: php hash.php \"clave\"            (imprime su hash)\n"
+    . "     php hash.php \"clave\" '<hash>'   (verifica si coinciden)\n");
+exit(2);

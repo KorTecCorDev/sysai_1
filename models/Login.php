@@ -16,9 +16,12 @@ class Login extends ActiveRecord
     // Parámetros de la recuperación de contraseña (bug A3).
     const RECUP_TOKEN_TTL    = 1800; // vigencia del código de recuperación: 30 min
     const RECUP_VENTANA      = 900;  // ventana del rate-limit de recuperación: 15 min
-    const RECUP_MAX_IP       = 5;    // máx. solicitudes de token por IP en la ventana
+    // Límites por IP holgados a propósito (2026-09-14): en producción toda la oficina sale
+    // por UNA IP pública, y con 5 el sexto usuario que activaba su cuenta quedaba bloqueado.
+    // Con 16^10 ≈ 10^12 códigos posibles, 30 intentos cada 15 min no hacen viable la fuerza bruta.
+    const RECUP_MAX_IP       = 30;   // máx. solicitudes de token por IP en la ventana
     const RECUP_COOLDOWN     = 120;  // no reenviar token al mismo email antes de 2 min
-    const RECUP_MAX_VERIFY   = 5;    // máx. verificaciones de código por IP en la ventana
+    const RECUP_MAX_VERIFY   = 30;   // máx. verificaciones de código por IP en la ventana
 
     public $id;
     public $cargo_id;
@@ -38,7 +41,8 @@ class Login extends ActiveRecord
         $this->id = $args['id'] ?? null;
         $this->cargo_id = $args['cargo_id'] ?? null;
         $this->poa_id = $args['poa_id'] ?? null;
-        $this->email = $args['email'] ?? '';
+        // Sin espacios alrededor: un correo pegado con un espacio no encontraba la cuenta.
+        $this->email = trim((string) ($args['email'] ?? ''));
         $this->password = $args['password'] ?? '';
         $this->reset_token = $args['reset_token'] ?? null;
         $this->datos = $args['datos'] ?? '';
@@ -50,6 +54,8 @@ class Login extends ActiveRecord
 
     // Longitud mínima de una contraseña nueva (política de fuerza del cambio).
     const PSSWD_MIN_LEN = 8;
+    // Límite de bcrypt (PASSWORD_DEFAULT): a partir de aquí trunca sin avisar.
+    const PSSWD_MAX_BYTES = 72;
 
     public function getSessionKey($type){
         return "login_{$type}";
@@ -70,7 +76,9 @@ class Login extends ActiveRecord
     }
     public function validarErroresCambioPswd()
     {
-        if (!$this->email) {
+        // Se valida el FORMATO, no la existencia: el mensaje es el mismo para cualquiera
+        // y no permite averiguar qué correos están registrados (A5).
+        if (!$this->email || !filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
             self::$errores[] = "Ingrese su correo electrónico válido";
         }
         return self::$errores;
@@ -88,6 +96,10 @@ class Login extends ActiveRecord
             self::$errores[] = "Debe ingresar una nueva contraseña";
         } elseif (strlen($this->password) < self::PSSWD_MIN_LEN) {
             self::$errores[] = "La contraseña debe tener al menos " . self::PSSWD_MIN_LEN . " caracteres";
+        } elseif (strlen($this->password) > self::PSSWD_MAX_BYTES) {
+            // bcrypt ignora EN SILENCIO todo lo que pase de 72 bytes: dos claves distintas
+            // con el mismo inicio serían la misma. Mejor decirlo que aceptarla a medias.
+            self::$errores[] = "La contraseña es demasiado larga (máximo " . self::PSSWD_MAX_BYTES . " bytes)";
         }
         if ($this->password !== $this->password_confirm) {
             self::$errores[] = "Las contraseñas no coinciden";
@@ -196,12 +208,6 @@ class Login extends ActiveRecord
     }
     //Funciones para cambiar el password mediante envío de email
 
-    public function buscarporEmail($email)
-    {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE email = ?";
-        return self::consultarPreparado($query, 's', [$email]);
-    }
-
     // Guarda el token (ya hasheado por quien llama) y fija su expiración.
     // RECUP_TOKEN_TTL es constante del código → se interpola como int (no SQLi).
     public function guardarToken()
@@ -211,17 +217,16 @@ class Login extends ActiveRecord
         return self::ejecutarPreparado($query, 'si', [$this->reset_token, $this->id]);
     }
 
-    public function validarToken($token)
+    // Invalida el código en cuanto se verifica (2026-09-14). Antes seguía vigente hasta
+    // cambiar la contraseña: el mismo código podía canjearse en otra sesión. Desde aquí,
+    // la prueba de identidad vive solo en la sesión que lo verificó.
+    public static function consumirToken(int $id): bool
     {
-        $query = "SELECT " . self::$tbstring . " FROM usuario WHERE reset_token = ?";
-        return self::consultarPreparado($query, 's', [$token]);
-    }
-
-    public function actualizarPassword($email, $password)
-    {
-        // El password recibido debe venir ya hasheado por quien llama.
-        $query = "UPDATE usuario SET password = ?, reset_token = NULL WHERE email = ?";
-        return self::ejecutarPreparado($query, 'ss', [$password, $email]);
+        return self::ejecutarPreparado(
+            "UPDATE usuario SET reset_token = NULL, reset_token_expira = NULL WHERE id = ?",
+            'i',
+            [$id]
+        );
     }
 
     // ------------------------------------------------------------------------
@@ -289,25 +294,15 @@ class Login extends ActiveRecord
         );
     }
 
-    public function devolverPersona()
-    {
-        $query = "SELECT * FROM persona WHERE id = ?";
-        $resultado = self::consultarPreparado($query, 'i', [$this->persona_id]);
-        return array_shift($resultado);
-    }
-
-    public function findUserxEmail(): object
-    {
-        $query = "SELECT persona_id FROM usuario WHERE email = ?";
-        $resultado = self::consultarPreparado($query, 's', [$this->email]);
-        return array_shift($resultado);
-    }
-
     public function tknvrfy()
     {
         // El usuario ingresa el código en claro; en BD se guarda su hash sha256.
         // Solo es válido si no ha expirado (reset_token_expira > NOW()).
-        $hash = hash('sha256', (string) $this->reset_token);
+        // El código es hexadecimal en minúsculas: se normaliza lo tecleado porque el móvil
+        // pone la primera letra en mayúscula y al pegar desde el correo se cuelan espacios,
+        // y cualquiera de las dos cosas cambiaba el hash y rechazaba un código correcto.
+        $codigo = strtolower(preg_replace('/\s+/', '', (string) $this->reset_token));
+        $hash = hash('sha256', $codigo);
         $query = "SELECT id, email, password, reset_token, persona_id FROM usuario WHERE reset_token = ? AND reset_token_expira > NOW()";
         $resultado = self::consultarPreparado($query, 's', [$hash]);
         $obj = array_shift($resultado);
@@ -322,7 +317,15 @@ class Login extends ActiveRecord
         // Al cambiar la contraseña invalidamos el token y su expiración (un solo uso).
         $hash = password_hash($newpssw, PASSWORD_DEFAULT);
         $query = "UPDATE usuario SET password = ?, reset_token = NULL, reset_token_expira = NULL WHERE id = ?";
-        return self::ejecutarPreparado($query, 'si', [$hash, $this->id]);
+        if (!self::ejecutarPreparado($query, 'si', [$hash, $this->id])) {
+            return false;
+        }
+        // Quien acaba de recuperar su cuenta no debe seguir bloqueado por los fallos que
+        // lo llevaron a recuperarla (o por los que otro acumuló contra su correo).
+        if ($this->email !== '') {
+            self::ejecutarPreparado("DELETE FROM login_intentos WHERE email = ?", 's', [$this->email]);
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------------

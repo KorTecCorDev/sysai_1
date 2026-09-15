@@ -54,8 +54,16 @@ DELETE FROM usuario  WHERE id <> 1;   -- conserva el admin
 DELETE FROM persona  WHERE id <> 1;   -- conserva la persona del admin
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- Admin id=1 de DESARROLLO, solo si falta: seed.sql ya no siembra ninguno (2026-09-14).
+-- Sin contraseña utilizable (el valor no es un hash bcrypt): se activa por /chgpsswd.
+-- INSERT IGNORE → en una BD que ya tiene su admin id=1 no cambia nada.
+INSERT IGNORE INTO persona (id, nro_documento, apellido_paterno, apellido_materno, nombres, telefono, fecha) VALUES
+  (1, 99999999, 'ADMINISTRADOR', 'DESARROLLO', 'ADMIN', NULL, NOW());
+INSERT IGNORE INTO usuario (id, persona_id, cargo_id, email, password, fecha) VALUES
+  (1, 1, 1, 'admin@sysai.test', '!sin-clave: activar por /chgpsswd (solo desarrollo)', NOW());
+
 -- ---------------------------------------------------------------------------
--- 1) PERSONAS y USUARIOS (Contador + 2 Coordinadores)   [admin = id 1 ya existe]
+-- 1) PERSONAS y USUARIOS (Contador + 2 Coordinadores)   [admin = id 1]
 --    Contraseñas (bcrypt PASSWORD_DEFAULT):
 --      contador@arcoiris.pe                -> Contador2026*
 --      coordinador.comunidad@arcoiris.pe   -> Comunidad2026*

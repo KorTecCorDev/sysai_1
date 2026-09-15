@@ -20,9 +20,9 @@
 --      cross-tenant hace GET /poa_indicadores/revisar?id=1 y espera 403).
 --    · SIN poa/poa_indicadores del programa 1 del año en curso.
 --
---  Requisitos previos: schema_baseline.sql + migraciones (001-024) + seed.sql
---  (catálogos + admin id=1). Es RE-EJECUTABLE: limpia datos previos (demo o QA),
---  preserva el admin id=1, y reinstala el fixture. Modo mutuamente excluyente con
+--  Requisitos previos: schema_baseline.sql + migraciones + seed.sql (catálogos).
+--  Es RE-EJECUTABLE: limpia datos previos (demo o QA), preserva el admin id=1 (o lo
+--  crea sin contraseña si falta), y reinstala el fixture. Modo mutuamente excluyente con
 --  seed_demo.sql sobre la misma BD `sysai`. SOLO para desarrollo/QA.
 --
 --  Contraseñas (bcrypt PASSWORD_BCRYPT). Para regenerar un hash:
@@ -57,8 +57,16 @@ DELETE FROM usuario  WHERE id <> 1;   -- conserva el admin
 DELETE FROM persona  WHERE id <> 1;   -- conserva la persona del admin
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- Admin id=1 de DESARROLLO, solo si falta: seed.sql ya no siembra ninguno (2026-09-14) y
+-- el fixture lo referencia (tipo_cambio.usuario_id). Sin contraseña utilizable (el valor
+-- no es un hash bcrypt). INSERT IGNORE → en una BD que ya tiene su admin no cambia nada.
+INSERT IGNORE INTO persona (id, nro_documento, apellido_paterno, apellido_materno, nombres, telefono, fecha) VALUES
+  (1, 99999999, 'ADMINISTRADOR', 'DESARROLLO', 'ADMIN', NULL, NOW());
+INSERT IGNORE INTO usuario (id, persona_id, cargo_id, email, password, fecha) VALUES
+  (1, 1, 1, 'admin@sysai.test', '!sin-clave: activar por /chgpsswd (solo desarrollo)', NOW());
+
 -- ---------------------------------------------------------------------------
--- 1) PERSONAS y USUARIOS de QA   [admin = id 1 ya existe por seed.sql]
+-- 1) PERSONAS y USUARIOS de QA   [admin = id 1]
 --    Contraseñas: contador -> admin1234 ; coordinadores -> Test1234*
 -- ---------------------------------------------------------------------------
 INSERT INTO persona (id, nro_documento, apellido_paterno, apellido_materno, nombres, telefono, fecha) VALUES

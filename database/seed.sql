@@ -1,13 +1,15 @@
 -- =============================================================================
 -- SysAI · Arco Iris — Seed de despliegue desde cero
 -- =============================================================================
--- Datos de catálogo (reference data) + usuario administrador inicial.
+-- Datos de catálogo (reference data). SIN usuarios: el administrador inicial se
+-- crea con database/crear_admin.php (2026-09-14).
 -- NO contiene datos transaccionales (programas, POAs, rendiciones, OIE).
 --
 -- Orden de despliegue desde cero (ver database/README.md):
 --   1) schema_baseline.sql   (estructura, sin datos)
---   2) php database/migrate.php  (migraciones 001-024)
+--   2) php database/migrate.php  (migraciones pendientes)
 --   3) database/seed.sql     (este archivo)
+--   4) php database/crear_admin.php --email <correo real> ... --probar-correo
 --
 -- Idempotente: todo va con INSERT IGNORE (claves UNIQUE) → re-ejecutar es seguro.
 -- El catálogo tipo_comprobante refleja el estado FINAL (TCM002 = "Boleta de
@@ -84,20 +86,12 @@ INSERT IGNORE INTO `categoria_rubro` (`id`, `subcategoria_rubro_id`, `codigo`, `
   (10, 2, 'CAT010', 'Administración del proyecto', 'Servicios y otros',               NOW());
 
 -- ---------------------------------------------------------------------------
--- Usuario administrador inicial (bootstrap)
+-- Administrador inicial: YA NO se siembra aquí (2026-09-14)
 -- ---------------------------------------------------------------------------
--- ⚠️ Credenciales TEMPORALES — cambiar en el primer acceso.
---   email:    admin@arcoiris.pe
---   password: Arcoiris2026*   (hash bcrypt embebido abajo)
--- El hash corresponde a 'Arcoiris2026*'. Para regenerarlo:
---   php -r "echo password_hash('NUEVA', PASSWORD_BCRYPT);"
-INSERT IGNORE INTO `persona`
-  (`id`, `nro_documento`, `apellido_paterno`, `apellido_materno`, `nombres`, `telefono`, `fecha`) VALUES
-  (1, 99999999, 'ADMINISTRADOR', 'SISTEMA', 'ADMIN', NULL, NOW());
-
--- Nota: `usuario` YA NO tiene columna `descripcion` (código de usuario retirado en
--- la migración 024 — el login es por email). No la insertamos.
-INSERT IGNORE INTO `usuario`
-  (`id`, `persona_id`, `cargo_id`, `email`, `password`, `fecha`) VALUES
-  (1, 1, 1, 'admin@arcoiris.pe',
-   '$2y$10$o2eDTocv2MTDD/DdXGFb9.9vjLxMXdGvjZ.zF.1P.PSS7xSTMrEEm', NOW());
+-- Antes se insertaba admin@arcoiris.pe con una contraseña escrita en este archivo:
+-- quedaba publicada en el repositorio y ese buzón no existe, así que el admin no podía
+-- activar su cuenta por correo. Ahora:
+--   php database/crear_admin.php --email <correo real> --nombres "..." \
+--       --apellido-paterno "..." --dni <numero> --probar-correo
+-- que crea el admin con contraseña aleatoria oculta y le envía el código de activación.
+-- Los fixtures de desarrollo (seed_demo.sql, seed_qa.sql) crean su propio admin id=1.

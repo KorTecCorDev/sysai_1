@@ -155,7 +155,7 @@ Options -Indexes
     php_value max_input_time 60
 
     # Configuración de sesiones
-    php_value session.gc_maxlifetime 1440
+    php_value session.gc_maxlifetime 3600
     php_value session.cookie_lifetime 0
     php_value session.cookie_httponly 1
     php_value session.cookie_secure 1

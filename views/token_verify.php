@@ -23,8 +23,8 @@
                     <div class="auth-input">
                         <i class="bi bi-key" aria-hidden="true"></i>
                         <input type="text" class="form-control auth-code" name="reset_token" id="reset_token"
-                               placeholder="Ej. A1B2C3D4E5" autocomplete="one-time-code"
-                               inputmode="latin" spellcheck="false" required autofocus>
+                               placeholder="Ej. 3f9a0c1b7e" autocomplete="one-time-code" maxlength="16"
+                               autocapitalize="off" autocorrect="off" spellcheck="false" required autofocus>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary auth-submit">Verificar</button>

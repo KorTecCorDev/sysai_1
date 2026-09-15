@@ -2,16 +2,8 @@
 
 namespace Controllers;
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-
-
 use MVC\Router;
 use Model\Login;
-use Model\Persona;
-use Model\Usuario;
-use PHPMailer\PHPMailer\PHPMailer;
-use Exception;
 
 class LoginController
 {
@@ -216,6 +208,8 @@ class LoginController
                     // La identidad del usuario que superó el token se guarda en la SESIÓN
                     // (prueba de un solo uso), NO en la URL: /updtepsswd ya no confía en
                     // ningún ?id, cerrando el IDOR que permitía resetear cuentas ajenas.
+                    // El código se gasta aquí: no puede canjearse otra vez en otra sesión.
+                    Login::consumirToken((int) $usuario->id);
                     session_regenerate_id(true); // anti-fijación de sesión
                     $_SESSION['pwd_reset_uid'] = $usuario->id;
                     $_SESSION['pwd_reset_ts']  = time();
@@ -257,7 +251,11 @@ class LoginController
                 $oldusu = Login::find($uid);
                 if ($oldusu && $oldusu->updatePsswrdUser($newusu->password)) {
                     // Prueba de un solo uso: se consume al cambiar la contraseña.
-                    unset($_SESSION['pwd_reset_uid'], $_SESSION['pwd_reset_ts']);
+                    // Se vacía la sesión entera, no solo la prueba: si el usuario tenía la
+                    // sesión iniciada, su huella ya no coincide y Router lo mandaría a
+                    // "tu sesión se cerró porque cambiaron tus datos" en vez de al aviso de éxito.
+                    $_SESSION = [];
+                    session_regenerate_id(true);
                     header('Location: /login?resultado=cambio');
                     exit();
                 }

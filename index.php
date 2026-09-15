@@ -33,6 +33,11 @@ if ($esHttps) {
 // dentro de <IfModule mod_php.c>, inerte en Hostinger (auditoría 2026-09-14, M5).
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');
+// Vida de los datos de sesión en el servidor. El valor por defecto de PHP es 1440 s (24 min):
+// menos que la inactividad permitida (30 min) y que la vigencia del código de recuperación
+// (30 min), así que en Hostinger —donde el php_value del .htaccess es inerte— la sesión podía
+// purgarse a mitad del cambio de contraseña y el formulario respondía 403 por CSRF.
+ini_set('session.gc_maxlifetime', '3600');
 
 session_start();
 
