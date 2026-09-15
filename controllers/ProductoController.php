@@ -1,0 +1,157 @@
+<?php
+
+namespace Controllers;
+
+use MVC\Router;
+
+use Model\Producto;
+use Model\Programa;
+use Model\Resultado;
+
+class ProductoController
+{
+    public static function index(Router $router)
+    {
+        $respt = validarORedireccionarDosParametros("resultado/admin", "resultado_id", "resultado");
+
+        if (is_array($respt)) {
+            $productos = Producto::findxatributo("resultado_id", $respt[0]);
+            $resultado = $respt[1] ?? null;
+            $resultadoid = $respt[0];
+            $objresultado = Resultado::find($resultadoid);
+            $programaid = $objresultado->programa_id;
+        } else {
+            $productos = Producto::findxatributo("resultado_id", $respt);
+            $resultado = null;
+            $resultadoid = $respt ?? null;
+            if ($respt) {
+                $objresultado = Resultado::find($resultadoid);
+                $programaid = $objresultado->programa_id;
+            }
+        }
+        // A1: el coordinador solo lista productos de un resultado de SU programa
+        // (antes bastaba cambiar ?resultado_id= para leer los de otro programa).
+        exigirProgramaPropioPorResultado($resultadoid);
+        $router->render('producto/admin', [
+            'productos' => $productos,
+            'resultado' => $resultado,
+            'programaid' => $programaid,
+            'resultadoid' => $resultadoid,
+            'objresultado' => $objresultado
+        ]);
+    }
+    public static function crear(Router $router)
+    {
+        $errores = Producto::getErrores();
+        $resultadoid = validarId('resultado');
+        // A1: el coordinador solo puede crear productos bajo un resultado de SU programa.
+        exigirProgramaPropioPorResultado($resultadoid);
+        // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+        exigirPoaIndicadoresEditable(programaIdPorResultado($resultadoid));
+        $producto = new Producto();
+        $resultado = $_GET['resultado'] ?? null;
+        if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $producto = new Producto($_POST);
+            $producto->agregarIdtoObjeto($resultadoid, 'resultado_id');
+            $producto->validar();
+            $errores = Producto::getErrores();
+            if (empty($errores)) {
+                //El código se autogenera (jerárquico "<resultado>.<n>"); el usuario no lo teclea.
+                $producto->codigo = Producto::siguienteCodigo((int) $resultadoid);
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Producto::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $producto->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
+
+                header("Location: /producto/admin?resultado_id=" . $resultadoid);
+                exit();
+            } else {
+                $errores = Producto::getErrores();
+            }
+        }
+        $router->render('producto/crear', [
+            'producto' => $producto,
+            'errores' => $errores,
+            'resultadoid' => $resultadoid,
+            'resultado' => $resultado
+        ]);
+    }
+
+    public static function actualizar(Router $router)
+    {
+        //Validamos el id recepcionado en el GET, si es que no tiene el id se redirecciona la URL del parámetro
+        $id = validarORedireccionarDosParametros("resultado/admin", "id", "resultado_id");
+        //Encontramos al resultado por el ID
+        if (is_array($id)) {
+            $resultado = Resultado::find($id[1]);
+            $producto = Producto::find($id[0]);
+            if (!$producto) { header('Location: /resultado/admin'); exit(); }
+            // A1: el producto debe colgar de un resultado de SU programa.
+            exigirProgramaPropioPorResultado($producto->resultado_id);
+            // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+            exigirPoaIndicadoresEditable(programaIdPorResultado($producto->resultado_id));
+            $errores = Producto::getErrores();
+        }
+        if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $resultadoOriginal = $producto->resultado_id;
+            $argsproducto = $_POST;
+            $producto->sincronizar($argsproducto);
+            // A2: el resultado padre no se reasigna vía POST.
+            $producto->resultado_id = $resultadoOriginal;
+            $errores = $producto->validar();
+            if (empty($errores)) {
+                //Insertando la acción de audi para el usuario actual
+                //Enviamos el codigo de usuario a la base de datos
+                $vali = Producto::setUsuarioActual();
+                //Si es true...
+                //Guardando en la base de datos
+                if ($vali) {
+                    $resultado = $producto->guardarsinRedireccion();
+                } else {
+                    $errores[] = "Error al asignar el usuario actual.";
+                }
+                header("Location: /producto/admin?resultado_id=" . $resultado->id . "&resultado=2");
+                exit();
+            }
+        }
+        $router->render('producto/actualizar', [
+            'errores' => $errores,
+            'producto' => $producto
+        ]);
+    }
+
+    public static function eliminar(Router $router)
+    {
+        if ($_SERVER["REQUEST_METHOD"] === 'POST') {
+            $id = validarORedireccionarPost("resultado/admin");
+            $producto = Producto::find($id);
+            if (!$producto) { header('Location: /resultado/admin'); exit(); }
+            // A1: solo puede eliminar productos de un resultado de SU programa.
+            exigirProgramaPropioPorResultado($producto->resultado_id);
+            // Bloqueo de jerarquía si el POA de Indicadores ya fue enviado/aprobado.
+            exigirPoaIndicadoresEditable(programaIdPorResultado($producto->resultado_id));
+            //Insertando la acción de audi para el usuario actual
+            //Enviamos el codigo de usuario a la base de datos
+            $vali = Producto::setUsuarioActual();
+            //Si es true...
+            //Guardando en la base de datos
+            if ($vali) {
+                $resultado = $producto->eliminarsinRedireccion();
+            } else {
+                $errores[] = "Error al asignar el usuario actual.";
+            }
+            $resultado = 3;
+            header("Location: /producto/admin?resultado_id=" . $id['resultado_id'] . "&resultado=" . $resultado);
+            exit();
+            $router->render('producto/eliminar', [
+                'resultado' => $resultado
+            ]);
+        }
+    }
+}

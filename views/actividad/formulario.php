@@ -1,0 +1,23 @@
+<fieldset>
+    <legend>Actividad</legend>
+    <?php // El código lo asigna el sistema al crear; solo se muestra al EDITAR
+          // (en creación era un campo gris vacío: puro ruido). ?>
+    <?php if (!empty($actividad->codigo)) : ?>
+    <div class="mb-3 w-25">
+        <label for="codigo" class="form-label">Código</label>
+        <input type="text" class="form-control bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
+               value="<?php echo s($actividad->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+        <div class="form-text">Se genera automáticamente (p. ej. 1.1.2).</div>
+    </div>
+    <?php endif; ?>
+    <div class="mb-3 w-auto">
+        <label for="nombre" class="form-label">Nombre</label>
+        <input type="text" class="form-control" id="nombre" aria-describedby="nombreHelp" name="nombre" value="<?php echo s($actividad->nombre); ?>">
+        <div class="form-text">Ingrese el nombre que recibirá la Actividad</div>
+    </div>
+    <div class="mb-3 w-auto">
+        <label for="descripcion" class="form-label">Descripción</label>
+        <input type="text" class="form-control" id="descripcion" aria-describedby="descripcionHelp" name="descripcion" value="<?php echo s($actividad->descripcion); ?>">
+        <div class="form-text">Ingrese la descripción para la Actividad</div>
+    </div>
+</fieldset>

@@ -1,0 +1,222 @@
+<?php
+
+namespace Model;
+
+class DetalleFinanciamiento extends ActiveRecord
+{
+    //Declarando variables
+    protected static $tabla = 'detalle_financiamiento';
+    protected static $columnasDB = ['id', 'programa_id', 'fuente_financiamiento_id', 'monto_asignado', 'fecha'];
+
+    public $id;
+    public $programa_id;
+    public $fuente_financiamiento_id;
+    public $monto_asignado;   // "sobre": monto de la fuente reservado para el programa
+    public $fecha;
+
+
+    public function __construct($args = [])
+    {
+        $this->id = $args['id'] ?? null;
+        $this->programa_id = $args['programa_id'] ?? '';
+        $this->fuente_financiamiento_id = $args['fuente_financiamiento_id'] ?? '';
+        $this->monto_asignado = $args['monto_asignado'] ?? 0;
+        $this->fecha = date('Y/m/d H:i:s');
+    }
+
+    public function validar()
+    {
+        // Normalización única de dinero (plan de montos, Fase 0). El tope de negocio
+        // real es la capacidad asignable de la fuente (validarLimiteAsignacion).
+        $this->monto_asignado = montoNumerico($this->monto_asignado);
+        if (!$this->programa_id) {
+            self::$errores[] = 'Debes seleccionar un programa válido';
+        }
+        if (!$this->fuente_financiamiento_id) {
+            self::$errores[] = 'Debes seleccionar una fuente de financiamiento válida';
+        }
+        if ($this->monto_asignado === null || $this->monto_asignado <= 0) {
+            self::$errores[] = 'Debes ingresar un monto a asignar (sobre) válido (solo números, mayor a 0)';
+        } elseif ($this->monto_asignado > MONTO_MAXIMO) {
+            self::$errores[] = 'El monto asignado excede el tope permitido (S/. '
+                . number_format(MONTO_MAXIMO, 2, '.', ',') . ')';
+        }
+        return self::$errores;
+    }
+
+    /**
+     * Saldo del "sobre" (programa, fuente): la capacidad disponible para gasto.
+     *   capacidad  = monto_asignado + Σ ingresos OIE dirigidos a este sobre
+     *   ejecutado  = Σ rendiciones del sobre (todos los estados) + Σ egresos OIE del sobre
+     *   disponible = capacidad − ejecutado
+     * ("ejecutado", no "comprometido": esa palabra queda reservada al nivel de FUENTE,
+     *  donde significa Σ de los sobres asignados — decisión 2026-07-15.)
+     * Las rendiciones se derivan por la cadena rubro → actividad → producto → resultado
+     * → programa; la fuente por ff_id. Permite excluir una rendición o un OIE (en edición)
+     * para no contarlos dos veces. Devuelve el desglose para construir mensajes claros.
+     *
+     * @return array{asignado:float, ingresos:float, egresos:float, rendiciones:float, disponible:float}
+     */
+    public static function saldoSobre(int $programaId, int $ffId, ?int $excluirRendicionId = null, ?int $excluirOieId = null): array
+    {
+        // 1) Monto asignado al sobre (0 si el vínculo no existe).
+        $asignado = 0.0;
+        if ($stmt = self::$db->prepare(
+            "SELECT COALESCE(monto_asignado, 0) AS m FROM " . static::$tabla
+            . " WHERE programa_id = ? AND fuente_financiamiento_id = ? LIMIT 1"
+        )) {
+            $stmt->bind_param('ii', $programaId, $ffId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $asignado = (float) ($row['m'] ?? 0);
+            $stmt->close();
+        }
+
+        // 2) Rendiciones imputadas al sobre (todos los estados comprometen el sobre).
+        $rendiciones = 0.0;
+        $sql = "SELECT COALESCE(SUM(r.monto), 0) AS total
+                FROM rendicion r
+                JOIN rubro ru ON ru.id = r.rubro_id
+                JOIN actividad a ON a.id = ru.actividad_id
+                JOIN producto p ON p.id = a.producto_id
+                JOIN resultado re ON re.id = p.resultado_id
+                WHERE re.programa_id = ? AND r.ff_id = ?"
+             . ($excluirRendicionId ? " AND r.id <> ?" : "");
+        if ($stmt = self::$db->prepare($sql)) {
+            if ($excluirRendicionId) {
+                $ex = (int) $excluirRendicionId;
+                $stmt->bind_param('iii', $programaId, $ffId, $ex);
+            } else {
+                $stmt->bind_param('ii', $programaId, $ffId);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $rendiciones = (float) ($row['total'] ?? 0);
+            $stmt->close();
+        }
+
+        // 3) OIE dirigidos a este sobre: ingresos (tipo 1) suman, egresos (tipo 2) restan.
+        $ingresos = 0.0;
+        $egresos  = 0.0;
+        $sqlOie = "SELECT oie.oie_tipo_id AS tipo, COALESCE(SUM(oc.monto), 0) AS total
+             FROM otros_ingresos_egresos oie
+             JOIN oie_comprobante oc ON oc.id = oie.oie_comprobante_id
+             WHERE oie.programa_id = ? AND oie.ff_id = ?"
+             . ($excluirOieId ? " AND oie.id <> ?" : "")
+             . " GROUP BY oie.oie_tipo_id";
+        if ($stmt = self::$db->prepare($sqlOie)) {
+            if ($excluirOieId) {
+                $exOie = (int) $excluirOieId;
+                $stmt->bind_param('iii', $programaId, $ffId, $exOie);
+            } else {
+                $stmt->bind_param('ii', $programaId, $ffId);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($res && $row = $res->fetch_assoc()) {
+                if ((int) $row['tipo'] === 1) {
+                    $ingresos = (float) $row['total'];
+                } elseif ((int) $row['tipo'] === 2) {
+                    $egresos = (float) $row['total'];
+                }
+            }
+            $stmt->close();
+        }
+
+        $disponible = $asignado + $ingresos - $egresos - $rendiciones;
+        return [
+            'asignado'    => $asignado,
+            'ingresos'    => $ingresos,
+            'egresos'     => $egresos,
+            'rendiciones' => $rendiciones,
+            'disponible'  => $disponible,
+        ];
+    }
+
+    /**
+     * El sobre (programa, fuente) como objeto, o null si el vínculo no existe.
+     * (El par tiene UNIQUE uq_programa_fuente — migr. 020.)
+     */
+    public static function porPar(int $programaId, int $ffId): ?DetalleFinanciamiento
+    {
+        $filas = self::consultarPreparado(
+            "SELECT * FROM " . static::$tabla
+            . " WHERE programa_id = ? AND fuente_financiamiento_id = ? LIMIT 1",
+            'ii',
+            [$programaId, $ffId]
+        );
+        return $filas[0] ?? null;
+    }
+
+    /**
+     * ¿Existe el vínculo (sobre) programa↔fuente? Los OIE dirigidos a un programa
+     * solo pueden usar fuentes vinculadas a él (igual que las rendiciones).
+     */
+    public static function existeVinculo(int $programaId, int $ffId): bool
+    {
+        $filas = self::consultarPreparado(
+            "SELECT id FROM " . static::$tabla
+            . " WHERE programa_id = ? AND fuente_financiamiento_id = ? LIMIT 1",
+            'ii',
+            [$programaId, $ffId]
+        );
+        return !empty($filas);
+    }
+
+    /**
+     * Valida que la suma de los sobres de una fuente (incluido el nuevo monto que se
+     * intenta asignar) no exceda la CAPACIDAD ASIGNABLE de la fuente (migr. 027,
+     * plan de montos §2.4): Σ monto_asignado ≤ presupuesto + ingresos OIE sin
+     * programa (los dirigidos a un sobre no amplían la capacidad: ya son asignación).
+     * Agrega el error a self::$errores; devuelve true si está OK.
+     */
+    public static function validarLimiteAsignacion(int $ffId, float $montoAsignado, ?int $excluirId = null): bool
+    {
+        // Base asignable: presupuesto inicial + ingresos al total de la fuente (NULL).
+        $base = 0.0;
+        $sqlBase = "SELECT ff.presupuesto
+                         + COALESCE((SELECT SUM(oc.monto)
+                                     FROM otros_ingresos_egresos oie
+                                     JOIN oie_comprobante oc ON oc.id = oie.oie_comprobante_id
+                                     WHERE oie.ff_id = ff.id AND oie.oie_tipo_id = 1
+                                       AND oie.programa_id IS NULL), 0) AS base
+                    FROM fuente_financiamiento ff WHERE ff.id = ? LIMIT 1";
+        if ($stmt = self::$db->prepare($sqlBase)) {
+            $stmt->bind_param('i', $ffId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $base = (float) ($row['base'] ?? 0);
+            $stmt->close();
+        }
+
+        // Σ de los OTROS sobres de la fuente (excluyendo el vínculo en edición).
+        $otros = 0.0;
+        $sql = "SELECT COALESCE(SUM(monto_asignado), 0) AS total FROM " . static::$tabla
+             . " WHERE fuente_financiamiento_id = ?" . ($excluirId ? " AND id <> ?" : "");
+        if ($stmt = self::$db->prepare($sql)) {
+            if ($excluirId) {
+                $ex = (int) $excluirId;
+                $stmt->bind_param('ii', $ffId, $ex);
+            } else {
+                $stmt->bind_param('i', $ffId);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $otros = (float) ($row['total'] ?? 0);
+            $stmt->close();
+        }
+
+        if ($otros + $montoAsignado > $base + 0.001) {
+            $disponible = max(0, $base - $otros);
+            self::$errores[] = 'El monto asignado excede la capacidad asignable de la fuente. '
+                . 'Disponible para asignar: S/. ' . number_format($disponible, 2, '.', ',')
+                . ' (capacidad asignable de la fuente S/. ' . number_format($base, 2, '.', ',') . ').';
+            return false;
+        }
+        return true;
+    }
+}

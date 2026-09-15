@@ -1,0 +1,36 @@
+<fieldset>
+    <?php // El código lo asigna el sistema al crear; solo se muestra al EDITAR
+          // (en creación era un campo gris vacío: puro ruido). ?>
+    <?php if (!empty($categoria_rubro->codigo)) : ?>
+    <div class="mb-3 w-25">
+    <label for="codigo" class="form-label">Código</label>
+    <input type="text" class="form-control shadow-sm bg-body-secondary" id="codigo" aria-describedby="codigoHelp"
+           value="<?php echo s($categoria_rubro->codigo); ?>" placeholder="Se asignará automáticamente" readonly>
+    <div id="codigoHelp" class="form-text">Se genera automáticamente (p. ej. CAT001).</div>
+    </div>
+    <?php endif; ?>
+
+    <div class="mb-3 w-auto">
+    <label for="nombre" class="form-label">Nombre</label>
+    <input type="text" class="form-control shadow-sm" id="nombre" aria-describedby="nombreHelp" name="categoria_rubro[nombre]" value="<?php echo s($categoria_rubro->nombre); ?>">
+    <div id="nombreHelp" class="form-text">Ingrese el nombre que recibirá la categoría de rubro</div>
+    </div>
+
+    <div class="mb-3 w-auto">
+    <label for="descripcion" class="form-label">Descripción</label>
+    <textarea type="text" class="form-control shadow-sm" id="descripcion" aria-describedby="descripcionHelp" name="categoria_rubro[descripcion]"><?php echo s($categoria_rubro->descripcion); ?></textarea>
+    <div id="descripcionHelp" class="form-text">Ingrese la descripción que recibirá la categoría de rubro</div>
+    </div>
+
+    <div class="mb-3 w-auto">
+    <label for="subcategoria_rubro" class="form-label">Sub Categoría de Rubro</label>
+    <select class="form-select shadow-sm" name="categoria_rubro[subcategoria_rubro_id]" id="subcategoria_rubro_id" aria-describedby="subcategoria_rubroHelp">
+        <option value="" selected>--Seleccione--</option>
+        <?php
+        foreach ($subcategorias_rubro as $subcategoria_rubro) { ?>
+            <option <?php echo $categoria_rubro->subcategoria_rubro_id === $subcategoria_rubro->id ? 'selected' : ''; ?> value="<?php echo S($subcategoria_rubro->id); ?>"><?php echo s($subcategoria_rubro->nombre);  ?> </option>
+        <?php } ?>
+    </select>
+    <div id="subcategoria_rubroHelp" class="form-text">Seleccione la subcategoría del rubro</div>
+    </div>
+</fieldset>

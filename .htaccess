@@ -1,0 +1,197 @@
+# ==========================================================================
+# AUTORIZACION — FUERA de cualquier <IfModule>
+# ==========================================================================
+# Estas reglas NO dependen de mod_rewrite. Antes vivian dentro del bloque
+# <IfModule mod_rewrite.c>, de modo que si ese modulo no estaba cargado se caia
+# la proteccion junto con el enrutamiento: una condicion de despliegue apagaba
+# el control de acceso en silencio. La autorizacion nunca debe ser condicional.
+
+# Archivos sensibles por extension o nombre.
+# `md` (auditoria 2026-09-14): CLAUDE.md y docs/ describen la arquitectura, las
+# credenciales de prueba y los hallazgos de seguridad; no deben leerse sin sesion.
+<FilesMatch "(\.(env|json|config|log|sql|bak|lock|md)|composer\.(json|lock)|package(-lock)?\.json|gulpfile\.js)$">
+    # Apache 2.4 (Hostinger). `Order allow,deny` es sintaxis 2.2 y solo funciona
+    # si mod_access_compat esta cargado -- suposicion no verificable desde aqui,
+    # y era la UNICA linea que protegia el .env en produccion.
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# PHP de la raiz que NO son puntos de entrada: el unico es index.php. Los archivos
+# de rutas por rol, el enrutador y la utilidad de hashes se incluyen desde PHP;
+# pedidos por URL solo producian errores con la ruta del servidor (auditoria
+# 2026-09-14, H2). Los tres de rutas llevan ademas su propia guarda.
+<FilesMatch "^(iadmin|iconta|icoordi|Router|hash)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Cualquier archivo cuyo nombre empiece por punto (.env, .env.bak, .gitignore…).
+# Los DIRECTORIOS ocultos (.git/) los cubre la regla de reescritura de abajo:
+# <FilesMatch> mira el nombre del archivo, y en /.git/config ese nombre es
+# "config". Por eso hacen falta las dos.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# No listar directorios. Fuera de <IfModule mod_rewrite.c> por la misma razon que
+# la autorizacion: no depende de ese modulo y no debe caerse con el.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Establecer la base para reescrituras (raíz del proyecto)
+    RewriteBase /
+
+    # ----------------------------------------------------------------------
+    # HTTPS obligatorio (auditoria 2026-09-14, H3)
+    # ----------------------------------------------------------------------
+    # Sin esto, por http:// viajan en claro la contraseña del login y la cookie de
+    # sesion (que solo lleva `secure` si la peticion ya llego por HTTPS). Va antes
+    # que cualquier otra regla para que ni siquiera un 404 se sirva por HTTP.
+    # Exentos: localhost y las redes privadas (10.x, 172.16-31.x, 192.168.x), donde
+    # no hay certificado -- el equipo de desarrollo y la capacitacion en la LAN.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?$ [NC]
+    RewriteCond %{HTTP_HOST} !^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # ----------------------------------------------------------------------
+    # Configuración de seguridad reforzada
+    # ----------------------------------------------------------------------
+
+    # Bloquear acceso a directorios críticos.
+    # `database` (no `db`): la carpeta real del proyecto se llama database/ y la
+    # regla anterior nombraba db/, asi que nunca la cubrio -- sus scripts PHP
+    # quedaban ejecutables por HTTP (ver la guarda de CLI en cada uno).
+    # `docs` (auditoria 2026-09-14): documentacion interna, no debe publicarse.
+    RewriteCond %{REQUEST_URI} !^/build/(css|js|img)/.*$ [NC]
+    RewriteRule ^(controllers|includes|models|node_modules|src|vendor|db|database|docs|secrets|scripts)/(.*) - [R=404,L]
+
+    # Bloquear archivos y carpetas ocultos (.git, .gitignore, .env, .htaccess de
+    # subcarpetas...) que de otro modo expondrían código e historial. Se exceptúa
+    # /.well-known/ (lo usan los emisores de certificados SSL como Let's Encrypt).
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+    RewriteRule "(^|/)\." - [R=404,L]
+
+    # ----------------------------------------------------------------------
+    # Configuración del enrutador principal
+    # ----------------------------------------------------------------------
+
+    # Redirigir todas las solicitudes a index.php, excepto archivos/directorios existentes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L,QSA]
+
+    # Bloquear acceso directo a archivos PHP en views (permitir solo mediante router)
+    RewriteRule ^views/.*\.php$ - [R=404,L]
+
+    # ----------------------------------------------------------------------
+    # Optimizaciones de rendimiento
+    # ----------------------------------------------------------------------
+
+    # Compresión Gzip
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript
+    </IfModule>
+
+    # Cacheo de archivos estáticos
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresByType image/jpg "access plus 1 year"
+        ExpiresByType image/jpeg "access plus 1 year"
+        ExpiresByType image/gif "access plus 1 year"
+        ExpiresByType image/png "access plus 1 year"
+        ExpiresByType text/css "access plus 1 month"
+        ExpiresByType application/javascript "access plus 1 month"
+        ExpiresByType application/x-javascript "access plus 1 month"
+        ExpiresByType image/x-icon "access plus 1 year"
+        ExpiresByType application/pdf "access plus 1 month"
+    </IfModule>
+
+    # ----------------------------------------------------------------------
+    # Configuración específica para Hostinger
+    # ----------------------------------------------------------------------
+
+    # Asegurar que PATH_INFO esté disponible para el router
+    AcceptPathInfo On
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Respuesta de los bloqueos: 403/404 REALES, sin pasar por la app
+# ----------------------------------------------------------------------
+# Antes: `ErrorDocument 40x /index.php?url=40x`. index.php no usa `?url=` y, sin
+# sesión, redirigía al login: todo archivo bloqueado (.env, .git/config, docs/…)
+# respondía "302 → /login". No filtraba nada, pero escondía si el bloqueo
+# funcionaba y hacía fallar la verificación del despliegue (espera 403/404).
+# Un texto literal no ejecuta PHP ni revela la firma del servidor. Las rutas
+# inexistentes de la app NO llegan aquí: las atiende index.php (front controller).
+# Fuera de <IfModule mod_rewrite.c>: no depende de ese módulo (verificado
+# 2026-09-15 con database/verificar_htaccess.ps1).
+ErrorDocument 403 "403 - Acceso denegado"
+ErrorDocument 404 "404 - No encontrado"
+
+# ----------------------------------------------------------------------
+# Configuración de PHP (ajustes recomendados)
+# ----------------------------------------------------------------------
+# ⚠️ Bloque INERTE si PHP no corre como modulo de Apache (Hostinger usa
+# LiteSpeed/PHP-FPM): ahi estas directivas se ignoran en silencio, incluidas las
+# de sesion. La fuente de verdad de las cookies de sesion es index.php
+# (session_set_cookie_params), que si se aplica siempre. No confiar en esto.
+<IfModule mod_php.c>
+    # Ajustes básicos
+    php_value upload_max_filesize 20M
+    php_value post_max_size 22M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+    php_value max_input_time 60
+
+    # Configuración de sesiones
+    php_value session.gc_maxlifetime 3600
+    php_value session.cookie_lifetime 0
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Configuración de cabeceras de seguridad
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Protección contra XSS
+    Header set X-XSS-Protection "1; mode=block"
+
+    # Prevenir sniffing de MIME
+    Header set X-Content-Type-Options "nosniff"
+
+    # Política de seguridad de contenido (CSP)
+    # ⚠️ Mantener IDÉNTICA a la de index.php: bajo Apache este `Header set`
+    # SOBRESCRIBE la cabecera que emite PHP, asi que una version desalineada aqui
+    # es la que de verdad rige en produccion. Antes lo estaba (sin form-action,
+    # frame-ancestors ni base-uri). jsdelivr retirado: ninguna vista lo usa.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+
+    # Prevenir iframing
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Referrer Policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
