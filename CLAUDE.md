@@ -5,8 +5,9 @@
 > (ver índice abajo) y se lee solo cuando hace falta, para no cargar tokens innecesarios cada sesión.
 >
 > ✅ El **sprint de seguridad** ya está integrado y mergeado a `main` (SMTP en `.env`, migraciones 010-012
-> en el runner). La **producción de Hostinger fue dada de baja** → el próximo despliegue es **greenfield**
-> (proyecto + BD nuevos desde cero). Detalle en `docs/historial-seguridad.md`.
+> en el runner). La producción vieja de Hostinger fue dada de baja. **Despliegue nuevo en curso (2026-09-15):
+> la BD ya está importada en Hostinger** con los datos de la capacitación del 2026-08-14 (ver *Estado de la BD*);
+> falta subir la app. Detalle en `docs/despliegue-hostinger.md`.
 
 ### Índice de referencia (`docs/`, leer bajo demanda)
 - **`docs/plan-comprometido-y-tope-poa.md`** — ✅ **IMPLEMENTADO (2026-07-15, Fases A y B, QA 30/30)**: higiene
@@ -37,8 +38,9 @@
   document root en producción, `.htaccess` corregido (era sintaxis Apache 2.2 dentro de un `<IfModule>`),
   guardas CLI en `database/`, y el correo que ya no finge envíos exitosos. **P2 pendiente**: es la
   checklist de despliegue, consolidada en `docs/auditoria-seguridad-2026-09.md`.
-- **`docs/despliegue-hostinger.md`** — procedimiento paso a paso del despliegue greenfield con SSH (estructura,
-  `secrets/.env`, BD, `crear_admin.php`, `database/` temporal, verificación con `curl` y navegador, respaldos).
+- **`docs/despliegue-hostinger.md`** — procedimiento paso a paso del despliegue en Hostinger: BD por phpMyAdmin con
+  datos (lo hecho el 2026-09-15: DEFINER, collation, verificación) o greenfield por SSH; estructura, `secrets/.env`,
+  `database/` temporal, verificación con `verificar_htaccess.ps1` y navegador, respaldos.
 - `docs/build-assets.md` — pipeline Gulp.
 - `docs/follow-ups-tecnicos.md` — deuda técnica pendiente (detalle).
 
@@ -59,9 +61,11 @@
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.
 - **Entorno local:** XAMPP (Windows) — `C:/xampp/htdocs/sysai`. BD local: `sysai`.
 - **Producción:** **Hostinger**, con **PHP 8.3** (versión oficial del proyecto desde el 2026-09-14 — ver *Setup*).
-  ⚠️ La instancia anterior fue **dada de baja el 2026-06-03** (BD `u612374195_sysai`, decomisionada). El próximo
-  despliegue va **sobre Hostinger otra vez, pero greenfield**: proyecto y BD nuevos, sin datos que preservar ni
-  reconciliar.
+  ⚠️ La instancia anterior fue **dada de baja el 2026-06-03** (BD `u612374195_sysai`, eliminada junto con su sitio).
+  **Nueva BD (2026-09-15):** `u761410128_arca_2024` en **MariaDB 11.8.9**, `lower_case_table_names=0` (distingue
+  mayúsculas), collation por defecto alineada a `utf8mb3_general_ci`. **No es greenfield vacío:** se importó por
+  phpMyAdmin la BD de la laptop con los datos de la capacitación del 2026-08-14 (decisión del usuario), con todas
+  las contraseñas reemplazadas por aleatorias → cada cuenta se reactiva por `/chgpsswd` cuando la app esté arriba.
 - **Separación de entornos:** `.env` por entorno (ignorado en git). `.env.example` versionado como plantilla.
 - **Credenciales de BD:** Solo en `.env`, nunca hardcodeadas. `includes/config/database.php` está **versionado**
   (no contiene secretos: lee `.env` y conecta MySQL) → el repo es portable de equipo en equipo copiando solo `.env`.
@@ -449,8 +453,14 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 - **BD local `sysai`:** ✅ **aplicadas 001-035** en la PC de escritorio y en la laptop (verificado el 2026-09-15
   contra el esquema, no solo `schema_migrations`). Tras restaurar un respaldo, confirmar con
   `php database/migrate.php --status` (sin la 035, `qa_reportes.ps1` da 7 FAIL).
-- **Despliegue greenfield:** baseline + migraciones + `seed.sql` + `crear_admin.php`. `seed_demo.sql` es un escenario
-  de demo solo para desarrollo.
+- **Producción (Hostinger):** ✅ **importada el 2026-09-15** por phpMyAdmin desde una copia saneada de la BD de la
+  laptop (contraseñas aleatorias, sin `reset_token`, tablas de intentos vacías, `DEFINER` quitado del archivo).
+  Verificada allí: 35 migraciones, filas de las 40 tablas idénticas, 29 vistas legibles, tablas en
+  `utf8mb3_general_ci`, definer = usuario de hPanel. La estructura local es idéntica a baseline + 001-035.
+  **Nuevas migraciones en producción:** subir `database/` temporal y `php database/migrate.php` por SSH (el runner
+  ve las 35 ya aplicadas); deben declarar `CHARSET=utf8 COLLATE=utf8_general_ci` y usar nombres en minúsculas.
+- **Despliegue greenfield (alternativa, no usada):** baseline + migraciones + `seed.sql` + `crear_admin.php`.
+  `seed_demo.sql` es un escenario de demo solo para desarrollo.
 
 ---
 
@@ -516,10 +526,12 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 - [x] ~~**Crear la cuenta Gmail dedicada a Arca**~~ — **HECHO 2026-09-15**: `cronosarca2024@gmail.com`, dos pasos
   activos, App Password guardada en el gestor del usuario y probada (entrega real OK). Al desplegar,
   generar una nueva para el servidor y revocar la de prueba (ver *Setup*).
-- [ ] **Checklist del despliegue greenfield**: PHP 8.3 en hPanel, SSL, usuario MySQL de mínimo privilegio,
-  MySQL remoto apagado, `.env` en `../secrets/`, subida por lista blanca, **`crear_admin.php --probar-correo`
-  desde el servidor** (prueba a la vez la salida al 587), `REMOTE_ADDR` real (sin CDN delante),
-  `session.save_path` propio y `curl` a los archivos sensibles → 403/404.
+- [x] ~~**Base de datos en Hostinger**~~ — **HECHO 2026-09-15** (phpMyAdmin, con los datos de la capacitación;
+  ver *Estado de la BD*). ⚠️ El usuario de BD tiene ALL sobre su base (el de hPanel); no se creó uno de mínimo privilegio.
+- [ ] **Resto del despliegue**: PHP 8.3 y SSL en hPanel, subida por lista blanca, `composer install`, `.env` en
+  `../secrets/` con la App Password nueva del servidor, **activar el admin por `/chgpsswd`** (prueba a la vez la
+  salida al 587; ya no se usa `crear_admin.php`: el admin viene en la BD), `REMOTE_ADDR` real (sin CDN delante),
+  `session.save_path` propio y `verificar_htaccess.ps1 -BaseUrl https://<dominio>` en 0 FAIL.
 
 **Entorno local**
 - [ ] **PC de escritorio:** `git pull` + `npm run env:pull` con la **passphrase nueva** (2026-09-15) — su `.env`
@@ -532,8 +544,12 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 - [ ] (Opcional) `memory_limit` de `C:\php\php.ini` es 128M (XAMPP: 512M): un reporte muy grande podría fallar en dev.
 
 **Negocio y QA**
-- [ ] **Capacitación**: sin evidencia en el repo de que se haya realizado (no hay `participantes.csv` ni respaldo
-  de cierre). Confirmar con el usuario.
+- [ ] **Capacitación**: la BD de la laptop muestra que **se realizó el 2026-08-14** (contadora y 3 coordinadoras
+  activaron sus cuentas desde IPs de la LAN y recorrieron POA → rendición → aprobación). Confirmar con el usuario
+  si hubo más tandas.
+- [ ] **Tras abrir producción** (datos subidos tal cual): la contadora registra el **tipo de cambio real** (solo hay
+  tasas de relleno con vigencia 2020-01-01) y decide qué hacer con lo de práctica (POA de PRG001 **aprobado**, que
+  bloquea a su coordinadora; rendición REN001 de S/ 65; ingreso "DONACIÓN DE JUAN LOPEZ"; rubro "MOBILIDADD").
 - [ ] Checklist visual `docs/qa-frontend-navegador.md`, sin marcar.
 - [ ] **Presupuesto por periodo** (`docs/plan-montos-y-tipo-cambio.md` §5.1): consultar a la contadora; pasa a ser
   prerequisito si algún convenio no coincide con el año calendario.
@@ -553,7 +569,7 @@ la confirmación del mapeo del TC, en `docs/confirmar-tc-contador.md`.
 > Revisadas el 2026-09-14: el backlog funcional (items 1-10), la auditoría de seguridad, Dependabot y la
 > decisión de PHP 8.3 ya están hechos.
 
-1. **Cerrar la lista "Antes de desplegar"** (sección anterior) y desplegar greenfield en Hostinger.
+1. **Terminar el despliegue en Hostinger** (la BD ya está; falta la app) y cerrar la lista "Antes de desplegar".
 2. **Capacitación y validación con usuarios reales**, incluida la checklist visual del navegador.
 3. **v1.1** (ver *Diferido*): presupuesto por periodo, rollover del cierre anual, reapertura del POA y auditoría con triggers.
 4. Seguir llevando la capa de datos hacia consultas preparadas y validaciones consistentes (casi todo hecho).

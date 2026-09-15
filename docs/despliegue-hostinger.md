@@ -1,7 +1,12 @@
-# Despliegue greenfield en Hostinger (con SSH)
+# Despliegue en Hostinger
 
-> Procedimiento verificado contra el código del 2026-09-15. Instalación nueva: proyecto y BD desde cero,
-> sin datos que migrar. Cada paso dice **qué** hacer y **cómo comprobar** que salió bien.
+> Procedimiento verificado contra el código del 2026-09-15. Cada paso dice **qué** hacer y **cómo comprobar**
+> que salió bien.
+>
+> ⚠️ **Lo que se hizo de verdad (2026-09-15):** la BD **no** se instaló vacía. Se importó por **phpMyAdmin** la BD
+> de la laptop, con los datos de la capacitación y las contraseñas reemplazadas (§2). Por eso, en este despliegue,
+> el §5 queda solo para `composer install`: **no** ejecutar baseline, `migrate.php`, `seed.sql` ni `crear_admin.php`
+> sobre esa base. El camino greenfield por SSH se conserva como alternativa.
 
 ## 0. Antes de empezar (bloqueantes)
 
@@ -32,6 +37,51 @@
 2. **MySQL remoto apagado** (es lo predeterminado: no agregar hosts remotos).
 3. El usuario de hPanel no tiene SUPER. Por eso `schema_baseline.sql` ya **no lleva `DEFINER`** (retirado el
    2026-09-15): con él, la importación fallaba con `ERROR 1227`.
+4. **Conocer el servidor** (phpMyAdmin de hPanel → SQL, solo lectura):
+   `SELECT VERSION(), @@sql_mode, @@lower_case_table_names, @@character_set_server, @@collation_server;`
+   El 2026-09-15: MariaDB 11.8.9, `lower_case_table_names=0` (distingue mayúsculas), `utf8mb4_unicode_ci` por defecto.
+5. **Alinear la collation de la BD vacía:** phpMyAdmin → la BD → **Operaciones → Cotejamiento = `utf8mb3_general_ci`**.
+   Comprobar con `SELECT @@character_set_database, @@collation_database;`. Así ninguna tabla futura hereda
+   `utf8mb4_unicode_ci` (daría *Illegal mix of collations* contra las de Arca).
+
+### 2.1 Cargar la BD con datos por phpMyAdmin (camino usado el 2026-09-15)
+
+Sin tocar la BD local: todo sobre una **copia**.
+
+1. Respaldo: `pwsh -File database\respaldo.ps1 guardar -Etiqueta pre-despliegue`.
+2. Copia local: `CREATE DATABASE sysai_produccion CHARACTER SET utf8 COLLATE utf8_general_ci;` y
+   `mysqldump --single-transaction --routines --events sysai | mysql sysai_produccion` (por `cmd /c`, para no recodificar).
+3. Sanear la copia: contraseñas `password_hash(bin2hex(random_bytes(32)))` por usuario (cada cuenta se reactiva por
+   `/chgpsswd`), `reset_token`/`reset_token_expira` a NULL, `TRUNCATE` de `login_intentos` y `recuperacion_intentos`.
+4. Exportar `sysai_produccion` con phpMyAdmin local (Personalizado, SQL, utf-8): **sin** CREATE DATABASE/USE, **con**
+   DROP TABLE/VIEW, desactivar revisión de FKs, **sin** "exportar vistas como tablas", compatibilidad NONE.
+5. **Quitar `DEFINER=`root`@`localhost`` del archivo** (las 29 vistas). Revisar que no queden `DEFINER=`,
+   `CREATE DATABASE`, `USE`, nombres de BD locales ni identificadores con mayúsculas; que haya 40 tablas `utf8` y 29 vistas.
+6. **Ensayo local antes de subir:** importar como un usuario MariaDB **sin SUPER** (`GRANT ALL ON sysai_ensayo.*`),
+   con conexión `utf8mb4_unicode_ci` y el `sql_mode` de Hostinger; comparar filas, leer las 29 vistas y levantar la app
+   contra esa BD con `SYSAI_ENV_FILE`. El 2026-09-15: 22 OK / 0 FAIL.
+7. phpMyAdmin de hPanel → la BD → **Importar** el archivo limpio (utf-8, SQL, NONE).
+8. Verificar en hPanel (solo lectura), comparando con la copia local:
+   ```sql
+   SELECT COUNT(1) FROM schema_migrations;                         -- 35
+   SELECT tabla, filas, esperado, IF(filas = esperado, 'OK', 'REVISAR') AS estado FROM (
+     SELECT 'usuario' AS tabla, (SELECT COUNT(1) FROM usuario) AS filas, 5 AS esperado
+     -- UNION ALL una línea por tabla, con el conteo de la copia local
+   ) x ORDER BY estado DESC;
+   SELECT table_type, table_collation, COUNT(1) AS objetos       -- BASE TABLE utf8mb3_general_ci 40 / VIEW NULL 29
+   FROM information_schema.tables
+   WHERE table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
+   GROUP BY table_type, table_collation;
+   SELECT definer, COUNT(1) AS vistas                             -- el usuario de hPanel, 29
+   FROM information_schema.views
+   WHERE table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
+   GROUP BY definer;
+   ```
+   ⚠️ En el phpMyAdmin de Hostinger, dos consultas de catálogo devolvieron **0 filas sin error** y las mismas, reescritas,
+   dieron el resultado correcto (`DATABASE()` funciona allí: verificado). Causa probable, **no confirmada**: sus comentarios
+   contenían la flecha `->`. No usar `->` en comentarios de consultas para phpMyAdmin; si una consulta de catálogo da
+   0 filas, repetirla sin comentarios antes de sacar conclusiones.
+9. Borrar los `.sql` exportados (tienen datos personales) y las BD/usuario de ensayo locales.
 
 ## 3. Preparar y subir el paquete
 
@@ -70,6 +120,11 @@ Contenido, con `.env.example` como plantilla:
 - `SBS_API_URL=` (vacío salvo que haya endpoint)
 
 ## 5. Instalar dependencias y la base de datos (SSH)
+
+> ⚠️ **Si la BD se cargó por phpMyAdmin (§2.1), ejecutar SOLO `php -v` y `composer install`.** El baseline fallaría
+> sobre tablas existentes, `seed.sql` no aporta nada y `crear_admin.php` crearía un segundo admin: el admin ya viene
+> en la BD y se activa por `/chgpsswd`, que además prueba la salida al 587. Usar `php database/smtp_test.php <correo>`
+> si el correo no llega.
 
 ```bash
 cd ~/domains/<dominio>/public_html
