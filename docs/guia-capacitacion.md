@@ -68,8 +68,10 @@ Vive **30 minutos** (`RECUP_TOKEN_TTL`). Si alguien lo pide al inicio y lo usa a
 caducó. Indicar que lo pidan **en el momento de usarlo**.
 
 **③ "Me dice que espere / no me deja pedir más"**
-Máximo **5 solicitudes por IP cada 15 minutos** (`RECUP_MAX_IP`). En una LAN cada laptop tiene su
-propia IP, así que no se estorban entre sí — salvo que dos personas compartan equipo.
+Máximo **30 solicitudes por IP cada 15 minutos** (`RECUP_MAX_IP`), y otras 30 verificaciones de código
+(`RECUP_MAX_VERIFY`). En la LAN de capacitación cada laptop tiene su propia IP, pero **en producción
+toda la oficina sale a Internet por una sola IP pública**: los límites son por eso holgados (hasta el
+2026-09-14 eran 5, y el sexto usuario de la oficina quedaba bloqueado).
 
 **④ "No puedo entrar, me bloqueó"**
 **5 intentos fallidos en 5 minutos** (`RL_MAX_INTENTOS`). Desbloqueo inmediato:

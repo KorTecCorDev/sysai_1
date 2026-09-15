@@ -63,15 +63,23 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
 - [ ] Elegir **PHP 8.3** en hPanel y activar **SSL**.
 - [ ] Crear la BD con un **usuario MySQL exclusivo** (SELECT/INSERT/UPDATE/DELETE; las migraciones con otro
       usuario) y dejar **MySQL remoto apagado**.
-- [ ] Importar baseline + `php database/migrate.php` (001-035) + `seed.sql`. Ajustar o quitar el `DEFINER`
-      de las vistas.
+- [ ] Importar baseline + `php database/migrate.php` (001-035) + `seed.sql` (solo catálogos). Ajustar o
+      quitar el `DEFINER` de las vistas.
 - [ ] **`.env` en `../secrets/.env`** con permisos 600 y `APP_ENV=production`; `MAIL_LOG_PATH` fuera del
       document root.
 - [ ] **Subir por lista blanca:** sin `database/`, `.git/`, `src/`, `node_modules/` ni `docs/`. Compilar antes
       con `npx gulp build`.
-- [ ] **Activar el admin del seed** con clave nueva por `/chgpsswd`, y quitar la clave de ejemplo de `hash.php`.
-- [ ] **Correo:** decidir el emisor (ver la contradicción anotada en `CLAUDE.md`), comprobar la salida al
-      puerto 587 (o 465) y usar una credencial propia del servidor.
+- [ ] **Correo (decidido 2026-09-14):** crear una **cuenta Gmail dedicada a Arca** con verificación en dos
+      pasos y una App Password propia del servidor (plantilla en `.env.example`). Cuando haya dominio, pasar
+      a `no-reply@<dominio>` en Hostinger cambiando solo el `.env`.
+- [ ] **Crear el administrador y probar el correo desde el servidor:**
+      `php database/crear_admin.php --email <correo real> --nombres "…" --apellido-paterno "…" --dni <n> --probar-correo`.
+      Si falla, el 587 (o el 465) no sale o la credencial no sirve: sin eso nadie activa su cuenta. El seed ya
+      no trae admin ni `hash.php` claves de ejemplo (2026-09-14).
+- [ ] **`REMOTE_ADDR` es la IP real del cliente:** sin CDN delante (o con la IP real restaurada). Si todas las
+      peticiones llegan con la IP del CDN, los límites de login y de recuperación se comparten entre todos.
+- [ ] En `phpinfo()` (temporal, luego borrarlo): `session.save_path` propio de la cuenta y
+      `session.gc_maxlifetime` = 3600 (lo fija `index.php`).
 - [ ] **Verificar con `curl`** que `/.env`, `/CLAUDE.md`, `/docs/`, `/iadmin.php`, `/database/migrate.php`,
       `/includes/logs/mail.log` y `/.git/config` devuelven 403/404, y que `http://` redirige a `https://`.
 - [ ] Probar en el navegador el login, el botón "Cerrar sesión" y la descarga de un reporte.

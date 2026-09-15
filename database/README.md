@@ -11,9 +11,12 @@ las migraciones son archivos `.sql` numerados que se aplican **en orden**.
 - `migrations/NNN_descripcion.sql` — cada cambio incremental, numerado y ordenado.
 - `migrate.php` — runner que aplica las migraciones pendientes y las registra en
   la tabla `schema_migrations`.
-- `seed.sql` — datos de catálogo (cargo, tipos, categorías de rubro) + usuario
-  administrador inicial. Idempotente (`INSERT IGNORE`). **No** contiene datos
+- `seed.sql` — datos de catálogo (cargo, tipos, categorías de rubro). **Sin
+  usuarios.** Idempotente (`INSERT IGNORE`). **No** contiene datos
   transaccionales. Se aplica **después** de las migraciones.
+- `crear_admin.php` — alta del administrador inicial (CLI): contraseña aleatoria
+  oculta + código de activación por correo. Sustituye al admin con clave conocida
+  que traía `seed.sql` hasta el 2026-09-14.
 - `seed_demo.sql` — escenario de **demostración visual** realista (ONG Arco Iris:
   programas, fuentes con sobres, POAs, rendiciones, OIE). Re-ejecutable (borra-y-
   reinserta, preserva el admin id=1). Para probar a mano en el navegador.
@@ -45,13 +48,18 @@ así que es seguro combinarlo con el runner.
 1. Crear la BD vacía y configurar `.env`.
 2. Importar `schema_baseline.sql`.
 3. Ejecutar `php database/migrate.php` (o aplicar `migrations/*.sql` en orden).
-4. Importar `seed.sql` (catálogos + admin inicial).
-5. Iniciar sesión como `admin@arcoiris.pe` / `Arcoiris2026*` y **cambiar la
-   contraseña de inmediato** (credenciales temporales del seed).
+4. Importar `seed.sql` (catálogos).
+5. Crear el administrador con un **correo real** y enviarle el código:
+   ```bash
+   php database/crear_admin.php --email <correo> --nombres "<nombres>" \
+       --apellido-paterno "<apellido>" --dni <numero> --probar-correo
+   ```
+   Si el correo no sale, el script falla: resolverlo antes de abrir el sitio (sin
+   correo nadie puede activar su cuenta). Diagnóstico: `php database/smtp_test.php <correo>`.
+6. Ingresar el código en `/token_verify` y definir la contraseña.
 
-> Probado end-to-end en una BD limpia: `schema_baseline.sql` + migraciones
-> `001`-`025` + `seed.sql` (+ opcionalmente `seed_demo.sql` o `seed_qa.sql`)
-> aplican sin errores y el login del admin verifica.
+> `seed_demo.sql` y `seed_qa.sql` crean su propio admin id=1 de desarrollo
+> (`admin@sysai.test`, sin contraseña utilizable) si la BD no tiene uno.
 
 ## QA automatizada (portátil entre máquinas)
 

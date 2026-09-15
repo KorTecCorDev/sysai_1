@@ -29,7 +29,8 @@
 - `docs/modelo-datos-detalle.md` — lista completa de vistas SQL + discrepancias/deuda de esquema.
 - `docs/qa-automatizado.md` — detalle de los arneses de QA HTTP. ⚠️ Ejecutar con **`pwsh`** (en
   PowerShell 5.1 el login falla) y contra **`php -S localhost:3000`** (bajo Apache los asserts de
-  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **193/193**.
+  CSRF fallaban porque el 419 salía como 500; desde el 2026-09-14 el CSRF responde 403). Suite actual: **216/216**
+  (incluye `qa_recuperacion.ps1`, que necesita **Mailpit** arriba: lee el código real de su API).
 - `docs/historial-seguridad.md` — sprint de hardening (hecho/mergeado).
 - **`docs/plan-secretos-y-hardening.md`** — ✅ **P0 y P1 IMPLEMENTADOS (2026-08-14)**: gestión de
   secretos y exposición. Desarrollo **sin ningún secreto** (Mailpit como SMTP local), `.env` fuera del
@@ -68,16 +69,11 @@
 
 ## [SECCION: STACK Y DEPENDENCIAS]
 
-- **Backend:** PHP puro, arquitectura MVC casera. Patrón ActiveRecord propio (estilo cursos de Juan de la Torre / DevWebCamp).
-- **Base de datos:** MySQL/MariaDB vía `mysqli` (conexión única global). Uso intensivo de **VISTAS SQL** (los modelos con sufijo `*Vista` mapean vistas, no tablas). Mecanismo de auditoría con `SET @usuario_actual` (triggers que registrarían quién modifica — ver *[SECCION: MODELO DE DATOS]*).
-- **Frontend:** Bootstrap 5 + Bootstrap Icons; SASS compilado con **Gulp** (`gulpfile.js`). Assets compilados en `build/` (CSS/JS/img); fuente en `src/`. Pipeline detallado en `docs/build-assets.md`.
-- **Dependencias Composer (`composer.json`):**
-  - `phpoffice/phpspreadsheet` ^5.9 — generación de reportes Excel (4.1 → 5.9 el 2026-09-14: la 4.1 tenía 9
-    avisos de seguridad). Todo libro nace con `nuevoLibroXlsx()`, que instala `Model\XlsxValorSeguroBinder`:
-    un texto que empieza por "=" nunca se vuelve fórmula; las fórmulas legítimas van con `setCellValueExplicit`.
-  - `phpmailer/phpmailer` ^6.9 — envío de correos (recuperación de contraseña).
-  - `twbs/bootstrap-icons` ^1.11.
-- **Namespaces PHP (PSR-4):** `Model\` → `models/`, `Controllers\` → `controllers/`, `MVC\` → raíz.
+- **Vistas SQL:** los modelos con sufijo `*Vista` mapean **vistas**, no tablas. `SET @usuario_actual` es
+  infraestructura de auditoría que hoy nadie consume (ver *Diferido a v1.1*).
+- **Excel seguro:** todo libro nace con `nuevoLibroXlsx()`, que instala `Model\XlsxValorSeguroBinder`: un texto que
+  empieza por "=" nunca se vuelve fórmula; las fórmulas legítimas van con `setCellValueExplicit`.
+- Pipeline de assets (Gulp, `src/` → `build/`): `docs/build-assets.md`.
 
 ---
 
@@ -144,7 +140,9 @@ npm install                           # node_modules/ (Gulp + BrowserSync)
 "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE sysai CHARACTER SET utf8 COLLATE utf8_general_ci;"
 "C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/schema_baseline.sql   # baseline versionado (sin datos)
 php database/migrate.php                                                       # aplica migrations/001-035
-"C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos + admin inicial
+"C:\xampp\mysql\bin\mysql.exe" -u root sysai < database/seed.sql              # catálogos (sin usuarios)
+php database/crear_admin.php --email <correo> --nombres "..." --apellido-paterno "..." --dni <n> --probar-correo
+                                      # admin con clave aleatoria oculta + código de activación por correo
 
 # Arrancar (desde la raíz del proyecto):
 npm run dev                           # = gulp: compila + php -S + BrowserSync + watchers
@@ -186,8 +184,14 @@ npx gulp build                        # solo compilar assets, sin servidor ni wa
   Mailpit no necesita credenciales, y una App Password abre la cuenta de Gmail entera (decisión
   2026-08-14, `docs/plan-secretos-y-hardening.md`). Si hiciera falta probar entrega real: generarla,
   usarla y **revocarla** en el momento. Gmail exige que `MAIL_FROM_EMAIL` sea **la misma** de
-  `MAIL_USERNAME` (si no, reescribe el remitente). ⏸ Destino final: `no-reply@<dominio>` en Hostinger
-  (`smtp.hostinger.com`, 465/ssl) **con SPF y DKIM**, cuando haya dominio contratado.
+  `MAIL_USERNAME` (si no, reescribe el remitente).
+  ✅ **Emisor de producción — decidido 2026-09-14:** una **cuenta Gmail NUEVA y DEDICADA a Arca** (no
+  `korteccor@gmail.com` ni ninguna cuenta personal), con App Password propia del servidor, 587/tls (465/ssl
+  si Hostinger bloquea el 587). Motivo: la App Password abre la cuenta entera; en una cuenta dedicada un
+  `.env` filtrado no expone a nadie, y la activación no depende de una persona. Cambiar la contraseña de
+  esa cuenta revoca sus App Passwords (el correo deja de salir). **Cuando haya dominio** (no hay a la
+  vista): `no-reply@<dominio>` en `smtp.hostinger.com:465/ssl` con SPF/DKIM/DMARC — solo cambia el `.env`.
+  Plantilla en `.env.example`; razones en `docs/plan-secretos-y-hardening.md` (enmienda 2026-09-14).
   - **Diagnóstico:** `php database/smtp_test.php <destinatario>` — comprueba por separado credenciales,
     openssl/CA de Windows, handshake y envío real. No toca la BD ni genera tokens. `MAIL_DEBUG=1` vuelca el
     diálogo SMTP al `error_log`.
@@ -201,42 +205,23 @@ npx gulp build                        # solo compilar assets, sin servidor ni wa
 - **Credenciales de prueba / QA local:** coordinador `coordinador@sysai.test` / `Test1234*` (programa 1);
   contador `contador@sysai.test` / `admin1234` (= admin local `robertokar97@gmail.com`).
   ⚠️ **No re-sembrar ni resetear `usuario.password`** en la BD local — el usuario gestiona sus contraseñas
-  vía el flujo de cambio; `seed.sql`/`UPDATE` los pisarían. Seed idempotente `INSERT IGNORE` para alta inicial únicamente.
+  vía el flujo de cambio; un `UPDATE` los pisaría. `seed.sql` ya **no trae usuarios** (2026-09-14); los
+  fixtures `seed_demo.sql`/`seed_qa.sql` crean un admin id=1 de desarrollo (`admin@sysai.test`, sin clave
+  utilizable) solo si falta, con `INSERT IGNORE`. ⚠️ Ambos fixtures **borran todo usuario con id ≠ 1**: nunca
+  sobre una BD con datos reales (en greenfield el admin de `crear_admin.php` nace con id 5 por el
+  `AUTO_INCREMENT` del baseline; ningún código depende del id 1).
 
 ---
 
 ## [SECCION: ARQUITECTURA]
 
-```
-index.php          → Punto de entrada (front controller). Arranca sesión, fija CSP, carga includes/app.php,
-                     registra rutas públicas y, según cargo_id de sesión, incluye el archivo de rutas del rol.
-iadmin.php         → Rutas del Administrador (cargo_id=1, layout_admin.php)
-iconta.php         → Rutas del Contador (cargo_id=2, layout_contador.php)
-icoordi.php        → Rutas del Coordinador (cargo_id=3, layout_coordinador.php)
-Router.php         → Enrutador MVC personalizado (MVC\Router)
-includes/app.php   → Bootstrap: funciones, config DB, autoload, conexión
-includes/config/database.php → Zona horaria, lee .env, conecta MySQL (versionado, sin secretos)
-controllers/       → ~18-19 controladores (lógica de negocio)
-models/            → ~56-80 modelos (Active Record + vistas SQL)
-views/             → ~82 vistas por módulo (admin, crear, actualizar, formulario)
-database/          → migrate.php, migrations/, schema_baseline.sql, seed.sql, README.md
-build/             → CSS/JS/IMG compilados (output de Gulp)
-src/               → SCSS y JS fuente
-```
-> Los conteos de controladores/modelos/vistas son orden de magnitud, no cifra exacta.
-
-### Front controller y enrutamiento
-1. **`index.php`** arranca sesión, fija cabecera CSP, carga `includes/app.php`, registra rutas públicas
-   (login, logout, recuperación) y según **`$_SESSION['cargo_id']`** incluye `iadmin.php` / `iconta.php` /
-   `icoordi.php`. Finalmente llama a `$router->comprobarRutas()`.
-2. **`Router.php`** (`MVC\Router`) — router minimalista: arrays `rutasGET`/`rutasPOST`, métodos `get()`/`post()`,
-   `comprobarRutas()` (despacha por `REQUEST_URI` + método), `render()` y `renderssdbr()` (vistas sin sidebar, p. ej. login).
-   - **Autorización por rol = carga condicional de rutas.** Las rutas de admin solo se registran si `cargo_id==1`;
-     un coordinador ni siquiera las tiene registradas (caen en 404). Es el principal mecanismo de control de acceso.
-   - **CSRF:** `Router::requiereCsrf()` protege los sufijos `/crear|/actualizar|/eliminar|/enviar|/observar|/aprobar|/guardar`
-     (POST sin token → **403**; hasta el 2026-09-14 era 419, que no es estándar y bajo Apache salía como 500).
-     Los formularios emiten `csrf_input()`. `/logout` también exige token y **solo acepta POST** (formulario
-     oculto en los layouts que envía `app.js`).
+### Enrutamiento
+- **Autorización por rol = carga condicional de rutas.** `index.php` incluye `iadmin.php` / `iconta.php` /
+  `icoordi.php` según `$_SESSION['cargo_id']`: un coordinador ni siquiera tiene registradas las rutas de admin
+  (caen en 404). Es el principal mecanismo de control de acceso.
+- **CSRF por sufijo:** `Router::requiereCsrf()` exige token en todo POST a `/crear|/actualizar|/eliminar|/enviar|
+  /observar|/aprobar|/guardar` (más login, recuperación y `/logout`) → **403** sin token. Una ruta nueva que muta
+  estado debe usar uno de esos sufijos. Los formularios emiten `csrf_input()`; `/logout` solo acepta POST.
 
 ### Capa de datos — `models/ActiveRecord.php` (clase base)
 - `setDB()`, `guardar()` (decide crear/actualizar por `$this->id`), `crear()`/`actualizar()`/`eliminar()` y
@@ -254,17 +239,9 @@ src/               → SCSS y JS fuente
   `ReporteMovimientosXlsxBuilder`; todo libro nace con `nuevoLibroXlsx()` y se entrega con `descargarXlsx()`.
 - `setUsuarioActual()` ejecuta `SET @usuario_actual = '<descripción>'` para auditoría en BD.
 
-### Modelos, controladores y vistas
-- **Modelos de tabla:** `Usuario`, `Persona`, `Cargo`, `Poa`, `Programa`, `Producto`, `Actividad`, `Resultado`,
-  `Rubro`, `CategoriaRubro`, `SubCategoriaRubro`, `TipoRubro`, `FuenteFinanciamiento`, `DetalleFinanciamiento`,
-  `Rendicion`, `OtrosIngresosEgresos`, `OieComprobante`, `TipoComprobante`, `CoordinadorPrograma`,
-  `PoaIndicadores`, `DetalleActividad`, `TipoCambio` (migr. 028), `TransferenciaInstitucional`, `Login`, etc.
-- **Modelos de VISTA SQL** (sufijo `*Vista`): mapean vistas precompuestas. Lista completa en `docs/modelo-datos-detalle.md`.
-- **Controladores** (`controllers/`): estáticos, reciben `Router $router`. Patrón CRUD `index/crear/actualizar/eliminar`
-  (+ flujo `enviar/observar/aprobar/revisar` en los documentos POA). Renderizan con `$router->render('carpeta/vista', [datos])`.
-- **Vistas** (`views/`): una subcarpeta por entidad, cada una con `admin.php`/`crear.php`/`actualizar.php`/`formulario.php`.
-  Layouts `layout_admin/contador/coordinador.php` + `layout_login.php`. Helper de escape **`s()`** en
-  `includes/funciones.php` (`htmlspecialchars`, ENT_QUOTES, UTF-8, null-safe). Única salida cruda intencional: `echo $contenido` en los layouts.
+### Vistas
+- Toda salida se escapa con **`s()`** (`includes/funciones.php`). Única salida cruda intencional: `echo $contenido`
+  en los layouts.
 
 ---
 
@@ -280,44 +257,13 @@ src/               → SCSS y JS fuente
 
 ## [SECCION: MODULOS FUNCIONALES]
 
-| Módulo | Rutas base | Descripción |
-|---|---|---|
-| **Login / Auth** | `/login`, `/logout`, `/chgpsswd`, `/token_verify`, `/updtepsswd` | Autenticación, bloqueo por intentos, recuperación de contraseña por email con `reset_token`. **Reingeniería 2026-07-17 (verificada y mergeada el 2026-08-12)** — ver abajo. |
-| **Usuarios** | `/usuario/*` | CRUD de usuarios + `persona` asociada. Coordinador (cargo 3) se vincula a programa. |
-| **Programas** | `/programa/*` | Programas de la ONG. |
-| **POA** | `/poa/*`, `/poa_indicadores/*`, `/detalle_actividad/*` | Plan Operativo Anual (Indicadores y Presupuestal); vincula coordinador↔programa. |
-| **Resultados / Productos / Actividades** | `/resultado/*`, `/producto/*`, `/actividad/*` | Jerarquía: Resultado → Producto → Actividad. |
-| **Rubros / Categorías** | `/rubro/*`, `/categoria_rubro/*` | Partidas presupuestarias (tipo rubro Bien/Servicio). |
-| **Fuentes de financiamiento** | `/fuente_financiamiento/*`, `/dfinanciamiento/*` | Fuentes (donantes) y sus sobres por programa; en `/dfinanciamiento/crear` se captura también la **transferencia al programa Institucional** (migr. 033). |
-| **Rendiciones** | `/rendicion/*` | Rendición de cuentas con comprobantes (RUC, serie, número, monto) por fuente. (`/rendicionff/*` se retiró el 2026-09-14: código muerto sin guardas, su tabla `rendicion_ff` no existe.) |
-| **Otros Ingresos/Egresos (OIE)** | `/ingreso_egreso/*` | Movimientos no ligados a rendición, con comprobantes. |
-| **Tipos de cambio** | `/tcambio/*?moneda=USD\|EUR` | TC unificado (migr. 028): compra/venta por `fecha_vigencia`; el vigente a una fecha se resuelve por fecha, no por orden de registro. `/tcambio/sbs` = consulta informativa que pre-llena el formulario. |
-| **Reportes** | `/reporte/poa`, `/reporte/poarendicion`, `/reporte/poarubros`, `/reporte/rendiciones`, `/reporte/ingresos` | Exportación Excel con PhpSpreadsheet por **streaming** (`/descargar` se retiró el 2026-08-14), con conversión de moneda. |
-| **Saldos contables** | `/saldos_contables/saldos` | Saldos por fuente de financiamiento. |
-
-### Autenticación — modelo y rediseño (✅ 2026-07-17, verificado y mergeado 2026-08-12)
-- **Onboarding = invitación por correo** (decisión 2026-07-17): el Admin da de alta al usuario con una
-  contraseña provisional **aleatoria y oculta** (`Usuario::crear()` → `generarCodigoAleatorioSimple`); el
-  usuario **nunca** entra con una clave que alguien más conoce: activa la suya en `/chgpsswd` → código al
-  correo → `/token_verify` → `/updtepsswd`. **Descartado** el modelo "contraseña temporal conocida +
-  bandera `must_change`". Por eso el alta de usuarios no tiene campo de contraseña.
-- **La identidad del cambio de contraseña vive en la SESIÓN, no en la URL.** `token_verify` fija
-  `$_SESSION['pwd_reset_uid']` + `pwd_reset_ts` con `session_regenerate_id(true)`, y `updatePassword` solo
-  confía en eso (prueba de un solo uso, TTL `Login::RECUP_TOKEN_TTL`); sin ella redirige a `/chgpsswd`.
-  ⚠️ **No reintroducir `?id=` en `/updtepsswd`**: así era antes y permitía tomar cualquier cuenta (IDOR).
-- Política: mínimo 8 caracteres + confirmación. Bloqueo por intentos (`login_intentos`, migr. 011) **por la
-  pareja (IP, email)** con 5 fallos, más un tope de 30 por IP (2026-09-14: bloquear por email a secas dejaba
-  que cualquiera dejara fuera a otra persona).
-- **La sesión se revalida contra la BD en cada petición** (`Login::sesionSigueValida()`, 2026-09-14): usuario
-  eliminado o con cambio de cargo, programa o contraseña ⇒ la sesión se cierra (`/login?revocada=1`).
-  `/logout` solo por POST con token CSRF.
-- Las 4 vistas (`login`, `chgpsswd`, `token_verify`, `updtepsswd`) usan los tokens `--sa-*` del tema y
-  comparten el partial de avisos `views/partials/_auth_alertas.php`.
-- **QA**: el flujo de recuperación NO está en la suite `qa_*.ps1` (sí la revalidación de sesión y el bloqueo
-  por IP+email, en `qa_usuarios.ps1`). Se
-  verificó a mano el 2026-08-12 con un usuario desechable creado y borrado en la BD local — 10 pruebas
-  (IDOR, código inválido/válido, confirmación, longitud, one-shot, login posterior, token limpiado,
-  bloqueo por intentos). Repetirlo así si se toca el módulo.
+### Autenticación (detalle en la skill `auth-recuperacion`)
+- **Onboarding = invitación por correo:** el alta genera una contraseña aleatoria que nadie conoce; cada usuario
+  activa la suya en `/chgpsswd → /token_verify → /updtepsswd`. Por diseño, el alta no tiene campo de contraseña.
+- ⚠️ **No reintroducir `?id=` en `/updtepsswd`**: la identidad vive en la sesión (`pwd_reset_uid`); por URL
+  permitía tomar cualquier cuenta (IDOR).
+- La sesión se revalida contra la BD en cada petición (`Login::sesionSigueValida()`): cambiar contraseña, cargo o
+  programa la cierra.
 
 ---
 
@@ -421,67 +367,23 @@ src/               → SCSS y JS fuente
 - **Ingreso híbrido (enmienda 2026-07-09):** puede ir al **total de la fuente** (remanente sin asignar; `otros_ingresos_egresos.programa_id` **NULL**, migr. 020) o a un **programa concreto** (su sobre). El **egreso** siempre lleva programa y descuenta del sobre `(programa, fuente)`.
 - ✅ **Item 7 COMPLETADO (2026-07-14, QA 22/22):** CRUD en un solo paso (se eliminó el flujo en dos pasos `/ingreso_egreso/ff`). Validaciones en `OtrosIngresosEgresos`: egreso exige programa, el par (programa, fuente) debe tener sobre (`DetalleFinanciamiento::existeVinculo()`), y el egreso no puede exceder el disponible del sobre (`validarTopeSobre()` → `saldoSobre()`, que ahora acepta excluir un OIE en edición). Eliminar borra el OIE **y su comprobante**. `programa_id` NULL real vía `ActiveRecord::$columnasNull` (opt-in). Vista de listado recreada con LEFT JOIN (migr. 025).
 
-### Programa Institucional y transferencias (✅ IMPLEMENTADO 2026-07-16, item 9 — migr. 033)
-- El programa **INSTITUCIONAL** (código reservado `PRG000`, flag **`programa.es_institucional`**) concentra los
-  gastos de oficina/administrativos. **Nace con el sistema** (lo crea la migr. 033 con `INSERT IGNORE`; los
-  fixtures QA/demo lo re-siembran) y está **protegido contra eliminación** (`resultado=28`). Identificación
-  SIEMPRE por el flag (`Programa::institucional()`, cacheado) — nunca por nombre/id.
-- **Se comporta como un programa normal** (jerarquía, POA, rendiciones, saldos) con dos diferencias:
-  1. **No recibe sobres directos** (`resultado=26` como destino en `/dfinanciamiento`): su sobre
-     `(Institucional, fuente)` es **derivado** = Σ transferencias de esa fuente, materializado como fila normal
-     de `detalle_financiamiento` gestionada solo por `TransferenciaInstitucional::sincronizarSobreInstitucional()`
-     (recalcula, no incrementa; con Σ=0 el sobre se elimina). Así todas las vistas de saldo, la puerta de
-     sobres y el tope del POA funcionan sin tocarse.
-  2. **Lo opera el Contador directamente**: `iconta.php` tiene `POST /poa/crear|enviar` con guarda — el
-     Contador solo ELABORA el POA del Institucional (`resultado=26` en programas normales; en ellos sigue
-     siendo revisor/adenda). Panel de elaboración en la rama contador de `views/poa/admin.php`. La
-     auto-aprobación de su propio POA es aceptada (decisión 2026-07-16). Sus rendiciones sobre POA aprobado
-     nacen Aprobadas (adenda existente).
-- **Transferencia** (`transferencia_institucional`, UNIQUE por (fuente, programa origen), **monto fijo**):
-  se captura al asignar sobres en `/dfinanciamiento/crear` (campo opcional al crear; edición inline en
-  fuentes vinculadas, monto 0 = quitarla). Es **partición en el origen**: el monto transferido NO vive en el
-  sobre del programa origen — la invariante Σ sobres ≤ presupuesto se mantiene sin doble conteo, y
-  `validarLimiteAsignacion` valida sobre + transferencia JUNTOS contra la capacidad asignable.
-- **Guardas de edición**: aumento → el delta cabe en la capacidad asignable; reducción/eliminación → el sobre
-  del Institucional nunca queda bajo lo ya comprometido por él en esa fuente (`resultado=27`). "Quitar" un
-  vínculo arrastra su transferencia (con la misma guarda).
-- **En los reportes Excel**, el bloque del programa origen muestra la fila
-  **"TRANSFERENCIA A PROGRAMA INSTITUCIONAL"** (última antes del TOTAL): el total del bloque =
-  Σ rubros + transferencia (el cargo completo al grant que ve el donante).
+### Programa Institucional (detalle en la skill `programa-institucional`)
+- Programa reservado `PRG000` para gastos de oficina. ⚠️ Identificarlo **siempre por el flag
+  `programa.es_institucional`** (`Programa::institucional()`), nunca por nombre o id. No se puede eliminar y no
+  recibe sobres directos: su sobre se deriva de las transferencias y solo lo escribe
+  `TransferenciaInstitucional::sincronizarSobreInstitucional()`. Lo opera el Contador.
 
-### Reportes Excel de rendición (✅ REESCRITOS 2026-07-16, item 9 — migr. 034)
-- `models/ReporteRendicionXlsxBuilder.php` genera `/reporte/poarendicion` y `/reporte/poarubros`
-  (las vistas quedaron como orquestadores delgados), **conservando el diseño visual** (bloques por programa,
-  BIENES/SERVICIOS, totales por actividad en G/H/I, tripletas S//USD/EUR por fuente desde K).
-- **Grano por RUBRO** (migr. 034): la vista `reporte_poa_rendicion` agrupa por rubro×fuente — cada suma cae
-  **en la fila de su rubro** (antes: fila del último rubro de la actividad, fósil pre-migr. 017). Cuenta
-  **solo rendiciones Aprobadas** y **solo el ejercicio vigente** (`YEAR(fecha_original)`, decisiones 2026-07-16).
-- Columnas **calculadas** (`Coordinate::stringFromColumnIndex`) — sin arrays K..Z hardcodeados: soporta N
-  fuentes (antes con ≥6 las sumas desaparecían). Columnas "TOTAL RENDIDO" con encabezado; fila TOTAL
-  **etiquetada**; `combinarCeldasRepetidas` solo en columnas de etiquetas A/B (fusionar montos iguales
-  adyacentes hacía desaparecer importes). `/reporte/poa` conserva su layout + fila de transferencia + TOTAL.
-- QA: `qa_reportes.ps1` asserta el contenido **celda a celda** del xlsx generado (helper `qa_leer_xlsx.php`).
+### Reportes Excel de rendición (detalle en la skill `reportes-excel`)
+- `ReporteRendicionXlsxBuilder` (grano rubro×fuente, migr. 034) cuenta **solo rendiciones Aprobadas del ejercicio
+  vigente**. Columnas calculadas, nunca letras hardcodeadas; `combinarCeldasRepetidas` solo en las columnas de
+  etiquetas A/B (en columnas de montos hace desaparecer importes).
 
-### Tipo de Cambio (✅ reescrito 2026-07-15, plan de montos — migr. 028-030)
-- Tabla única `tipo_cambio` (moneda USD/EUR, `fecha_vigencia`, **compra** y **venta**, origen MANUAL/SBS,
-  `decimal(12,6)`). UNIQUE (moneda, fecha_vigencia).
-- **El TC vigente a una fecha** = registro con `fecha_vigencia` máxima ≤ esa fecha (convención contable para
-  feriados/fines de semana). **Nunca por id/orden de tecleo** (`TipoCambio::vigente()`).
-- **El TC aplicado a una transacción es el vigente a su FECHA DE OPERACIÓN, congelado al registrar** (migr. 029):
-  rendición (gasto) → **venta**; OIE ingreso → **compra**; OIE egreso → **venta**. Se copia el **valor** (no un
-  FK): editar/borrar un TC después no reescribe la contabilidad. Sin cobertura ⇒ `tc_usd`/`tc_eur` quedan `NULL`
-  ("pendiente de TC", el registro no se bloquea); **el Contador no puede aprobar el POA** con rendiciones
-  pendientes de TC (`resultado=22`; al aprobar se reintenta el congelamiento por si ya cargó las tasas).
-- Al editar una transacción, el TC congelado **no se recalcula** salvo que cambie la fecha de operación (o el
-  tipo ingreso↔egreso en OIE), o que siga pendiente y ya haya cobertura.
-- **Planificación** (rubros/POA, sin fecha de operación) → **venta al cierre** (vigente al generar el reporte);
-  **saldos** (partida monetaria) → **compra al cierre** (NIC 21), siempre mostrando tasa/fecha/origen.
-  ✅ **Mapeo CONFIRMADO por la contadora de Arco Iris el 2026-08-12** (*"usar la tasa vigente, seguimos con
-  NIC 21"*): ya no es una derivación por lógica, es la convención de la organización. No cambiar sin una
-  nueva consulta — el TC congelado no se recalcula hacia atrás (`docs/confirmar-tc-contador.md`).
-- **La tasa SBS es informativa**: botón "Consultar SBS" pre-llena el formulario (endpoint configurable
-  `SBS_API_URL` en `.env`, timeout 5 s, degradación limpia) y `database/importar_tc_sbs.php` hace el backfill en
-  lote (origen='SBS', `INSERT IGNORE`). Nunca corre en la ruta de un reporte; nunca se guarda sin el Contador.
+### Tipo de Cambio (detalle en la skill `tipo-de-cambio`)
+- TC vigente a una fecha = `fecha_vigencia` máxima ≤ esa fecha (`TipoCambio::vigente()`), **nunca por id u orden
+  de registro**.
+- Se **congela** al registrar la transacción (rendición y OIE egreso → venta; OIE ingreso → compra) y **no se
+  recalcula hacia atrás**. Mapeo confirmado por la contadora (NIC 21): no cambiarlo sin nueva consulta. La tasa
+  SBS es solo informativa.
 
 ### Saldos
 - Saldo **fuente** = presupuesto + ingresos − rendiciones_aprobadas − otros_egresos (`vista_saldo_fuente_financiamiento`,
@@ -495,18 +397,9 @@ src/               → SCSS y JS fuente
   "POA no aprobado" (las rendiciones pendientes no descuentan → el saldo aún no es firme).
 - Al registrar rendiciones aprobadas u OIE, los saldos se actualizan (las vistas calculan en vivo).
 
-### Cierre Anual (✅ IMPLEMENTADO 2026-07-16, item 8 — decisiones confirmadas ese día)
-- El saldo sobrante de cada fuente al cierre del año se registra en `fuente_presupuesto_anual` (fuente_id, anio, monto_inicial, presupuesto_comprometido, presupuesto_contable). Permite el histórico año a año.
-- **El cierre es un SNAPSHOT manual**: botón "Registrar cierre del año" en `/saldos_contables/saldos`
-  (Contador/Admin, `POST /cierre_anual/guardar` — sufijo `/guardar` para pasar el CSRF del Router).
-  Copia el desglose EN VIVO (`FuentePresupuestoAnual::cerrarAnio()` ← `desglosePorFuente()`): inicial =
-  `fuente.presupuesto`, **comprometido = Σ sobres**, contable = inicial + ingresos − rendiciones aprobadas −
-  otros egresos. **Nunca acumuladores por operación** (antipatrón descartado en el plan de montos §2.4).
-- **Re-cerrable con aviso**: upsert por `UNIQUE (fuente, anio)`; el confirm avisa que reemplaza el snapshot.
-- **Rendiciones pendientes advierten, no bloquean** (el confirm indica cuántas hay; no descuentan el contable).
-- La pantalla muestra el **Histórico Anual por Fuente** (bloque 5) leído de la tabla.
-- ⏸ El **rollover** (traspaso del sobrante al `monto_inicial` del año siguiente) sigue en v1.1, junto con las
-  preguntas de periodos del plan de montos §5.1.
+### Cierre Anual (detalle en la skill `cierre-anual`)
+- Snapshot manual en `fuente_presupuesto_anual` (`POST /cierre_anual/guardar`), re-cerrable por upsert. Copia el
+  desglose en vivo: **nunca acumuladores por operación**. El rollover al año siguiente queda para v1.1.
 
 ---
 
@@ -542,62 +435,24 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
   moneda, `fecha_vigencia`, compra, venta `decimal(12,6)`, origen. `rendicion` y `oie_comprobante` llevan el
   TC **congelado** por fila (`tc_usd`/`tc_eur` + `tipo_cambio_*_id` como rastro, migr. 029; NULL = pendiente).
 
-### Catálogos
-`cargo` (1 Administrador, 2 Contador, 3 Coordinador), `tipo_programa`, `tipo_rubro`, `tipo_comprobante`,
-`oie_tipo`, `oie_tipo_comprobante`, `categoria_rubro`, `subcategoria_rubro`.
-
-### Identidad
-- **`persona`** (datos personales: `nro_documento` UNIQUE, apellidos, nombres, telefono).
-- **`usuario`** (`persona_id` UNIQUE, `cargo_id`, `email` **UNIQUE** desde la migr. 032 —el código corto
-  `descripcion` se retiró en la migr. 024—, `password` char(60) bcrypt, `reset_token`).
-
 ---
 
 ## [SECCION: ESTADO DE LA BD — MIGRACIONES]
 
-- **Runner** `database/migrate.php` + baseline `database/schema_baseline.sql` + tabla `schema_migrations`.
-  Migraciones vigentes: **001-035** (`database/migrations/`). **020** = `monto_asignado` (sobres) + `oie.programa_id` nullable; **021** = `vista_saldo_sobre`; **022-024** = códigos autogenerados (jerárquicos + correlativos) y retiro del código de usuario; **025** = `otros_ingresos_egresos_admin_vista` con LEFT JOIN a programa/fuente (ingreso híbrido, item 7); **026-031** = plan de montos y TC (2026-07-15): **026** `fuente_financiamiento.presupuesto` → `decimal(14,2)`; **027** `vista_saldo_rubro` + `vista_saldo_fuente_financiamiento` con inicial/vigente/capacidad_asignable; **028** tabla `tipo_cambio` unificada (elimina `tipo_cambio_dolar`/`euro` y sus vistas); **029** columnas de TC congelado en `rendicion` y `oie_comprobante`; **030** vistas de reporte con conversión congelada (`ROUND(monto/NULLIF(tc,0),2)` + contador de pendientes); **031** `reporte_fuentes` alineada con su modelo (alias `fuente_*`); **032** `usuario.email` UNIQUE (item 10, cierra esa parte de B3); **033** Programa Institucional: flag `es_institucional`, tabla `transferencia_institucional` y siembra de `PRG000` (item 9); **034** `reporte_poa_rendicion` por rubro×fuente, solo aprobadas del ejercicio vigente (item 9); **035** vistas `reporte_ingresos`/`reporte_egresos`/`reporte_rendiciones` saneadas (se retira el JOIN a `detalle_financiamiento` que hacía DESAPARECER los movimientos de fuentes sin sobres y los duplicaba con ≥2 sobres; + programa, rubro, estado y tipo de comprobante — Fase 1 de `docs/plan-reportes-ingresos-y-rendiciones.md`).
-- **BD local `sysai`:** ⚠️ **aplicadas hasta 034** (verificado 2026-09-14: la base de capacitación restaurada es
-  anterior a la 035 → `php database/migrate.php`; sin ella `qa_reportes.ps1` da 7 FAIL). Despliegue **greenfield** (Hostinger dado de baja):
-  importar baseline + 001-035 + `seed.sql` en BD nueva; ya no hay que reconciliar contra un estado previo.
-  Para poblar un escenario de demo completo (usuarios, programas, fuentes con sobres, POA, rendiciones): `database/seed_demo.sql` (re-ejecutable).
-- **Tabla de migraciones 001-019, hallazgos y brechas: `docs/historial-migraciones.md`** (020-021 documentadas aquí, en *Fuentes* y *Saldos*).
+- **Runner** `database/migrate.php` sobre `database/schema_baseline.sql` (tabla `schema_migrations`). Qué hace cada
+  migración está en su archivo de `database/migrations/` y en `docs/historial-migraciones.md`. Una migración
+  aplicada no se edita: se corrige con otra.
+- **BD local `sysai`:** ⚠️ **aplicadas hasta 034** (la base de capacitación restaurada es anterior a la 035 →
+  `php database/migrate.php`; sin ella `qa_reportes.ps1` da 7 FAIL).
+- **Despliegue greenfield:** baseline + migraciones + `seed.sql` + `crear_admin.php`. `seed_demo.sql` es un escenario
+  de demo solo para desarrollo.
 
 ---
 
-## [SECCION: ORDEN / ESTADO DE IMPLEMENTACION]
+## [SECCION: ESTADO DE IMPLEMENTACION]
 
-| # | Módulo | Estado |
-|---|---|---|
-| 1 | Migración de BD | ✅ COMPLETADO (001-035) |
-| 2 | Vínculo Coordinador-Programa | ✅ COMPLETADO (Fase 1) |
-| 3 | POA Indicadores | ✅ COMPLETADO (QA 18/18) |
-| 4 | POA Presupuestal | ✅ COMPLETADO (2026-07-15) — flujo QA 18/18 + **tope por Σ sobres y puerta de sobres** (QA 30/30) |
-| 5 | Rendiciones (↔ rubro; tope por **sobre**) | ✅ COMPLETADO (QA 10/10) |
-| 6 | POA Rendición (= mismo POA Presupuestal) | ✅ COMPLETADO (QA 21/21) |
-| 7 | Otros Ingresos/Egresos (OIE, solo Contador; tope por **sobre**) | ✅ COMPLETADO (QA 22/22) |
-| 8 | Saldos (fuente + **sobre** + comprometido + **cierre anual**) | ✅ COMPLETADO (2026-07-16) — cierre anual manual + histórico + visibilidad por POA (QA 16/16, suite 117/117) |
-| 9 | Reportes Excel + **Programa Institucional** | ✅ COMPLETADO (2026-07-16) — builder por rubro×fuente (migr. 034), transferencias al Institucional operado por el Contador (migr. 033), fila de transferencia en los Excel. QA 15/15 institucional + 8 asserts de celdas (suite **154/154**) |
-| 10 | Usuarios | ✅ COMPLETADO (2026-07-16) — revisión + fixes del CRUD, email UNIQUE (migr. 032), QA 14/14 (suite 131/131) |
-
-> Detalle de construcción + QA de los items **completados (2-6)**: `docs/historial-implementacion-items-2-6.md`.
-> **Sub-presupuestos ("sobres") — Fases 1-5 (2026-07-09):** migr. 020-021, validaciones (`validarLimiteSobre`, `validarLimiteAsignacion`), saldos por sobre + comprometido, y captura de `monto_asignado` en `/dfinanciamiento/crear`. Ver *Fuentes*, *Rubros*, *Saldos*.
-
----
-
-## [SECCION: BACKLOG PENDIENTE]
-
-> ✅ **El backlog funcional está COMPLETO: items 1-10** (el 9 —Reportes Excel + Programa Institucional— se
-> completó el 2026-07-16). Lo abierto —casi todo previo al despliegue— vive en
-> *[SECCION: PENDIENTES / FOLLOW-UPS TECNICOS]* y en *[SECCION: DIFERIDO A v1.1]*.
-
-### Item 10 — Usuarios (✅ completado 2026-07-16, QA `qa_usuarios.ps1` 14/14)
-La revisión final del CRUD corrigió: `eliminar()` no limpiaba `poa_indicadores`/`poa_rendicion` (FK) y el
-DELETE fallaba EN SILENCIO reportando éxito (ahora `eliminarsinRedireccion()` devuelve `bool`, se verifica, y
-falla con `resultado=25`); `crear()` podía dejar personas huérfanas (ahora verifica y deshace); mass assignment
-en `actualizar()` (password/persona_id/reset_token/ids protegidos, patrón A2); email con formato validado
-(`FILTER_VALIDATE_EMAIL`) y **UNIQUE en BD** (migr. 032, cierra esa parte de B3). El password del alta es un
-provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por diseño no hay campo de contraseña).
+> ✅ **Backlog funcional completo: items 1-10.** Lo abierto está en *Pendientes* y *Diferido a v1.1*. El detalle de
+> construcción de cada ítem vive en `docs/` (p. ej. `docs/historial-implementacion-items-2-6.md`) y en git.
 
 ---
 
@@ -643,11 +498,12 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
   que solo analiza `main`.
 - [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta: redirección a HTTPS, bloqueos y CSP del
   `.htaccess`; y el botón "Cerrar sesión" (formulario POST vía `app.js`) en el navegador.
-- [ ] **Decidir el emisor de correo de producción**: `docs/plan-secretos-y-hardening.md` (enmienda 2026-08-14)
-  dice Gmail con App Password; *Setup* de este documento dice `no-reply@<dominio>` con SPF/DKIM.
+- [ ] **Crear la cuenta Gmail dedicada a Arca** (emisor decidido el 2026-09-14, ver *Setup*) con verificación
+  en dos pasos y una App Password propia del servidor.
 - [ ] **Checklist del despliegue greenfield**: PHP 8.3 en hPanel, SSL, usuario MySQL de mínimo privilegio,
-  MySQL remoto apagado, `.env` en `../secrets/`, subida por lista blanca, admin del seed con clave nueva,
-  salida al puerto 587 y `curl` a los archivos sensibles → 403/404.
+  MySQL remoto apagado, `.env` en `../secrets/`, subida por lista blanca, **`crear_admin.php --probar-correo`
+  desde el servidor** (prueba a la vez la salida al 587), `REMOTE_ADDR` real (sin CDN delante),
+  `session.save_path` propio y `curl` a los archivos sensibles → 403/404.
 
 **Entorno local**
 - [ ] Aplicar la **migr. 035** a la BD local (`php database/migrate.php`).
@@ -668,43 +524,8 @@ provisional aleatorio hasheado: el usuario define el suyo vía `/chgpsswd` (por 
 - Bajos de la auditoría sin tratar: enumeración por tiempo en el login, `CURLOPT_FOLLOWLOCATION` en la consulta
   SBS, `style-src 'unsafe-inline'` en la CSP.
 
-**Cerrados** (histórico):
-- [x] ~~Bloqueo por intentos en `Login.php`~~ — **resuelto en `main`** (migr. 011 `login_intentos`; `models/Login.php` la usa). Cerrado 2026-07-15.
-- [x] ~~Retirar modelo `RendicionFuentesCantidadVista`~~ — **HECHO 2026-07-15** (modelo y llamadas eliminados; `$ffnro` no se usaba en ninguna vista).
-- [x] ~~B2 — reportes POA/Excel inflados por fan-out de fuentes~~ — **CERRADO 2026-07-16 (item 9):** al
-  verificar, el `SUM(DISTINCT)` histórico ya no existía y `/reporte/poa` no imprime fuentes; el residuo real
-  (sumas de rendición desalineadas por agrupar a nivel actividad) quedó resuelto por el re-anclaje a
-  rubro×fuente (migr. 034) y el builder nuevo. Los reportes ya no repiten `fuente.presupuesto` por actividad.
-- [x] ~~B3 — esquema desalineado~~ — **CERRADO 2026-07-16** (barrido contra BD viva): overflow de montos,
-  `fecha_original`, `email` UNIQUE y `avance` (ya era `decimal(5,2)`/`(7,2)`, admite 100% — la nota
-  "decimal(2,2)" era de un dump viejo) todos verificados OK. La **auditoría sin triggers** se difiere a
-  **v1.1 por decisión** (hallazgos anotados en `docs/modelo-datos-detalle.md` §2: `auditoria.usuario
-  varchar(8)` vs identidad email → redimensionar al implementarla).
-- [x] ~~B4 — MAYÚSCULAS forzadas indiscriminadas~~ — **CERRADO 2026-08-12:** la mitad de servidor cayó el
-  2026-07-16 (`convertirAMayusculas()`); hoy cayó la mitad de CSS, que había sobrevivido y seguía mostrando
-  en MAYÚSCULAS —con la fuente vieja `Lato`— todo input y textarea de la app
-  (`src/scss/layout/_sidebar.scss`). Detalle en `docs/follow-ups-tecnicos.md`.
-- [x] ~~B5 — código muerto de otro proyecto~~ — **HECHO 2026-07-16:** eliminados `includes/templates/` (6
-  archivos de bienes raíces), `incluirTemplate()`/`TEMPLATES_URL`/`FUNCIONES_URL`/`CARPETA_IMAGENES`,
-  `setImagen()`/`borrarImagen()` (sin caller; accedían a una propiedad inexistente en cada delete) y la
-  dependencia `intervention/image` (cero referencias). De paso B6: `validarPropiedadArray()` SÍ tenía un
-  caller (`UsuarioController.php:48`) → corregida con `!empty()` (sin warnings), no eliminada. QA 131/131.
-- [x] ~~Confirmar con el contador el **mapeo compra/venta** del TC~~ — ✅ **CONFIRMADO POR LA CONTADORA
-  (2026-08-12):** *"se debe usar la tasa vigente, seguimos con la lógica NIC 21"*. El mapeo implementado
-  queda **sin cambios** (gasto/egreso→venta, ingreso→compra, saldos→compra, planificación→venta) con la
-  tasa vigente a la **fecha de operación**, que es lo que ya congela el sistema. **Cero código que tocar.**
-  Sin pronunciamiento sobre fuente de la tasa y redondeo → se mantiene el comportamiento actual (Contador
-  registra a mano, SBS informativa, `ROUND(…, 2)`). Detalle en `docs/confirmar-tc-contador.md`.
-- [x] ~~B8 — modal "Guardar POA" en `/reporte/poa`~~ — **CERRADO 2026-08-13** (hallado en las pruebas
-  manuales): fósil pre-flujo que escribía `poa.presupuesto` desde un monto posteado por el navegador —y
-  que además solo sumaba la **columna D del xlsx (rubros tipo BIEN)**, dejando fuera los servicios—.
-  Hoy esa cifra la calcula el servidor (`Poa::presupuestoCalculado()` al iniciar y al congelar en
-  `/poa/enviar`). Retirados modal (duplicado en el DOM), form oculto, bloque JS (que rompía el clic de
-  descarga en las 5 pantallas de reporte), 5 rutas, entrada CSRF y los métodos del controlador; de paso
-  se eliminó la ruta GET `/reporte/guardarpoa` → `crearpoa`, **método inexistente** = error fatal latente.
-  Detalle en `docs/follow-ups-tecnicos.md`.
-- [x] ~~`sql_mode` sin `STRICT_TRANS_TABLES`~~ — **HECHO 2026-07-16:** activo por sesión en `conectarDB()`
-  (portable a Hostinger). Replay greenfield + seeds + suite QA 131/131 verificados bajo modo estricto.
+**Cerrados:** el histórico (B2-B8, `sql_mode` estricto, bloqueo por intentos) está en `docs/follow-ups-tecnicos.md`;
+la confirmación del mapeo del TC, en `docs/confirmar-tc-contador.md`.
 
 ---
 

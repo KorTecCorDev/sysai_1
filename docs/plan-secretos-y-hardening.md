@@ -68,7 +68,7 @@ local. **No hay un solo secreto**: el problema no se gestiona, se disuelve.
 |---|---|---|---|
 | **Desarrollo** | Mailpit (`127.0.0.1:1025`, bandeja `:8025`) | **ninguno** | raíz del proyecto |
 | **Prueba de entrega real** (excepcional) | App Password **efímera**: generar → probar → **revocar** | vive minutos | sin persistir |
-| **Producción** | **`korteccor@gmail.com` con App Password** (Gmail, 587/tls) — *decisión 2026-08-14* | 1 App Password (abre la cuenta Google entera) | `../secrets/.env`, permisos 600 |
+| **Producción** | **Cuenta Gmail dedicada a Arca** con App Password (587/tls) — *decisión 2026-09-14*; `no-reply@<dominio>` en Hostinger cuando haya dominio | 1 App Password de una cuenta que no guarda nada más | `../secrets/.env`, permisos 600 |
 
 > ⚠️ **Enmienda 2026-08-14 — el emisor definitivo es una cuenta Gmail, no `no-reply@<dominio>`.**
 > Decisión tomada sabiendo que el dominio no está contratado y que la capacitación es inminente. Lo
@@ -85,6 +85,20 @@ local. **No hay un solo secreto**: el problema no se gestiona, se disuelve.
 > - Al desplegar en Hostinger, **verificar que el puerto 587 saliente no esté bloqueado** — en hosting
 >   compartido a veces lo está, y entonces no hay correo. Es la comprobación que puede tumbar el
 >   despliegue.
+
+> ⚠️ **Enmienda 2026-09-14 — cuenta Gmail DEDICADA, no `korteccor@gmail.com`; buzón propio cuando haya dominio.**
+> Revisión del flujo de cambio de contraseña. Sigue sin haber dominio a la vista, así que Gmail se
+> mantiene, pero no con una cuenta personal:
+> - **Qué se protege:** la App Password abre la cuenta entera. En una cuenta creada solo para Arca, un
+>   `.env` filtrado expone un buzón que no guarda nada más, no el correo de una persona.
+> - **Continuidad:** la cuenta es de la organización. Si quien la administra se va o cambia su contraseña
+>   personal, la activación de cuentas no se cae. Ojo: cambiar la contraseña de **esta** cuenta revoca sus
+>   App Passwords, y el correo deja de salir hasta generar otra.
+> - **Remitente:** nombre institucional (`MAIL_FROM_NAME=Arca - Arco Iris`), en vez de un alias personal.
+> - **Siguiente paso previsto:** `no-reply@<dominio>` en `smtp.hostinger.com:465/ssl` con SPF, DKIM y
+>   DMARC. Se cambia solo el `.env`, porque el código ya admite ambos.
+> - **Verificación en el servidor:** `php database/crear_admin.php … --probar-correo` envía un código real
+>   por el mismo camino que la web.
 
 ### Por qué Mailpit y no una App Password permanente
 
@@ -138,9 +152,11 @@ Orden de búsqueda: `$SYSAI_ENV_FILE` → `../secrets/.env` → `.env` del proye
 
 ## 5. Pendiente (P2 — despliegue)
 
-- [x] ~~Definir el emisor definitivo~~ — ✅ **2026-08-14: `korteccor@gmail.com` con App Password**
-      (587/tls). `MAIL_TRANSPORT=smtp` explícito en el `.env`; `MAIL_FROM_EMAIL` = `MAIL_USERNAME`,
-      que Gmail exige o reescribe el remitente. Ver la enmienda de la §3.
+- [x] ~~Definir el emisor definitivo~~ — ✅ **2026-09-14: cuenta Gmail dedicada a Arca con App Password**
+      (587/tls), y `no-reply@<dominio>` cuando haya dominio (sustituye la decisión del 2026-08-14 por
+      `korteccor@gmail.com`). `MAIL_TRANSPORT=smtp` explícito en el `.env`; `MAIL_FROM_EMAIL` =
+      `MAIL_USERNAME`, que Gmail exige o reescribe el remitente. Ver las enmiendas de la §3.
+- [ ] Crear la cuenta dedicada (verificación en dos pasos) y guardarla en el gestor de contraseñas.
 - [ ] **Al desplegar: comprobar que Hostinger permite salida al 587** (`smtp.gmail.com`). Si está
       bloqueado, probar 465/ssl; si tampoco, no hay correo y nadie puede activar su cuenta.
 - [ ] Generar una App Password **propia del servidor** en vez de copiar la del equipo de desarrollo,
