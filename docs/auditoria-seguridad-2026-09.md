@@ -23,7 +23,7 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
 
 | # | Hallazgo | Estado |
 |---|---|---|
-| H1 | Credenciales en el historial de git (BD vieja en `database.php`, SMTP de Gmail en `LoginController`); las de Mailtrap pasaron por un chat | ✅ **2026-09-15**: App Passwords de `pruebaskorteccorsmtp@gmail.com` y `korteccor@gmail.com` revocadas (la segunda seguía viva en un `.env` local y cifrada en `secrets/.env.enc`); passphrase rotada; historial **no** se reescribe (decisión del usuario). ⏳ Confirmar la baja de la BD vieja de Hostinger y regenerar Mailtrap |
+| H1 | Credenciales en el historial de git (BD vieja en `database.php`, SMTP de Gmail en `LoginController`); las de Mailtrap pasaron por un chat | ✅ **2026-09-15**: App Passwords de `pruebaskorteccorsmtp@gmail.com` y `korteccor@gmail.com` revocadas (la segunda seguía viva en un `.env` local y cifrada en `secrets/.env.enc`); passphrase rotada; historial **no** se reescribe (decisión del usuario). BD vieja de Hostinger eliminada junto con su sitio (confirmado por el usuario); inbox de Mailtrap borrado. **Cerrado** |
 | H2 | `CLAUDE.md`, `docs/` y los PHP de la raíz servibles; sin `display_errors=0` | ✅ `863161c`: `.htaccess` deniega `*.md`, `docs/` e `iadmin/iconta/icoordi/Router/hash.php`; guardas en los archivos de rutas; `display_errors=0` fuera de desarrollo |
 | H3 | HTTPS no forzado | ✅ `863161c`: redirección 301 (exentos localhost y LAN privada). ⏳ Verificar en Apache real |
 | H4 | PhpSpreadsheet 4.1.0 con 9 avisos | ✅ `fdf10f3`: 5.9.0, `composer audit` limpio |

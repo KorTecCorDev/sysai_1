@@ -5,10 +5,10 @@
 
 ## 0. Antes de empezar (bloqueantes)
 
-- [ ] **Credenciales viejas rotadas** (H1 de `docs/auditoria-seguridad-2026-09.md`):
+- [x] **Credenciales viejas rotadas** (H1 de `docs/auditoria-seguridad-2026-09.md`, cerrado 2026-09-15):
   - [x] App Passwords de `korteccor@gmail.com` y `pruebaskorteccorsmtp@gmail.com` revocadas (2026-09-15);
-  - [ ] contraseña de la BD vieja cambiada o la cuenta dada de baja;
-  - [ ] usuario y clave de Mailtrap regenerados.
+  - [x] BD vieja eliminada: el sitio anterior y su BD ya no existen (confirmado 2026-09-15);
+  - [x] inbox de Mailtrap borrado (2026-09-15).
 - [x] **Cuenta Gmail dedicada a Arca:** `cronosarca2024@gmail.com`, dos pasos activos (2026-09-15).
 - [ ] **App Password del servidor:** generar una **nueva** en esa cuenta el día del despliegue (nombre
       `Arca servidor Hostinger`), guardarla en el gestor y **revocar la de prueba** del 2026-09-15.

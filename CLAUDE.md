@@ -497,11 +497,12 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 > `docs/auditoria-seguridad-2026-09.md`; deuda técnica histórica en `docs/follow-ups-tecnicos.md`.
 
 **Antes de desplegar**
-- [ ] **Rotar credenciales** — ✅ **App Passwords revocadas el 2026-09-15**: `pruebaskorteccorsmtp@gmail.com`
+- [x] ~~**Rotar credenciales**~~ — **HECHO 2026-09-15.** App Passwords revocadas: `pruebaskorteccorsmtp@gmail.com`
   (hardcodeada en git `594f8e5`→`fe3a8ce`) y `korteccor@gmail.com` (viva en el `.env` de la laptop y en
   `secrets/.env.enc` `f4ca27e`); passphrase del `.env.enc` rotada. Historial de git **no** se reescribe
-  (decisión del usuario). ⏳ **Falta confirmar:** que la BD vieja de Hostinger (`u612374195_…`) ya no exista
-  y regenerar/borrar el inbox de Mailtrap.
+  (decisión del usuario). ✅ BD vieja de Hostinger (`u612374195_…`): el usuario confirmó el 2026-09-15 que el
+  sitio y su BD están **eliminados por completo** (el despliegue parte de cero). ✅ Inbox de Mailtrap
+  **borrado** (sus credenciales SMTP dejan de existir).
 - [x] ~~**Merge `dev → main`**~~ — **HECHO 2026-09-15** (fast-forward hasta `b5324c0`, con confirmación del
   usuario). Cierra las alertas de Dependabot, que solo analiza `main`. `main` es la rama que se despliega.
 - [ ] **Verificar contra un Apache real** lo que `php -S` no ejecuta: redirección a HTTPS, bloqueos y CSP del
