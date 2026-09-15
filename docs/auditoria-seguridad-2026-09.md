@@ -63,12 +63,14 @@ de git, dependencias (Dependabot) y el entorno de desarrollo.
 - [ ] Elegir **PHP 8.3** en hPanel y activar **SSL**.
 - [ ] Crear la BD con un **usuario MySQL exclusivo** (SELECT/INSERT/UPDATE/DELETE; las migraciones con otro
       usuario) y dejar **MySQL remoto apagado**.
-- [ ] Importar baseline + `php database/migrate.php` (001-035) + `seed.sql` (solo catálogos). Ajustar o
-      quitar el `DEFINER` de las vistas.
+- [ ] Importar baseline + `php database/migrate.php` (001-035) + `seed.sql` (solo catálogos). El `DEFINER` de
+      las vistas ya se retiró del baseline (2026-09-15): con él la importación fallaba sin privilegio SUPER.
+      **Procedimiento completo paso a paso: `docs/despliegue-hostinger.md`.**
 - [ ] **`.env` en `../secrets/.env`** con permisos 600 y `APP_ENV=production`; `MAIL_LOG_PATH` fuera del
       document root.
-- [ ] **Subir por lista blanca:** sin `database/`, `.git/`, `src/`, `node_modules/` ni `docs/`. Compilar antes
-      con `npx gulp build`.
+- [ ] **Subir por lista blanca:** sin `.git/`, `.claude/`, `src/`, `node_modules/` ni `docs/`. Compilar antes
+      con `npx gulp build`. `database/` se sube **temporalmente** (baseline, migraciones, seed y
+      `crear_admin.php` corren en el servidor por SSH) y **se borra al terminar**.
 - [ ] **Correo (decidido 2026-09-14):** crear una **cuenta Gmail dedicada a Arca** con verificación en dos
       pasos y una App Password propia del servidor (plantilla en `.env.example`). Cuando haya dominio, pasar
       a `no-reply@<dominio>` en Hostinger cambiando solo el `.env`.

@@ -37,6 +37,8 @@
   document root en producción, `.htaccess` corregido (era sintaxis Apache 2.2 dentro de un `<IfModule>`),
   guardas CLI en `database/`, y el correo que ya no finge envíos exitosos. **P2 pendiente**: es la
   checklist de despliegue, consolidada en `docs/auditoria-seguridad-2026-09.md`.
+- **`docs/despliegue-hostinger.md`** — procedimiento paso a paso del despliegue greenfield con SSH (estructura,
+  `secrets/.env`, BD, `crear_admin.php`, `database/` temporal, verificación con `curl` y navegador, respaldos).
 - `docs/build-assets.md` — pipeline Gulp.
 - `docs/follow-ups-tecnicos.md` — deuda técnica pendiente (detalle).
 
