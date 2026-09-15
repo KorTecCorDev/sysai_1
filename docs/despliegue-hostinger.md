@@ -221,8 +221,11 @@ y cada cambio de `composer.lock` exigiría un `composer install` manual.
 
 1. **Generar la rama:** mergear a `main` el workflow y esperar a que termine (GitHub → Actions). Debe aparecer la
    rama `produccion`. Comprobar que **no** contiene `docs/`, `CLAUDE.md` ni `database/seed*.sql`.
-2. **Deploy key (repo privado):** hPanel → Avanzado → **GIT** → generar clave SSH → copiarla → GitHub → repo →
-   **Settings → Deploy keys → Add deploy key** (título `Hostinger - Arca produccion`, **sin** *Allow write access*).
+2. **Conectar GitHub (repo privado):** hPanel → Avanzado → **GIT** → **Connect with GitHub**. Instala la *Hostinger
+   GitHub App*: en la autorización, **"Only select repositories" → `sysai_1`**, no "All repositories". hPanel no
+   lista los repos hasta ese paso (si falta alguno: *Refresh repositories*). La variante por **deploy key** (clave
+   SSH de hPanel añadida en *Settings → Deploy keys*, sin permiso de escritura) sigue disponible para repos que no
+   estén en GitHub o para conexiones antiguas.
 3. **Vaciar `public_html`** (el despliegue exige carpeta vacía). Con el sitio ya publicado, sin perder nada:
    ```bash
    cd ~/domains/<dominio>
@@ -233,8 +236,9 @@ y cada cambio de `composer.lock` exigiría un `composer install` manual.
    directorio `public_html`. Desplegar.
 5. **Verificar** antes de borrar el respaldo: `pwsh -File database\verificar_htaccess.ps1 -BaseUrl https://<dominio>`
    en 0 FAIL, login, un reporte Excel y "Cerrar sesión". Luego `rm -rf ~/domains/<dominio>/public_html_anterior`.
-6. **Webhook:** hPanel → GIT → *Despliegue automático* → copiar la URL → GitHub → **Settings → Webhooks → Add
-   webhook** → pegar la URL, evento *Just the push event*.
+6. **Despliegue automático:** con la conexión por GitHub App **viene activado y el webhook lo gestiona Hostinger**
+   (*"On by default (webhook managed for you)"*), así que no hay que crear nada en GitHub. Comprobar que la opción
+   aparece encendida en hPanel → GIT. Solo la variante por SSH/deploy key exige pegar la URL del webhook a mano.
 
 ### 9.2 Cada actualización
 
@@ -254,5 +258,7 @@ y cada cambio de `composer.lock` exigiría un `composer install` manual.
   paquete, Composer). La rama `produccion` **no se toca**: producción sigue con la versión anterior.
 - **Volver atrás:** `git revert` del merge en `main` (se regenera el paquete anterior) o, más rápido, hPanel → GIT →
   desplegar de nuevo eligiendo el commit anterior de `produccion`.
-- **El webhook no dispara:** GitHub → Settings → Webhooks → *Recent Deliveries* muestra el intento y su respuesta;
-  en hPanel se puede desplegar a mano con el botón.
+- **No se despliega tras un merge:** primero mirar GitHub → Actions (si el workflow falló, la rama `produccion` no
+  cambió). Si la rama sí cambió, revisar en hPanel → GIT que el despliegue automático siga encendido y el historial
+  de despliegues; con la GitHub App el webhook lo gestiona Hostinger (en GitHub → Settings → GitHub Apps →
+  *Hostinger* se ve el acceso concedido). Siempre se puede desplegar a mano con el botón de hPanel.
