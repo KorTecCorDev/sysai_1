@@ -3,7 +3,7 @@
         'name' => 'karlos/sysai',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'b9e2da6529f30d40062acb177de9bb965b875ec5',
+        'reference' => '754ab6257e6282557a8bbff0a7a361322921a228',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'karlos/sysai' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'b9e2da6529f30d40062acb177de9bb965b875ec5',
+            'reference' => '754ab6257e6282557a8bbff0a7a361322921a228',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
