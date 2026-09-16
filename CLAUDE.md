@@ -57,9 +57,11 @@
   ahí la marca que corresponde es la de Arco Iris, no la del software.
 - **Organización:** Arco Iris (ONG sin fines de lucro, **Huaraz, Perú**).
 - **Repositorio:** `KorTecCorDev/sysai_1` (privado, GitHub).
-- ⚠️ **Ramas y publicación (2026-09-15):** `dev` = trabajo diario; **`main` = producción**. Un merge a `main`
-  dispara `.github/workflows/paquete-produccion.yml`, que arma la rama **`produccion`** (lista blanca + `vendor/`)
-  y Hostinger la despliega por webhook. **No empujar a `main` por costumbre**: publicar es una decisión.
+- ⚠️ **Ramas y publicación (activo desde 2026-09-16):** `dev` = trabajo diario; **`main` = producción**. Un merge a
+  `main` dispara `.github/workflows/paquete-produccion.yml`, que arma la rama **`produccion`** (lista blanca +
+  `vendor/`), y Hostinger la despliega solo (hPanel → GIT, conexión por *Hostinger GitHub App* limitada a este repo;
+  el webhook lo gestiona Hostinger). Verificado en producción el 2026-09-16: `verificar_htaccess.ps1` 59/0, y
+  `vendor/`, `database/`, `.git/` y `.github/` bloqueados. **No empujar a `main` por costumbre**: publicar es una decisión.
   Las migraciones NO se aplican solas (`docs/despliegue-hostinger.md` §9).
 - **Autor original:** Karlos Colonia Arellano.
 - **Stack:** PHP MVC (sin framework) + Active Record propio · MySQL/MariaDB · Bootstrap 5 · SCSS/Gulp · PHPSpreadsheet · PHPMailer.

@@ -217,7 +217,12 @@ Por qué no se despliega `main` directamente: Hostinger clona la rama **tal cual
 document root protegidos solo por el `.htaccess`. Además `vendor/` no está versionado: sin él la app no arranca,
 y cada cambio de `composer.lock` exigiría un `composer install` manual.
 
-### 9.1 Configuración (una sola vez)
+### 9.1 Configuración (una sola vez) — ✅ hecha el 2026-09-16
+
+> Estado: rama `produccion` creada por el workflow, *Hostinger GitHub App* autorizada **solo** para `sysai_1`,
+> despliegue de `produccion` en `public_html` y despliegue automático encendido. La primera publicación se verificó
+> con `verificar_htaccess.ps1` (59/0) y con las rutas propias del paquete (`vendor/`, `database/migrate.php`,
+> `.git/`, `.github/`) devolviendo 403/404 sin contenido. Los pasos quedan para reconstruirlo o repetirlo en otro sitio.
 
 1. **Generar la rama:** mergear a `main` el workflow y esperar a que termine (GitHub → Actions). Debe aparecer la
    rama `produccion`. Comprobar que **no** contiene `docs/`, `CLAUDE.md` ni `database/seed*.sql`.
