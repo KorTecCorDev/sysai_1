@@ -249,6 +249,11 @@ y cada cambio de `composer.lock` exigiría un `composer install` manual.
 
 - **Sin migraciones:** merge `dev` → `main`. En ~1-2 min la rama `produccion` cambia y Hostinger despliega. Si el
   merge solo tocó documentación, el paquete no cambia y **no se despliega nada**.
+  ✅ **Ambos caminos verificados el 2026-09-16:** con cambios (merges `754ab62` y `02fbc01`) la rama se actualizó y
+  Hostinger publicó solo; sin cambios de app (merge `e6047cc`) Actions terminó en verde con *"El paquete no cambió:
+  no se publica nada"*, la rama se quedó en `b3e1ad6`, hPanel **no** registró despliegue y el sitio respondió byte
+  por byte igual (`/login` 200, 4189 bytes; comprobador 59/0). Si alguna vez republicara sin cambios de app, el
+  sospechoso es `vendor/composer/installed.php` (ver el comentario del workflow).
 - **Con migraciones:** desplegar y **acto seguido** aplicarlas por SSH (van en el paquete):
   ```bash
   cd ~/domains/<dominio>/public_html && php database/migrate.php
