@@ -47,10 +47,6 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Instalar dependencias de producción
-        working-directory: fuente
-        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-
       - name: Comprobar sintaxis PHP
         working-directory: fuente
         run: |
@@ -67,12 +63,26 @@ jobs:
           cd fuente
           cp -a index.php Router.php iadmin.php iconta.php icoordi.php \
                 .htaccess composer.json composer.lock ../paquete/
-          cp -a build controllers includes models views vendor ../paquete/
+          cp -a build controllers includes models views ../paquete/
           mkdir -p ../paquete/database
           cp -a database/migrate.php database/migrations ../paquete/database/
+
+      # Composer se ejecuta DENTRO del paquete, que no es un checkout de git, a propósito:
+      # en un repo, Composer graba el SHA del commit actual en vendor/composer/installed.php
+      # (root.reference y versions['karlos/sysai'].reference). Eso hacía que el paquete
+      # cambiara en CADA merge a main —aunque solo tocara documentación— y Hostinger
+      # republicara siempre (verificado el 2026-09-16: 585665c → a675d3a, 2 líneas de
+      # diferencia). Sin .git delante, esa referencia queda vacía y estable.
+      - name: Instalar dependencias de producción (dentro del paquete)
+        working-directory: paquete
+        run: |
+          set -euo pipefail
+          composer install --no-dev --optimize-autoloader --no-interaction --no-progress
           # bootstrap-icons son 11 MB de iconos que la app sirve desde build/css/,
           # no desde vendor/. Ningún autoload_*.php lo referencia (verificado).
-          rm -rf ../paquete/vendor/twbs
+          rm -rf vendor/twbs
+          grep -q "'reference' => null" vendor/composer/installed.php \
+            || echo "AVISO: installed.php trae una referencia de git; el paquete podría cambiar en cada merge."
 
       - name: Verificar que no se cuela nada
         run: |
