@@ -559,14 +559,27 @@ transferencia_institucional  (migr. 033: monto que cada programa destina al Inst
 - [ ] **Capacitación**: la BD de la laptop muestra que **se realizó el 2026-08-14** (contadora y 3 coordinadoras
   activaron sus cuentas desde IPs de la LAN y recorrieron POA → rendición → aprobación). Confirmar con el usuario
   si hubo más tandas.
-- [ ] **Tras abrir producción** (datos subidos tal cual): la contadora registra el **tipo de cambio real** (solo hay
-  tasas de relleno con vigencia 2020-01-01) y decide qué hacer con lo de práctica (POA de PRG001 **aprobado**, que
-  bloquea a su coordinadora; rendición REN001 de S/ 65; ingreso "DONACIÓN DE JUAN LOPEZ"; rubro "MOBILIDADD").
+- [ ] **Apertura a las usuarias (plan acordado 2026-09-16).** Producción abre en el **dominio temporal**
+  (decisión del usuario). Orden: **piloto con la contadora** (`asistentecontable@arcoiristurmanye.com`) acompañada
+  por el usuario → luego las 3 coordinadoras ya existentes (`mhuayaney@` PRG001, `cmilla@` PRG004, `lgarcia@` PRG005).
+  Cada una se activa por `/chgpsswd` con su correo: nadie conoce su contraseña (se aleatorizaron al migrar).
+  Una vez dentro, **la contadora** registra el **tipo de cambio real** (solo hay tasas de relleno con vigencia
+  2020-01-01) **antes** de que nadie rinda, y crea las usuarias de las coordinadoras de *Acogimiento familiar* y
+  *Plan de becas Margot*, que hoy no tienen.
+  ✅ **Los datos de práctica se quedan TAL CUAL** (decisión del usuario): POA de PRG001 aprobado —su coordinadora no
+  puede editarlo, solo la contadora como adenda—, rendición REN001 de S/ 65, ingreso "DONACIÓN DE JUAN LOPEZ" y
+  rubro "MOBILIDADD". ⚠️ Sin columna de "último acceso": el seguimiento es por `logs/mail.log` (`[OK]` por
+  destinatario) y por lo que confirme cada persona. El correo **no lleva enlace**: la URL se comunica aparte.
 - [ ] Checklist visual `docs/qa-frontend-navegador.md`, sin marcar.
 - [ ] **Presupuesto por periodo** (`docs/plan-montos-y-tipo-cambio.md` §5.1): consultar a la contadora; pasa a ser
   prerequisito si algún convenio no coincide con el año calendario.
 
 **Riesgos aceptados o a vigilar**
+- **Dominio temporal de Hostinger** (`cyan-mandrill-993924.hostingersite.com`): aceptado para abrir, pero es una
+  dirección de pruebas. Migrar a un dominio propio solo exige SSL y volver a comunicar la URL (el correo de
+  activación no lleva enlaces); el costo real es social, porque las usuarias ya la habrán aprendido.
+- **Entregabilidad del remitente nuevo**: la prueba con `@arcoiristurmanye.com` que salió bien fue con el remitente
+  anterior (`korteccor@`). Con `cronosarca2024@` se confirma en el piloto de la contadora.
 - Alerta de `immutable` 3.x en BrowserSync **descartada** (forzar la 4 lo rompe): revisar cuando BrowserSync pida `^4`.
 - Bajos de la auditoría sin tratar: enumeración por tiempo en el login, `CURLOPT_FOLLOWLOCATION` en la consulta
   SBS, `style-src 'unsafe-inline'` en la CSP.
