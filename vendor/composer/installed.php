@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'karlos/sysai',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => '754ab6257e6282557a8bbff0a7a361322921a228',
+        'pretty_version' => '1.0.0+no-version-set',
+        'version' => '1.0.0.0',
+        'reference' => null,
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'karlos/sysai' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => '754ab6257e6282557a8bbff0a7a361322921a228',
+            'pretty_version' => '1.0.0+no-version-set',
+            'version' => '1.0.0.0',
+            'reference' => null,
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
